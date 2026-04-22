@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CARDONA KTM 890 - V23 STABLE</title>
+    <title>ENERGY CONCEPT - KTM HUD V24</title>
     
     <script>
         const CONFIG = {
@@ -19,38 +19,52 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; filter: brightness(0.8); transition: transform 0.5s ease; }
+        
+        /* Conteneur pour la rotation de la carte */
+        #map-container { position: absolute; width: 200%; height: 200%; top: -50%; left: -50%; z-index: 1; transition: transform 0.3s ease-out; }
+        #map { width: 100%; height: 100%; filter: brightness(0.7) contrast(1.2); }
 
-        /* HUD GHOST */
+        /* HUD CENTRAL */
         #hud-container {
-            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 60; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 300px; height: 300px; z-index: 60; pointer-events: none;
         }
-        #aim-sphere { position: absolute; width: 260px; height: 260px; border: 1px solid rgba(255,102,0,0.2); border-radius: 50%; }
-        #horizon-gyro { position: absolute; width: 320px; height: 1px; background: #FF6600; box-shadow: 0 0 10px #FF6600; transition: transform 0.2s ease-out; }
-        #lean-val { position: absolute; top: 10px; font-size: 2rem; color: #FF6600; text-shadow: 2px 2px 4px #000; }
+        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 1px solid rgba(255,102,0,0.3); border-radius: 50%; box-sizing: border-box; }
+        #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FF6600; box-shadow: 0 0 15px #FF6600; transition: transform 0.1s linear; }
+        #lean-val { position: absolute; top: 20px; width: 100%; text-align: center; font-size: 2.5rem; color: #FF6600; text-shadow: 2px 2px 4px #000; }
 
-        /* INTERFACE HAUTE */
-        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 70; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.6); border: 1px solid #FF6600; color: white; padding: 10px; border-radius: 4px; backdrop-filter: blur(5px); }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.7rem; }
+        /* NAVIGATION GOOGLE MAPS */
+        #nav-window { position: absolute; top: 70px; right: 2%; width: 35%; height: 45%; z-index: 80; display: none; border: 2px solid #FF6600; background: rgba(0,0,0,0.8); }
+        #nav-window iframe { width: 100%; height: 100%; border: none; opacity: 0.9; }
 
-        /* DASHBOARD BAS */
-        #dashboard { position: absolute; bottom: 10px; width: 96%; left: 2%; z-index: 40; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .widget { text-align: center; border-bottom: 2px solid #FF6600; background: rgba(0,0,0,0.4); padding: 5px; backdrop-filter: blur(5px); }
-        .label { font-size: 0.6rem; color: #FF6600; }
+        /* INTERFACE */
+        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; backdrop-filter: blur(10px); font-family: sans-serif; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
+
+        #dashboard { position: absolute; bottom: 10px; width: 96%; left: 2%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .widget { background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding: 8px; border-bottom: 3px solid #FF6600; text-align: center; }
+        .label { font-size: 0.6rem; color: #FF6600; margin-bottom: 4px; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
 
-        #speed-main { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); z-index: 65; font-size: 4rem; font-weight: 900; text-shadow: 0 0 15px #000; }
+        #speed-main { position: absolute; bottom: 120px; width: 100%; text-align: center; z-index: 85; font-size: 5rem; font-weight: 900; text-shadow: 0 0 20px #000; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="RECHERCHE DESTINATION...">
-        <button class="btn-ktm" onclick="findFuel()">⛽ ESSENCE</button>
-        <button class="btn-ktm" style="background:#333; color:#fff;" onclick="calibrate()">ZERO</button>
+        <input type="text" id="search-input" placeholder="DESTINATION (Ex: Bastia, Ajaccio...)">
+        <button class="btn-ktm" onclick="startNav()">NAV</button>
+        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">⛽ FUEL</button>
+        <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
+    </div>
+
+    <div id="nav-window">
+        <div style="background:#FF6600; font-size:10px; padding:3px; font-weight:bold; display:flex; justify-content:space-between;">
+            <span>GOOGLE NAVIGATION LIVE</span>
+            <span onclick="document.getElementById('nav-window').style.display='none'" style="cursor:pointer;">[X]</span>
+        </div>
+        <iframe id="nav-iframe"></iframe>
     </div>
 
     <div id="hud-container">
@@ -61,65 +75,79 @@
 
     <div id="speed-main">000</div>
 
-    <div id="map"></div>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
 
     <div id="dashboard">
-        <div class="widget"><div class="label">Course</div><div class="value" style="color:#FF6600; font-size:1.2rem;">CORSICA</div></div>
-        <div class="widget"><div class="label">Cap</div><div id="heading" class="value">000°</div></div>
+        <div class="widget"><div class="label">Heading</div><div id="cap" class="value">---</div></div>
         <div class="widget"><div class="label">Altitude</div><div id="alt" class="value">--</div></div>
         <div class="widget"><div class="label">Distance</div><div id="dist" class="value">0.0</div></div>
+        <div class="widget"><div class="label">Status</div><div class="value" style="color:#FF6600; font-size:1.2rem;">READY</div></div>
     </div>
 
     <script>
-        let map, userMarker, coords = [], totalDist = 0, offset = 0, lastG = 0;
+        let map, userMarker, totalDist = 0, offset = 0, lastG = 0, smoothedLean = 0, lastCoord = null;
         let fuelLayer = L.layerGroup();
-        let smoothedLean = 0;
 
         function init() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 13);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 15);
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer.addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#005fb7', fillOpacity: 1, weight: 4 }).addTo(map);
 
+            // Gestion de l'inclinaison (Gyroscope)
             window.addEventListener('deviceorientation', e => {
-                // Filtre pour lisser l'inclinaison (moyenne glissante)
-                const rawLean = e.gamma - offset;
-                smoothedLean = (smoothedLean * 0.8) + (rawLean * 0.2); 
-                
+                lastG = e.gamma;
+                let raw = e.gamma - offset;
+                smoothedLean = (smoothedLean * 0.7) + (raw * 0.3);
                 document.getElementById('horizon-gyro').style.transform = `rotate(${smoothedLean}deg)`;
                 document.getElementById('lean-val').innerText = Math.abs(Math.round(smoothedLean)) + "°";
             });
 
+            // Gestion GPS et Cap
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
-                
-                // Rotation de la carte selon le cap (heading)
-                if (u.coords.heading !== null) {
-                    map.getContainer().style.transform = `rotate(${-u.coords.heading}deg)`;
-                    document.getElementById('heading').innerText = Math.round(u.coords.heading).toString().padStart(3, '0') + "°";
-                }
-                
                 map.panTo(p);
+
+                // Rotation de la carte (Boussole)
+                let heading = u.coords.heading;
+                if (heading !== null) {
+                    document.getElementById('map-container').style.transform = `rotate(${-heading}deg)`;
+                    document.getElementById('cap').innerText = Math.round(heading).toString().padStart(3, '0') + "°";
+                }
+
+                // Vitesse et Altitude
                 const s = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 document.getElementById('speed-main').innerText = s;
-                if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude);
-                if (coords.length > 0) totalDist += map.distance(coords[coords.length-1], p) / 1000;
-                coords.push(p);
+                if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
+
+                // Calcul distance
+                if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
+                lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
             }, null, { enableHighAccuracy: true });
         }
 
+        function startNav() {
+            const dest = document.getElementById('search-input').value;
+            if (!dest) return;
+            const url = `https://www.google.com/maps?q=${encodeURIComponent(dest)}&output=embed`;
+            document.getElementById('nav-iframe').src = url;
+            document.getElementById('nav-window').style.display = 'block';
+        }
+
         async function findFuel() {
             const c = map.getCenter();
-            const res = await fetch(`${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 20000)&limit=10`);
+            const res = await fetch(`${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 15000)&limit=10`);
             const data = await res.json();
             fuelLayer.clearLayers();
             data.results.forEach(st => {
                 let p = st.sp95_prix || st.e10_prix;
                 if (p) {
                     L.marker([st.geom.lat, st.geom.lon], {
-                        icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border:1px solid white; border-radius:3px; font-weight:bold; font-size:10px;">${p.toFixed(2)}€</div>` })
+                        icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:3px; border:1px solid white; font-weight:bold; font-size:12px;">${p.toFixed(2)}€</div>`, iconSize: [40, 20] })
                     }).addTo(fuelLayer);
                 }
             });
