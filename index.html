@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept- V42 LANDSCAPE</title>
+    <title>KTM COCKPIT V43 - DEBUG</title>
     
     <script>
+        // --- PANNEAU DE CONTRÔLE (REGLAGES) ---
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            RADIUS: 30000, // 30km
+            RADIUS_METER: 20000, // 20km
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            // API MISE A JOUR - SERVEUR STABLE 2026
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
     </script>
@@ -24,69 +24,71 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* --- SECURITE ORIENTATION --- */
+        /* --- ALERTE PORTRAIT (EPURÉE) --- */
         #portrait-warning {
             position: fixed; inset: 0; background: #000; z-index: 9999;
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; color: #FF6600; padding: 20px;
+            text-align: center; color: #FF6600;
         }
         @media (orientation: portrait) { #portrait-warning { display: flex; } }
 
-        /* --- NAVIGATION & CARTES --- */
+        /* --- CARTOGRAPHIE --- */
         #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
         #nav-layer { position: absolute; inset: 0; z-index: 2; display: none; background: #000; }
-        #nav-iframe { width: 100%; height: 100%; border: none; filter: brightness(0.6) saturate(1.2); }
+        #nav-iframe { width: 100%; height: 100%; border: none; filter: brightness(0.6); }
 
         /* --- HUD CENTRAL --- */
         #hud-container {
             position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 60; pointer-events: none;
+            width: 300px; height: 300px; z-index: 60; pointer-events: none;
         }
-        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; transition: all 0.3s ease; }
-        #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 3px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
-        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 5rem; font-weight: 900; text-shadow: 0 0 20px #000; }
+        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
+        #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
+        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4.5rem; font-weight: 900; text-shadow: 0 0 20px #000; }
 
         /* --- VITESSE --- */
         #speed-block { position: absolute; bottom: 120px; left: 5%; z-index: 80; pointer-events: none; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 9rem; font-weight: 900; line-height: 0.8; text-shadow: 0 0 30px #000; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 8rem; font-weight: 900; line-height: 0.8; }
 
-        /* --- INTERFACE HAUTE --- */
-        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .search-row { display: flex; gap: 8px; width: 100%; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.85); border: 2px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; font-size: 1.1rem; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 12px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        #status-bar { font-size: 0.8rem; color: #FF6600; font-weight: 900; background: rgba(0,0,0,0.6); padding: 2px 10px; width: fit-content; border-radius: 3px; }
+        /* --- TERMINAL DE DEBUG (POUR BRICE) --- */
+        #debug-console {
+            position: absolute; top: 70px; left: 10px; width: 250px; max-height: 150px;
+            background: rgba(0,0,0,0.8); border-left: 3px solid #FF6600;
+            font-family: monospace; font-size: 9px; color: #0f0; padding: 5px;
+            z-index: 1000; overflow-y: auto; pointer-events: none;
+        }
 
-        /* --- DASHBOARD BAS --- */
+        /* --- INTERFACE --- */
+        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.9); border-top: 2px solid #FF6600; }
-        .widget { padding: 12px; text-align: center; border-right: 1px solid #333; }
+        .widget { padding: 10px; text-align: center; border-right: 1px solid #333; }
         .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
 
-        .fuel-label { background: #FF6600; color: #fff; padding: 5px 8px; border-radius: 5px; font-weight: 900; border: 2px solid white; font-size: 16px; box-shadow: 0 0 10px #000; }
+        .fuel-marker { background: #FF6600; color: #fff; padding: 4px 6px; border-radius: 4px; font-weight: 900; border: 1px solid white; font-size: 13px; box-shadow: 0 0 10px #000; }
     </style>
 </head>
 <body>
 
     <div id="portrait-warning">
-        <h1 style="font-size: 3rem;">⚠</h1>
-        <h2>BASCULEZ VOTRE TÉLÉPHONE</h2>
-        <p>Le cockpit KTM ENERGY CONCEPT ne fonctionne qu'en mode paysage.</p>
+        <h1 style="font-size: 4rem; margin: 0;">⚠</h1>
+        <h2 style="letter-spacing: 5px;">MODE PAYSAGE REQUIS</h2>
+        <p style="opacity: 0.6;">Tournez votre appareil pour activer le cockpit.</p>
     </div>
+
+    <div id="debug-console">IDLE: Système prêt.</div>
 
     <div id="top-ui">
-        <div class="search-row">
-            <input type="text" id="search-input" placeholder="Bastia, Calvi, Porto-Vecchio...">
-            <button id="btn-nav" class="btn-ktm" onclick="toggleNav()">NAV</button>
-            <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL</button>
-            <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
-        </div>
-        <div id="status-bar">SYSTEM READY - V42</div>
+        <input type="text" id="search-input" placeholder="RECHERCHE DESTINATION...">
+        <button id="btn-nav" class="btn-ktm" onclick="toggleNav()">NAV</button>
+        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL</button>
+        <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
-    <div id="nav-layer">
-        <iframe id="nav-iframe"></iframe>
-    </div>
+    <div id="nav-layer"><iframe id="nav-iframe"></iframe></div>
 
     <div id="hud-container">
         <div id="lean-display">0°</div>
@@ -112,14 +114,17 @@
         let map, userMarker, totalDist = 0, offset = 0, lastRaw = 0, smoothedLean = 0, lastCoord = null;
         let fuelLayer = L.layerGroup();
 
-        function setStatus(msg) { document.getElementById('status-bar').innerText = "STATUS: " + msg.toUpperCase(); }
+        // FONCTION DE LOG POUR BRICE
+        function briceLog(msg) {
+            const consoleBox = document.getElementById('debug-console');
+            consoleBox.innerHTML += `<br>> ${msg}`;
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
 
         function updateHUD(angle) {
             const a = Math.abs(angle);
             const color = a < 25 ? CONFIG.SAFE_GREEN : (a < 40 ? CONFIG.KTM_ORANGE : CONFIG.DANGER_RED);
-            const sphere = document.getElementById('aim-sphere');
-            sphere.style.borderColor = color;
-            sphere.style.borderWidth = a > 40 ? "10px" : "2px";
+            document.getElementById('aim-sphere').style.borderColor = color;
             document.getElementById('horizon-gyro').style.backgroundColor = color;
             document.getElementById('lean-display').style.color = color;
             document.getElementById('lean-display').innerText = Math.round(a) + "°";
@@ -150,61 +155,57 @@
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
-            }, null, { enableHighAccuracy: true });
+            }, e => briceLog("ERREUR GPS: " + e.message), { enableHighAccuracy: true });
         }
 
         function toggleNav() {
             const dest = document.getElementById('search-input').value;
             const layer = document.getElementById('nav-layer');
-            const iframe = document.getElementById('nav-iframe');
-            const btn = document.getElementById('btn-nav');
-
             if (layer.style.display === 'block') {
                 layer.style.display = 'none';
-                iframe.src = '';
-                btn.innerText = "NAV";
-                setStatus("Carte Tech Active");
+                document.getElementById('btn-nav').innerText = "NAV";
             } else if (dest) {
-                // ITINERAIRE GOOGLE EMBED (Statique mais robuste)
-                iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(dest)}&output=embed&t=m&z=12`;
+                document.getElementById('nav-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(dest)}&output=embed`;
                 layer.style.display = 'block';
-                btn.innerText = "STOP";
-                setStatus("Itinéraire Chargé");
+                document.getElementById('btn-nav').innerText = "STOP";
             }
         }
 
         async function findFuel() {
-            setStatus("Scan en cours...");
             const c = map.getCenter();
-            // Requête simplifiée
-            const url = `${CONFIG.FUEL_API}?where=distance(geom, geom'POINT(${c.lng} ${c.lat})') < ${CONFIG.RADIUS}&limit=50`;
+            briceLog(`SCAN: ${c.lat.toFixed(3)},${c.lng.toFixed(3)}`);
+            
+            // TEST API DIRECTE
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=20`;
             
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 fuelLayer.clearLayers();
                 
-                if (!data.results || data.results.length === 0) {
-                    setStatus("Aucune station (20km)");
-                    return;
+                if (data.results && data.results.length > 0) {
+                    briceLog(`${data.results.length} STATIONS OK`);
+                    data.results.forEach(st => {
+                        let p = "?.??";
+                        try {
+                            const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
+                            p = parseFloat(pArr.find(x => x["@nom"].includes("95"))["@valeur"]).toFixed(2);
+                        } catch(e) { p = st.sp95_prix || "?.??"; }
+
+                        L.marker([st.geom.lat, st.geom.lon], {
+                            icon: L.divIcon({ html: `<div class="fuel-marker">${p}€</div>`, iconSize: [45, 20] })
+                        }).addTo(fuelLayer);
+                    });
+                } else {
+                    briceLog("AUCUN RESULTAT API");
                 }
-
-                data.results.forEach(st => {
-                    let prix = "?.??";
-                    try {
-                        let pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                        prix = pArr.find(x => x["@nom"].includes("95"))["@valeur"];
-                    } catch(e) { prix = st.sp95_prix || st.e10_prix || "?.??"; }
-
-                    L.marker([st.geom.lat, st.geom.lon], {
-                        icon: L.divIcon({ html: `<div class="fuel-label">${parseFloat(prix).toFixed(2)}€</div>`, iconSize: [50, 25] })
-                    }).addTo(fuelLayer);
-                });
-                setStatus(data.results.length + " stations trouvées");
-            } catch(e) { setStatus("Erreur API Fuel"); }
+            } catch(e) { 
+                briceLog("ERREUR RESEAU/API"); 
+                console.error(e);
+            }
         }
 
-        function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); setStatus("Calibrage OK"); }
+        function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); briceLog("CALIBRAGE ZERO OK"); }
         window.onload = init;
     </script>
 </body>
