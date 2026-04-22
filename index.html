@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>ENERGY CONCEPT - KTM HUD V29</title>
+    <title>KTM COCKPIT V53 - ENERGY CONCEPT</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            COLOR_SAFE: '#2ecc71',
-            COLOR_WARN: '#FF6600',
-            COLOR_ALERT: '#e74c3c',
-            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
+            SAFE_GREEN: '#2ecc71',
+            DANGER_RED: '#ff4757',
+            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
     </script>
 
@@ -21,12 +21,12 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
-        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: contrast(1.2); }
+        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.7) contrast(1.1); }
 
         /* HUD CENTRAL DYNAMIQUE */
         #hud-container {
             position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
-            width: 330px; height: 330px; z-index: 60; pointer-events: none;
+            width: 320px; height: 320px; z-index: 60; pointer-events: none;
             display: flex; align-items: center; justify-content: center;
         }
         #aim-sphere {
@@ -34,31 +34,32 @@
             border-radius: 50%; border: 2px solid #2ecc71;
             transition: all 0.2s ease;
             box-shadow: 0 0 15px rgba(46, 204, 113, 0.2);
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,102,0,0.1)" stroke-width="0.3"/><path d="M50 2 L50 8 M50 92 L50 98 M2 50 L8 50 M92 50 L98 50" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/></svg>');
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,102,0,0.1)" stroke-width="0.3"/><path d="M50 2 L50 10 M50 90 L50 98 M2 50 L10 50 M90 50 L98 50" stroke="white" opacity="0.3" stroke-width="1"/></svg>');
             background-size: cover;
         }
-        #horizon-wire { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FFF; box-shadow: 0 0 10px #FFF; transition: transform 0.1s linear; }
+        #horizon-line { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FFF; box-shadow: 0 0 10px #FFF; transition: transform 0.1s linear; }
 
-        /* VITESSE */
-        #speed-block { position: absolute; bottom: 70px; left: 25px; z-index: 80; }
+        /* VITESSE BAS GAUCHE */
+        #speed-block { position: absolute; bottom: 80px; left: 30px; z-index: 80; text-align: left; }
         #speed-val { font-family: 'Barlow Condensed'; font-size: 6.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
+        .unit { font-size: 1.2rem; color: #FF6600; font-weight: 900; margin-left: 5px; }
 
-        /* TOP UI */
-        #top-ui { position: absolute; top: 8px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; }
+        /* BARRE DE MISSION HAUTE */
+        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; align-items: center; }
+        #search-input { width: 250px; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; }
         .fuel-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 9px; border-radius: 4px; font-weight: bold; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
 
-        /* DASHBOARD */
-        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.85); border-top: 1px solid #FF6600; }
-        .widget { padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
+        /* DASHBOARD BAS */
+        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.85); border-top: 2px solid #FF6600; }
+        .widget { padding: 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
         .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
         
-        #btn-zero { position: absolute; bottom: 2px; right: 2px; background: #222; border: 1px solid #444; color: #666; font-size: 7px; padding: 2px 4px; cursor: pointer; border-radius: 2px; }
+        #btn-zero { position: absolute; bottom: 4px; right: 4px; background: #222; border: 1px solid #444; color: #666; font-size: 8px; padding: 3px 6px; cursor: pointer; border-radius: 2px; }
 
-        @keyframes blink { 50% { opacity: 0.3; } }
-        .alert-mode { animation: blink 0.4s infinite; }
+        @keyframes alert-blink { 50% { opacity: 0.4; border-width: 6px; } }
+        .is-alert { animation: alert-blink 0.3s infinite; }
     </style>
 </head>
 <body>
@@ -76,12 +77,12 @@
 
     <div id="hud-container">
         <div id="aim-sphere"></div>
-        <div id="horizon-wire"></div>
+        <div id="horizon-line"></div>
     </div>
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div style="font-size:1rem; color:#FF6600; font-weight:900;">KM/H</div>
+        <div class="unit">KM/H</div>
     </div>
 
     <div id="map"></div>
@@ -90,68 +91,74 @@
         <div class="widget"><div class="label">Altitude</div><div id="alt" class="value">--</div></div>
         <div class="widget"><div class="label">Cap</div><div id="cap" class="value">---</div></div>
         <div class="widget"><div class="label">Trip</div><div id="dist" class="value">0.0</div></div>
-        <div class="widget" id="lean-widget">
-            <div class="label">Lean Angle</div>
+        <div class="widget">
+            <div class="label">Angle</div>
             <div id="lean-val" class="value">0°</div>
             <button id="btn-zero" onclick="calibrate()">ZERO</button>
         </div>
     </div>
 
     <script>
-        let map, userMarker, totalDist = 0, offset = 0, lastG = 0, smoothedLean = 0, lastCoord = null;
+        let map, userMarker, totalDist = 0, offset = 0, lastRaw = 0, smoothedLean = 0, lastCoord = null;
         let fuelLayer = L.layerGroup();
 
-        function initApp() {
+        function init() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 13);
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer.addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 2 }).addTo(map);
             
-            window.addEventListener('deviceorientation', handleOrientation);
-            initGps();
+            window.addEventListener('deviceorientation', handleMotion);
+            startGps();
         }
 
-        function handleOrientation(e) {
-            // DÉTECTION AUTO DE L'AXE (Landscape)
-            // Si le tel est sur le côté, c'est souvent 'beta' qui gère l'inclinaison moto
+        function handleMotion(e) {
+            // Logique de détection d'axe automatique pour le mode paysage
             let orientation = window.orientation || 0;
-            let rawLean = (Math.abs(orientation) === 90) ? e.beta : e.gamma;
-            
-            lastG = rawLean;
-            let currentLean = rawLean - offset;
-            
-            // FILTRE LISSAGE ADAPTATIF
+            let raw = (Math.abs(orientation) === 90) ? e.beta : e.gamma;
+            lastRaw = raw;
+
+            let currentLean = raw - offset;
+            // Filtrage lissage fort (0.85) pour gommer les vibrations KTM
             smoothedLean = (smoothedLean * 0.85) + (currentLean * 0.15);
             let angle = Math.abs(Math.round(smoothedLean));
-            
+
             const sphere = document.getElementById('aim-sphere');
-            const wire = document.getElementById('horizon-wire');
+            const wire = document.getElementById('horizon-line');
             const val = document.getElementById('lean-val');
 
-            // ANIMATION COULEURS
+            // Animation des alertes d'angle
             if (angle < 20) {
-                sphere.style.borderColor = CONFIG.COLOR_SAFE; sphere.style.borderWidth = "2px";
-                val.style.color = CONFIG.COLOR_SAFE; sphere.classList.remove('alert-mode');
-            } else if (angle < 40) {
-                sphere.style.borderColor = CONFIG.COLOR_WARN; sphere.style.borderWidth = "4px";
-                val.style.color = CONFIG.COLOR_WARN; sphere.classList.remove('alert-mode');
+                sphere.style.borderColor = CONFIG.SAFE_GREEN;
+                val.style.color = CONFIG.SAFE_GREEN;
+                sphere.classList.remove('is-alert');
+            } else if (angle < 42) {
+                sphere.style.borderColor = CONFIG.KTM_ORANGE;
+                val.style.color = CONFIG.KTM_ORANGE;
+                sphere.classList.remove('is-alert');
             } else {
-                sphere.style.borderColor = CONFIG.COLOR_ALERT; sphere.style.borderWidth = "6px";
-                val.style.color = CONFIG.COLOR_ALERT; sphere.classList.add('alert-mode');
+                sphere.style.borderColor = CONFIG.DANGER_RED;
+                val.style.color = CONFIG.DANGER_RED;
+                sphere.classList.add('is-alert');
             }
 
             wire.style.transform = `rotate(${smoothedLean}deg)`;
             val.innerText = angle + "°";
         }
 
-        function initGps() {
+        function startGps() {
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
+
                 if (u.coords.heading) document.getElementById('cap').innerText = Math.round(u.coords.heading).toString().padStart(3, '0') + "°";
-                document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
+                
+                const s = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0);
+                document.getElementById('speed-val').innerText = s.toString().padStart(3, '0');
+                
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
+                
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
@@ -161,26 +168,33 @@
         async function findFuel() {
             const c = map.getCenter();
             const type = document.getElementById('fuel-type').value;
-            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=15`;
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=20`;
+            
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 fuelLayer.clearLayers();
                 data.results.forEach(st => {
                     let p = st[type];
-                    if (p) L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border:1px solid white; font-weight:bold; font-size:12px; border-radius:3px;">${p.toFixed(2)}</div>` }) }).addTo(fuelLayer);
+                    if (p) {
+                        L.marker([st.geom.lat, st.geom.lon], {
+                            icon: L.divIcon({ 
+                                html: `<div style="background:#FF6600; color:white; padding:2px 5px; border:1px solid white; font-weight:bold; font-size:12px; border-radius:3px; white-space:nowrap;">${p.toFixed(2)}</div>`,
+                                iconSize: [40, 20]
+                            })
+                        }).addTo(fuelLayer);
+                    }
                 });
-            } catch(e) { alert("Erreur Scan Essence"); }
+            } catch(e) { console.error("Fuel Scan Error"); }
         }
 
         function startNav() {
             const dest = document.getElementById('search-input').value;
-            // Lance Google Maps avec l'adresse
-            if (dest) window.open(`google.navigation:q=${encodeURIComponent(dest)}&mode=d`, '_system');
+            if (dest) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
         }
 
-        function calibrate() { offset = lastG; }
-        window.onload = initApp;
+        function calibrate() { offset = lastRaw; smoothedLean = 0; }
+        window.onload = init;
     </script>
 </body>
 </html>
