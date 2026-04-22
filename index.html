@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept- KTM V37</title>
+    <title>Energy Concept- KTM V38</title>
     
     <script>
         const CONFIG = {
@@ -12,6 +12,7 @@
             DANGER_RED: '#ff4757',
             RADIUS: 20000, 
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            // API Gouvernementale Instantanée
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
     </script>
@@ -22,13 +23,7 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
-        
-        /* CARTES */
-        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
-        
-        /* NAVIGATION FULL SCREEN AVEC ITINÉRAIRE */
-        #nav-container { position: absolute; inset: 0; z-index: 5; display: none; background: #000; }
-        #nav-iframe { width: 100%; height: 100%; border: none; filter: brightness(0.7) contrast(1.1); }
+        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.3); }
 
         /* HUD CENTRAL */
         #hud-container {
@@ -56,20 +51,19 @@
         .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
 
         .fuel-label { background: #FF6600; color: #fff; padding: 5px 8px; border-radius: 5px; font-weight: 900; border: 2px solid white; font-size: 15px; box-shadow: 0 0 10px #000; }
+        #debug-box { position: absolute; top: 70px; left: 10px; font-size: 9px; color: #666; z-index: 1000; }
     </style>
 </head>
 <body>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION (Ex: Calvi)">
-        <button id="nav-btn" class="btn-ktm" onclick="toggleNav()">MISSION NAV</button>
+        <input type="text" id="search-input" placeholder="DESTINATION (CALVI...)">
+        <button class="btn-ktm" onclick="openGoogleNav()">MISSION NAV</button>
         <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL SCAN</button>
         <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
-    <div id="nav-container">
-        <iframe id="nav-iframe"></iframe>
-    </div>
+    <div id="debug-box">SYS: READY</div>
 
     <div id="hud-container">
         <div id="lean-display">0°</div>
@@ -95,6 +89,8 @@
         let map, userMarker, totalDist = 0, offset = 0, lastRaw = 0, smoothedLean = 0, lastCoord = null;
         let fuelLayer = L.layerGroup();
 
+        function setStatus(msg) { document.getElementById('debug-box').innerText = "STATUS: " + msg; }
+
         function updateHUD(angle) {
             const a = Math.abs(angle);
             const color = a < 25 ? CONFIG.SAFE_GREEN : (a < 40 ? CONFIG.KTM_ORANGE : CONFIG.DANGER_RED);
@@ -114,10 +110,10 @@
             window.addEventListener('deviceorientation', e => {
                 let raw = (Math.abs(window.orientation) === 90) ? e.beta : e.gamma;
                 lastRaw = raw;
-                smoothedLean = (smoothedLean * 0.90) + ((raw - offset) * 0.10);
+                // AMORTISSEMENT
+                smoothedLean = (smoothedLean * 0.92) + ((raw - offset) * 0.08);
                 document.getElementById('horizon-gyro').style.transform = `rotate(${smoothedLean}deg)`;
                 updateHUD(smoothedLean);
-                document.getElementById('pitch').innerText = Math.round(e.beta) + "°";
             }, true);
 
             navigator.geolocation.watchPosition(u => {
@@ -134,52 +130,49 @@
             }, null, { enableHighAccuracy: true });
         }
 
-        function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); }
-
-        function toggleNav() {
+        function openGoogleNav() {
             const dest = document.getElementById('search-input').value;
-            const container = document.getElementById('nav-container');
-            const iframe = document.getElementById('nav-iframe');
-            const btn = document.getElementById('nav-btn');
-
-            if (container.style.display === 'block') {
-                container.style.display = 'none';
-                iframe.src = '';
-                btn.innerText = "MISSION NAV";
-            } else if (dest) {
-                // FORCE LE CALCUL D'ITINERAIRE DEPUIS MA POSITION
-                const googleUrl = `https://www.google.com/maps/embed/v1/directions?key=REMPLACE_PAR_TA_CLE_SI_TU_EN_AS_UNE&origin=My+Location&destination=${encodeURIComponent(dest)}&mode=driving`;
-                
-                // FALLBACK SANS CLÉ (Plus simple)
-                const fallbackUrl = `https://maps.google.com/maps?q=${encodeURIComponent(dest)}&output=embed&t=m&z=12`;
-                
-                iframe.src = fallbackUrl;
-                container.style.display = 'block';
-                btn.innerText = "FERMER NAV";
-            }
+            if (!dest) return;
+            // Lance Google Maps en mode navigation réelle dans un nouvel onglet
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
         }
 
         async function findFuel() {
+            setStatus("Scan...");
             const c = map.getCenter();
+            // Requête forçant l'extraction
             const url = `${CONFIG.FUEL_API}?where=distance(geom, geom'POINT(${c.lng} ${c.lat})') < ${CONFIG.RADIUS}&limit=50`;
+            
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 fuelLayer.clearLayers();
+                
+                if (data.results.length === 0) {
+                    setStatus("Zéro station.");
+                    return;
+                }
+
                 data.results.forEach(st => {
-                    let p = "?.??";
-                    try {
-                        let pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                        let gas = pArr.find(x => x["@nom"].includes("95")) || pArr[0];
-                        p = parseFloat(gas["@valeur"]).toFixed(2);
-                    } catch(e) {}
-                    L.marker([st.geom.lat, st.geom.lon], {
-                        icon: L.divIcon({ html: `<div class="fuel-label">${p}€</div>`, iconSize: [50, 25] })
-                    }).addTo(fuelLayer);
+                    let prix = null;
+                    if (st.sp95_prix) prix = st.sp95_prix;
+                    else if (st.prix) {
+                        try {
+                            const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
+                            prix = pArr[0]["@valeur"];
+                        } catch(e) {}
+                    }
+                    if (prix) {
+                        L.marker([st.geom.lat, st.geom.lon], {
+                            icon: L.divIcon({ html: `<div class="fuel-label">${parseFloat(prix).toFixed(2)}€</div>`, iconSize: [50, 25] })
+                        }).addTo(fuelLayer);
+                    }
                 });
-            } catch(e) {}
+                setStatus(data.results.length + " stations OK");
+            } catch(e) { setStatus("Erreur API"); }
         }
 
+        function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); }
         window.onload = init;
     </script>
 </body>
