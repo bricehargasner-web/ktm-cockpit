@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V47 - MISSION GUIDE</title>
+    <title>KTM COCKPIT V48 - COMMANDER</title>
     
     <script>
         const CONFIG = {
@@ -26,43 +26,39 @@
         #portrait-warning { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FF6600; }
         @media (orientation: portrait) { #portrait-warning { display: flex; } }
 
-        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.45) contrast(1.2); }
-        #nav-layer { position: absolute; inset: 0; z-index: 2; display: none; background: #000; }
-        #nav-iframe { width: 100%; height: 100%; border: none; filter: brightness(0.6); }
+        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
 
-        /* --- SIDEBAR FUEL (Optimisée Adresses) --- */
+        /* --- SIDEBAR FUEL AVEC BOUTON NAV --- */
         #fuel-sidebar {
-            position: absolute; right: 10px; top: 75px; bottom: 100px; width: 240px;
-            background: rgba(0,0,0,0.85); border-left: 3px solid #FF6600;
+            position: absolute; right: 10px; top: 75px; bottom: 100px; width: 260px;
+            background: rgba(0,0,0,0.9); border-left: 3px solid #FF6600;
             z-index: 150; display: none; flex-direction: column; overflow-y: auto;
-            backdrop-filter: blur(10px); border-radius: 4px 0 0 4px;
+            backdrop-filter: blur(10px);
         }
-        .fuel-item { padding: 12px 10px; border-bottom: 1px solid #333; cursor: pointer; }
-        .fuel-item:active { background: rgba(255,102,0,0.4); }
-        .fuel-item .name { font-size: 0.75rem; color: #FF6600; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; }
-        .fuel-item .address { font-size: 0.65rem; color: #aaa; font-family: sans-serif; line-height: 1.2; margin-bottom: 6px; }
-        .fuel-item .price-row { display: flex; justify-content: space-between; align-items: center; }
-        .fuel-item .price { font-size: 1.7rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
-        .fuel-item .dist { font-size: 0.9rem; color: #FF6600; font-weight: 900; border: 1px solid #FF6600; padding: 2px 5px; border-radius: 3px; }
+        .fuel-item { padding: 12px 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .fuel-info { flex-grow: 1; cursor: pointer; }
+        .fuel-item .name { font-size: 0.7rem; color: #FF6600; font-weight: 900; text-transform: uppercase; }
+        .fuel-item .address { font-size: 0.6rem; color: #888; font-family: sans-serif; margin-bottom: 4px; }
+        .fuel-item .price { font-size: 1.5rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
+        .btn-go { background: #FF6600; color: #000; border: none; padding: 10px; border-radius: 4px; font-weight: 900; font-size: 0.8rem; cursor: pointer; margin-left: 10px; }
 
         /* --- HUD & SPEED --- */
         #hud-container { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; z-index: 60; pointer-events: none; }
-        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.15); border-radius: 50%; }
+        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; }
         #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
-        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; text-shadow: 0 0 15px #000; }
+        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; }
 
         #speed-block { position: absolute; bottom: 115px; left: 5%; z-index: 80; pointer-events: none; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
-        .speed-unit { font-size: 1.2rem; color: #FF6600; font-weight: 900; letter-spacing: 2px; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; }
 
-        /* --- UI --- */
+        /* --- UI HAUTE --- */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 8px; }
         #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; }
         .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
 
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 3px solid #FF6600; }
         .widget { padding: 12px 5px; text-align: center; border-right: 1px solid #333; }
-        .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; margin-bottom: 4px; }
+        .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.1rem; font-weight: 900; }
 
         .fuel-marker { background: #FF6600; color: #000; padding: 4px 6px; border-radius: 4px; font-weight: 900; border: 1.5px solid white; font-size: 14px; }
@@ -72,22 +68,19 @@
 
     <div id="portrait-warning">
         <h1 style="font-size: 3.5rem; margin: 0;">⚠</h1>
-        <h2 style="letter-spacing: 3px;">PAYSAGE REQUIS</h2>
+        <h2 style="letter-spacing: 3px;">MODE PAYSAGE REQUIS</h2>
     </div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION...">
-        <button id="btn-nav" class="btn-ktm" onclick="toggleNav()">NAV</button>
-        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL LIST</button>
+        <input type="text" id="search-input" placeholder="VILLE OU ADRESSE...">
+        <button class="btn-ktm" onclick="navToDest()">NAV</button>
+        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL</button>
         <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
     <div id="fuel-sidebar">
-        <div style="background:#FF6600; color:#000; padding:6px; font-weight:900; font-size:9px; text-align:center; letter-spacing:1px;">TRIÉ PAR PRIX</div>
         <div id="fuel-list-container"></div>
     </div>
-
-    <div id="nav-layer"><iframe id="nav-iframe"></iframe></div>
 
     <div id="hud-container">
         <div id="lean-display">0°</div>
@@ -97,7 +90,7 @@
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div class="speed-unit">KM/H</div>
+        <div style="font-size:1.2rem; color:#FF6600; font-weight:900;">KM/H</div>
     </div>
 
     <div id="map"></div>
@@ -151,6 +144,16 @@
             }, null, { enableHighAccuracy: true });
         }
 
+        // LANCE LA NAVIGATION EXTERNE (Google Maps App)
+        function launchNav(dest) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
+        }
+
+        function navToDest() {
+            const dest = document.getElementById('search-input').value;
+            if (dest) launchNav(dest);
+        }
+
         function focusStation(id) {
             const marker = stationsMarkers[id];
             if (marker) {
@@ -161,7 +164,7 @@
 
         async function findFuel() {
             const c = map.getCenter();
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=20`;
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=15`;
             
             try {
                 const res = await fetch(url);
@@ -174,59 +177,37 @@
                 
                 if (data.results && data.results.length > 0) {
                     const stations = data.results.map(st => {
-                        let p = 9.99;
+                        let p = 0;
                         try {
                             const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                            const item = pArr.find(x => x["@nom"].includes("95")) || pArr.find(x => x["@nom"].includes("E10")) || pArr[0];
+                            const item = pArr.find(x => x["@nom"].includes("95")) || pArr[0];
                             p = parseFloat(item["@valeur"]);
-                        } catch(e) { p = parseFloat(st.sp95_prix) || 9.99; }
-                        
-                        const d = (map.distance(c, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
-                        return { ...st, calculatedPrice: p, calculatedDist: d };
+                        } catch(e) { p = parseFloat(st.sp95_prix) || 0; }
+                        return { ...st, calculatedPrice: p };
                     }).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
 
                     stations.forEach((st, idx) => {
                         const m = L.marker([st.geom.lat, st.geom.lon], {
                             icon: L.divIcon({ html: `<div class="fuel-marker">${st.calculatedPrice.toFixed(2)}</div>`, iconSize: [50, 25] })
-                        }).bindPopup(`<b>${(st.nom || st.adresse).toUpperCase()}</b><br>${st.adresse}, ${st.ville}`);
+                        }).bindPopup(`<b>${st.adresse}</b>`);
                         
                         m.addTo(fuelLayer);
                         stationsMarkers[idx] = m;
 
                         const item = document.createElement('div');
                         item.className = 'fuel-item';
-                        item.onclick = () => focusStation(idx);
-                        const nomStation = st.nom || "Station Service";
-                        const adresseFull = `${st.adresse || ''}, ${st.ville || ''}`;
                         item.innerHTML = `
-                            <div class="name">${nomStation.substring(0, 30)}</div>
-                            <div class="address">${adresseFull.substring(0, 50)}</div>
-                            <div class="price-row">
-                                <span class="price">${st.calculatedPrice.toFixed(2)}€</span>
-                                <span class="dist">${st.calculatedDist} KM</span>
+                            <div class="fuel-info" onclick="focusStation(${idx})">
+                                <div class="name">${(st.nom || st.adresse).substring(0, 20)}</div>
+                                <div class="address">${st.ville}</div>
+                                <div class="price">${st.calculatedPrice.toFixed(2)}€</div>
                             </div>
+                            <button class="btn-go" onclick="launchNav('${st.adresse}, ${st.ville}')">GO</button>
                         `;
                         listContainer.appendChild(item);
                     });
-                    
-                    const bounds = stations.map(s => [s.geom.lat, s.geom.lon]);
-                    map.fitBounds(bounds, {padding: [80, 80]});
                 }
-            } catch(e) { console.error("Erreur Fuel List V47"); }
-        }
-
-        function toggleNav() {
-            const dest = document.getElementById('search-input').value;
-            const layer = document.getElementById('nav-layer');
-            if (layer.style.display === 'block') {
-                layer.style.display = 'none';
-                document.getElementById('btn-nav').innerText = "NAV";
-            } else if (dest) {
-                document.getElementById('nav-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(dest)}&output=embed`;
-                layer.style.display = 'block';
-                document.getElementById('btn-nav').innerText = "STOP";
-                document.getElementById('fuel-sidebar').style.display = 'none';
-            }
+            } catch(e) { console.error("Fuel Error"); }
         }
 
         function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); }
