@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V67 - MISSION CONTROL</title>
+    <title>KTM HUD V68 - MISSION CONTROL</title>
     
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (MODIFIABLE) --- */
@@ -12,9 +12,9 @@
             KTM_ORANGE: '#FF6600',
             DANGER_RED: '#FF0000',
             SAFE_GREEN: '#2ecc71',
-            SCAN_RADIUS: 30000, // Modifié par le curseur
-            MAP_ZOOM: 14,       // Modifié par le curseur
-            SORT_MODE: 'price', // 'price' ou 'distance'
+            SCAN_RADIUS: 30000, 
+            MAP_ZOOM: 14,       
+            SORT_MODE: 'price', 
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
         };
@@ -29,6 +29,14 @@
         
         #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.6) contrast(1.2); }
 
+        /* BOUTON REGLAGES DÉDIÉ */
+        #btn-settings-toggle {
+            position: absolute; top: 15px; left: 15px; width: 50px; height: 50px;
+            background: #FF6600; color: #000; border: 3px solid #FFF; border-radius: 8px;
+            z-index: 500; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; box-shadow: 0 0 15px rgba(255,102,0,0.5);
+        }
+
         /* MODAL PARAMETRES */
         #settings-modal {
             position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000;
@@ -36,54 +44,48 @@
             backdrop-filter: blur(10px);
         }
         .settings-box {
-            width: 80%; max-width: 500px; border: 2px solid #FF6600; padding: 25px;
-            background: #111; border-radius: 8px; box-shadow: 0 0 50px rgba(255,102,0,0.2);
+            width: 85%; max-width: 500px; border: 2px solid #FF6600; padding: 25px;
+            background: #111; border-radius: 8px;
         }
         .setting-row { margin-bottom: 25px; }
         .setting-row label { display: block; font-size: 0.8rem; color: #FF6600; margin-bottom: 10px; font-weight: 900; }
-        .slider { width: 100%; appearance: none; height: 4px; background: #333; outline: none; border-radius: 2px; }
-        .slider::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #FF6600; border-radius: 50%; cursor: pointer; border: 2px solid white; }
-        
+        .slider { width: 100%; appearance: none; height: 6px; background: #333; outline: none; }
+        .slider::-webkit-slider-thumb { appearance: none; width: 24px; height: 24px; background: #FF6600; border-radius: 50%; cursor: pointer; border: 2px solid white; }
         .val-display { float: right; color: white; font-family: 'Barlow Condensed'; font-size: 1.2rem; }
 
-        /* UI ELEMENTS */
-        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 400; display: flex; gap: 10px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; font-family: 'Orbitron'; font-size: 0.8rem; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 12px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; }
+        /* RESTE DE L'UI */
+        #top-ui { position: absolute; top: 15px; width: 75%; left: 80px; z-index: 400; display: flex; gap: 10px; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; font-family: 'Orbitron'; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 12px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
         
-        #btn-settings-toggle { background: #222; color: #FF6600; border: 1px solid #FF6600; border-radius: 4px; padding: 10px; cursor: pointer; font-size: 1.2rem; }
-
-        /* LISTE DES STATIONS */
         #fuel-list-panel {
-            position: absolute; top: 70px; right: 10px; width: 320px; max-height: 60%;
-            background: rgba(0, 0, 0, 0.9); border: 1px solid #333; border-top: 3px solid #FF6600;
+            position: absolute; top: 80px; right: 15px; width: 320px; max-height: 55%;
+            background: rgba(0, 0, 0, 0.9); border: 1px solid #333; border-top: 4px solid #FF6600;
             z-index: 300; display: none; overflow-y: auto; border-radius: 4px;
         }
         .fuel-item { padding: 12px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
-        .fuel-price { font-family: 'Barlow Condensed'; font-size: 1.5rem; font-weight: 900; }
-        .btn-go { background: #FF6600; color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 900; cursor: pointer; }
+        .fuel-price { font-family: 'Barlow Condensed'; font-size: 1.6rem; font-weight: 900; }
 
-        /* HUD */
+        /* HUD & DASHBOARD */
         #hud-container { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 340px; height: 340px; z-index: 60; pointer-events: none; }
-        #aim-circle { position: absolute; width: 100%; height: 100%; border: 2px solid #FF6600; border-radius: 50%; opacity: 0.6; }
+        #aim-circle { position: absolute; width: 100%; height: 100%; border: 2px solid #FF6600; border-radius: 50%; }
         .tick { position: absolute; width: 2px; height: 10px; background: rgba(255,255,255,0.3); left: 50%; transform-origin: 0 170px; }
-        
         #speed-block { position: absolute; bottom: 85px; left: 30px; z-index: 80; }
         #speed-val { font-family: 'Barlow Condensed'; font-size: 7rem; font-weight: 900; line-height: 0.8; }
-
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 2px solid #FF6600; height: 85px; }
         .widget { text-align: center; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,0.1); }
         
-        #btn-recenter { position: absolute; bottom: 100px; right: 20px; z-index: 400; background: rgba(0,0,0,0.8); border: 2px solid #FF6600; color: #FF6600; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; }
-
-        .fuel-marker { background: #FF6600; color: white; padding: 3px 6px; border: 1.5px solid white; font-weight: bold; font-size: 13px; border-radius: 4px; }
+        #btn-recenter { position: absolute; bottom: 100px; right: 20px; z-index: 400; background: rgba(0,0,0,0.8); border: 2px solid #FF6600; color: #FF6600; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; }
+        .fuel-marker { background: #FF6600; color: white; padding: 3px 6px; border: 1.5px solid white; font-weight: bold; border-radius: 4px; }
     </style>
 </head>
 <body>
 
+    <div id="btn-settings-toggle" onclick="toggleSettings()">⚙️</div>
+
     <div id="settings-modal">
         <div class="settings-box">
-            <h2 style="color:#FF6600; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">MISSION PARAMÈTRES</h2>
+            <h2 style="color:#FF6600; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">RÉGLAGES MISSION</h2>
             
             <div class="setting-row">
                 <label>RAYON DE SCAN <span id="val-radius" class="val-display">30 km</span></label>
@@ -91,25 +93,24 @@
             </div>
 
             <div class="setting-row">
-                <label>ZOOM NAVIGATION <span id="val-zoom" class="val-display">14</span></label>
+                <label>ZOOM PAR DÉFAUT <span id="val-zoom" class="val-display">14</span></label>
                 <input type="range" class="slider" id="input-zoom" min="10" max="18" value="14" oninput="updateSettings()">
             </div>
 
             <div class="setting-row">
-                <label>TRI PAR DÉFAUT</label>
+                <label>TRI DES STATIONS</label>
                 <div style="display:flex; gap:10px;">
-                    <button id="set-price" class="btn-ktm" style="flex:1;" onclick="CONFIG.SORT_MODE='price'; updateSettings();">PRIX</button>
-                    <button id="set-dist" class="btn-ktm" style="flex:1; background:#333; color:#fff;" onclick="CONFIG.SORT_MODE='distance'; updateSettings();">DISTANCE</button>
+                    <button id="set-price" class="btn-ktm" style="flex:1;" onclick="setSort('price')">LE MOINS CHER</button>
+                    <button id="set-dist" class="btn-ktm" style="flex:1; background:#333; color:#fff;" onclick="setSort('distance')">LE PLUS PROCHE</button>
                 </div>
             </div>
 
-            <button class="btn-ktm" style="width:100%; padding:15px; margin-top:10px;" onclick="toggleSettings()">APPLIQUER & FERMER</button>
+            <button class="btn-ktm" style="width:100%; padding:15px; margin-top:10px; border:2px solid white;" onclick="toggleSettings()">APPLIQUER ET RETOUR</button>
         </div>
     </div>
 
     <div id="top-ui">
-        <button id="btn-settings-toggle" onclick="toggleSettings()">⚙️</button>
-        <input type="text" id="search-input" placeholder="DESTINATION / VILLE...">
+        <input type="text" id="search-input" placeholder="VILLE OU ADRESSE...">
         <select id="fuel-type" style="background:#111; color:#FF6600; border:1px solid #FF6600; padding:10px; border-radius:4px; font-weight:bold;">
             <option value="gazole_prix">GAZOLE</option>
             <option value="sp95_prix">SP95</option>
@@ -119,7 +120,10 @@
     </div>
 
     <div id="fuel-list-panel">
-        <div style="padding:10px; background:#111; border-bottom:1px solid #333; font-weight:900; font-size:0.7rem; color:#FF6600;">STATIONS À PROXIMITÉ</div>
+        <div style="padding:10px; background:#111; border-bottom:1px solid #333; font-weight:900; font-size:0.7rem; color:#FF6600; display:flex; justify-content:space-between;">
+            <span>RESULTATS</span>
+            <span onclick="document.getElementById('fuel-list-panel').style.display='none'" style="cursor:pointer;">[X]</span>
+        </div>
         <div id="fuel-list-content"></div>
     </div>
 
@@ -156,20 +160,21 @@
             modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
         }
 
+        function setSort(mode) {
+            CONFIG.SORT_MODE = mode;
+            document.getElementById('set-price').style.background = mode === 'price' ? '#FF6600' : '#333';
+            document.getElementById('set-price').style.color = mode === 'price' ? '#000' : '#fff';
+            document.getElementById('set-dist').style.background = mode === 'distance' ? '#FF6600' : '#333';
+            document.getElementById('set-dist').style.color = mode === 'distance' ? '#000' : '#fff';
+        }
+
         function updateSettings() {
             const rad = document.getElementById('input-radius').value;
             const zoom = document.getElementById('input-zoom').value;
-            
             CONFIG.SCAN_RADIUS = rad * 1000;
             CONFIG.MAP_ZOOM = parseInt(zoom);
-            
             document.getElementById('val-radius').innerText = rad + " km";
             document.getElementById('val-zoom').innerText = zoom;
-            
-            // UI Tri boutons
-            document.getElementById('set-price').style.background = CONFIG.SORT_MODE === 'price' ? '#FF6600' : '#333';
-            document.getElementById('set-dist').style.background = CONFIG.SORT_MODE === 'distance' ? '#FF6600' : '#333';
-            
             if (map) map.setZoom(CONFIG.MAP_ZOOM);
         }
 
@@ -192,6 +197,7 @@
             window.addEventListener('deviceorientation', handleOrientation);
             startTracking();
             document.getElementById('search-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchCity(e.target.value); });
+            setSort('price');
         }
 
         function handleOrientation(e) {
@@ -202,7 +208,6 @@
             let currentLean = raw - offset;
             smoothedLean = (smoothedLean * 0.85) + (currentLean * 0.15);
             let angle = Math.abs(Math.round(smoothedLean));
-            
             const color = `rgb(255, ${Math.floor(102 * (1 - Math.min(angle/60,1)))}, 0)`;
             document.getElementById('horizon-line').style.transform = `translateY(-50%) rotate(${smoothedLean}deg)`;
             const leanTxt = document.getElementById('lean-val');
@@ -223,7 +228,6 @@
                         const d = parseFloat((map.distance([center.lat, center.lng], [st.geom.lat, st.geom.lon]) / 1000).toFixed(1));
                         return { ...st, price, distance: d };
                     }).filter(st => st.price);
-                    
                     currentStations.sort((a,b) => CONFIG.SORT_MODE === 'price' ? a.price - b.price : a.distance - b.distance);
                     renderList();
                 }
@@ -236,21 +240,16 @@
             fuelLayer.clearLayers();
             listContent.innerHTML = "";
             panel.style.display = "block";
-
             currentStations.forEach(st => {
                 L.marker([st.geom.lat, st.geom.lon], {
                     icon: L.divIcon({ html: `<div class="fuel-marker">${st.price.toFixed(2)}</div>`, iconSize: [45, 20] })
                 }).addTo(fuelLayer);
-
                 const item = document.createElement('div');
                 item.className = 'fuel-item';
-                item.innerHTML = `
-                    <div style="flex-grow:1; cursor:pointer;" onclick="map.flyTo([${st.geom.lat}, ${st.geom.lon}], 16)">
-                        <div style="font-size:0.6rem; color:#888;">${st.nom || st.adresse}</div>
-                        <div class="fuel-price">${st.price.toFixed(2)}€ <span style="color:#FF6600; font-size:0.8rem;">${st.distance}km</span></div>
-                    </div>
-                    <button class="btn-go" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${st.geom.lat},${st.geom.lon}&travelmode=driving')">GO</button>
-                `;
+                item.innerHTML = `<div style="flex-grow:1; cursor:pointer;" onclick="map.flyTo([${st.geom.lat}, ${st.geom.lon}], 16)">
+                    <div style="font-size:0.6rem; color:#888;">${st.nom || st.adresse}</div>
+                    <div class="fuel-price">${st.price.toFixed(2)}€ <span style="color:#FF6600; font-size:0.8rem;">${st.distance}km</span></div>
+                </div><button class="btn-go" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${st.geom.lat},${st.geom.lon}&travelmode=driving')">GO</button>`;
                 listContent.appendChild(item);
             });
         }
