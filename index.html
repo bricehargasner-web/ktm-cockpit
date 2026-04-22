@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>KTM 890 - TACTICAL V28</title>
+    <title>ENERGY CONCEPT - KTM HUD V29</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            COLOR_SAFE: '#2ecc71', // Vert
-            COLOR_WARN: '#FF6600', // Orange KTM
-            COLOR_ALERT: '#e74c3c', // Rouge
-            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', // Carte Sombre look Z900/KTM
-            FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
+            COLOR_SAFE: '#2ecc71',
+            COLOR_WARN: '#FF6600',
+            COLOR_ALERT: '#e74c3c',
+            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
         };
     </script>
 
@@ -22,95 +21,67 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
-        
         #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: contrast(1.2); }
 
-        /* EFFET GHOST (TRANSPARENCE) */
-        .glass { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 102, 0, 0.2); }
-
-        /* --- HUD CENTRAL DYNAMIQUE (PLUS GRAND) --- */
+        /* HUD CENTRAL DYNAMIQUE */
         #hud-container {
             position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 60; pointer-events: none;
+            width: 330px; height: 330px; z-index: 60; pointer-events: none;
             display: flex; align-items: center; justify-content: center;
         }
-
-        /* Le cercle principal (Wireframe dynamique) */
         #aim-sphere {
             position: absolute; width: 100%; height: 100%;
-            border-radius: 50%; border: 2px solid #2ecc71; /* Couleur initiale */
-            transition: border-color 0.2s ease, border-width 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+            border-radius: 50%; border: 2px solid #2ecc71;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.2);
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,102,0,0.1)" stroke-width="0.3"/><path d="M50 2 L50 8 M50 92 L50 98 M2 50 L8 50 M92 50 L98 50" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/></svg>');
             background-size: cover;
         }
+        #horizon-wire { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FFF; box-shadow: 0 0 10px #FFF; transition: transform 0.1s linear; }
 
-        /* L'horizon tournant filaire */
-        #horizon-wire {
-            position: absolute; top: 50%; width: 140%; left: -20%; height: 1px;
-            background: #FFF; box-shadow: 0 0 10px #FFF;
-            transition: transform 0.1s linear, background-color 0.2s ease, box-shadow 0.2s ease;
-        }
+        /* VITESSE */
+        #speed-block { position: absolute; bottom: 70px; left: 25px; z-index: 80; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 6.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
 
-        /* Repère Moto Fixe central discret */
-        #fixed-aim {
-            position: absolute; width: 20px; height: 20px;
-            border-top: 2px solid #FFF; border-bottom: 2px solid #FFF; z-index: 70;
-        }
+        /* TOP UI */
+        #top-ui { position: absolute; top: 8px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; }
+        .fuel-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 9px; border-radius: 4px; font-weight: bold; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; }
 
-        /* --- VITESSE BAS GAUCHE (Z900 LOOK) --- */
-        #speed-block { position: absolute; bottom: 65px; left: 20px; z-index: 80; text-align: left; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 6rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
-        .unit { font-size: 1rem; color: #FF6600; font-weight: 900; margin-left: 5px; }
-
-        /* --- BARRE DE MISSION HAUTE (FINE) --- */
-        #top-ui { position: absolute; top: 8px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; align-items: center; }
-        #search-input { width: 220px; background: rgba(0,0,0,0.6); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; }
-        .fuel-select { background: #222; color: #FF6600; border: 1px solid #FF6600; padding: 9px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; font-size: 0.8rem; cursor: pointer; text-transform: uppercase; }
-
-        /* --- DASHBOARD BAS (3 BLOCS + 1 BLOC ANGLE) --- */
-        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.8); border-top: 1px solid #333; }
-        .widget { padding: 5px 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); }
-        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .value { font-family: 'Barlow Condensed'; font-size: 1.8rem; font-weight: 900; }
+        /* DASHBOARD */
+        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.85); border-top: 1px solid #FF6600; }
+        .widget { padding: 6px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
+        .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
+        .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
         
-        /* BLOC ANGLE DÉDIÉ (BAS DROITE) */
-        #lean-widget { border-right: none; position: relative; border-left: 2px solid #FF6600; }
-        #lean-widget .value { font-size: 2.5rem; color: #FF6600; transition: color 0.2s ease, text-shadow 0.2s ease; }
-        
-        /* BOUTON ZERO DANS LE COIN DU BLOC */
-        #btn-zero {
-            position: absolute; bottom: 2px; right: 2px;
-            background: none; border: 1px solid rgba(255,255,255,0.2);
-            color: rgba(255,255,255,0.3); font-size: 7px; padding: 2px 4px; cursor: pointer;
-        }
-        #btn-zero:active { border-color: #FF6600; color: #FF6600; }
+        #btn-zero { position: absolute; bottom: 2px; right: 2px; background: #222; border: 1px solid #444; color: #666; font-size: 7px; padding: 2px 4px; cursor: pointer; border-radius: 2px; }
 
-        /* Animations d'alerte */
-        @keyframes blink-alert { 50% { border-color: transparent; box-shadow: none; } }
-        .alert-active { animation: blink-alert 0.5s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+        .alert-mode { animation: blink 0.4s infinite; }
     </style>
 </head>
 <body>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="RECHERCHE DESTINATION...">
+        <input type="text" id="search-input" placeholder="DESTINATION...">
         <button class="btn-ktm" onclick="startNav()">NAV</button>
-        <select id="fuel-type" class="fuel-select glass">
+        <select id="fuel-type" class="fuel-select">
             <option value="sp95_prix">SP95</option>
             <option value="sp98_prix">SP98</option>
-            <option value="gazole_prix">GAZOLE</option>
+            <option value="gazole_prix">GAZ</option>
         </select>
         <button class="btn-ktm" onclick="findFuel()">⛽ SCAN</button>
     </div>
 
     <div id="hud-container">
-        <div id="fixed-aim"></div> <div id="aim-sphere"></div> <div id="horizon-wire"></div> </div>
+        <div id="aim-sphere"></div>
+        <div id="horizon-wire"></div>
+    </div>
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div class="unit">KM/H</div>
+        <div style="font-size:1rem; color:#FF6600; font-weight:900;">KM/H</div>
     </div>
 
     <div id="map"></div>
@@ -119,7 +90,7 @@
         <div class="widget"><div class="label">Altitude</div><div id="alt" class="value">--</div></div>
         <div class="widget"><div class="label">Cap</div><div id="cap" class="value">---</div></div>
         <div class="widget"><div class="label">Trip</div><div id="dist" class="value">0.0</div></div>
-        <div id="lean-widget" class="widget">
+        <div class="widget" id="lean-widget">
             <div class="label">Lean Angle</div>
             <div id="lean-val" class="value">0°</div>
             <button id="btn-zero" onclick="calibrate()">ZERO</button>
@@ -132,62 +103,45 @@
 
         function initApp() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 13);
-            L.tileLayer(CONFIG.MAP_STYLE).addTo(map); // Carte Sombre (look Z900/KTM)
+            L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer.addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 2 }).addTo(map);
             
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', handleOrientation);
-            }
+            window.addEventListener('deviceorientation', handleOrientation);
             initGps();
         }
 
         function handleOrientation(e) {
-            lastG = e.gamma;
-            let rawLean = e.gamma - offset;
+            // DÉTECTION AUTO DE L'AXE (Landscape)
+            // Si le tel est sur le côté, c'est souvent 'beta' qui gère l'inclinaison moto
+            let orientation = window.orientation || 0;
+            let rawLean = (Math.abs(orientation) === 90) ? e.beta : e.gamma;
             
-            // FILTRE DE LISSAGE (Optimisé pour la réactivité sans tremblement)
-            smoothedLean = (smoothedLean * 0.8) + (rawLean * 0.2);
+            lastG = rawLean;
+            let currentLean = rawLean - offset;
+            
+            // FILTRE LISSAGE ADAPTATIF
+            smoothedLean = (smoothedLean * 0.85) + (currentLean * 0.15);
             let angle = Math.abs(Math.round(smoothedLean));
             
-            // --- ANIMATION DYNAMIQUE DE LA SPHÈRE ---
             const sphere = document.getElementById('aim-sphere');
             const wire = document.getElementById('horizon-wire');
-            const leanVal = document.getElementById('lean-val');
-            
-            if (angle < 20) { // MODE SAFE (Vert fin)
-                sphere.style.borderColor = CONFIG.COLOR_SAFE;
-                sphere.style.borderWidth = '2px';
-                sphere.style.boxShadow = `0 0 10px rgba(46, 204, 113, 0.3)`;
-                wire.style.backgroundColor = '#FFF';
-                wire.style.boxShadow = `0 0 10px #FFF`;
-                leanVal.style.color = CONFIG.COLOR_SAFE;
-                sphere.classList.remove('alert-active');
-            } 
-            else if (angle < 40) { // MODE WARN (Orange moyen)
-                sphere.style.borderColor = CONFIG.COLOR_WARN;
-                sphere.style.borderWidth = '4px'; // Plus épais
-                sphere.style.boxShadow = `0 0 20px rgba(255, 102, 0, 0.5)`;
-                wire.style.backgroundColor = CONFIG.COLOR_WARN;
-                wire.style.boxShadow = `0 0 15px ${CONFIG.COLOR_WARN}`;
-                leanVal.style.color = CONFIG.COLOR_WARN;
-                leanVal.style.textShadow = `0 0 10px ${CONFIG.COLOR_WARN}`;
-                sphere.classList.remove('alert-active');
-            } 
-            else { // MODE ALERT (Rouge épais clignotant)
-                sphere.style.borderColor = CONFIG.COLOR_ALERT;
-                sphere.style.borderWidth = '6px'; // Très épais
-                sphere.style.boxShadow = `0 0 30px ${CONFIG.COLOR_ALERT}`;
-                wire.style.backgroundColor = CONFIG.COLOR_ALERT;
-                wire.style.boxShadow = `0 0 20px ${CONFIG.COLOR_ALERT}`;
-                leanVal.style.color = CONFIG.COLOR_ALERT;
-                leanVal.style.textShadow = `0 0 15px ${CONFIG.COLOR_ALERT}`;
-                sphere.classList.add('alert-active'); // Clignotement
+            const val = document.getElementById('lean-val');
+
+            // ANIMATION COULEURS
+            if (angle < 20) {
+                sphere.style.borderColor = CONFIG.COLOR_SAFE; sphere.style.borderWidth = "2px";
+                val.style.color = CONFIG.COLOR_SAFE; sphere.classList.remove('alert-mode');
+            } else if (angle < 40) {
+                sphere.style.borderColor = CONFIG.COLOR_WARN; sphere.style.borderWidth = "4px";
+                val.style.color = CONFIG.COLOR_WARN; sphere.classList.remove('alert-mode');
+            } else {
+                sphere.style.borderColor = CONFIG.COLOR_ALERT; sphere.style.borderWidth = "6px";
+                val.style.color = CONFIG.COLOR_ALERT; sphere.classList.add('alert-mode');
             }
 
-            // Rotation de l'horizon
             wire.style.transform = `rotate(${smoothedLean}deg)`;
-            leanVal.innerText = angle + "°";
+            val.innerText = angle + "°";
         }
 
         function initGps() {
@@ -195,41 +149,37 @@
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
-
                 if (u.coords.heading) document.getElementById('cap').innerText = Math.round(u.coords.heading).toString().padStart(3, '0') + "°";
-                
-                // VITESSE (Z900 LOOK)
-                const s = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0);
-                document.getElementById('speed-val').innerText = s.toString().padStart(3, '0');
-                
+                document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
-                
-                // Distance Trip
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
             }, null, { enableHighAccuracy: true });
         }
 
-        function calibrate() { offset = lastG; }
-
         async function findFuel() {
             const c = map.getCenter();
             const type = document.getElementById('fuel-type').value;
-            const res = await fetch(`${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=15`);
-            const data = await res.json();
-            fuelLayer.clearLayers();
-            data.results.forEach(st => {
-                let p = st[type];
-                if (p) L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border:1px solid white; font-weight:bold; font-size:12px;">${p.toFixed(2)}</div>` }) }).addTo(fuelLayer);
-            });
+            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=15`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                fuelLayer.clearLayers();
+                data.results.forEach(st => {
+                    let p = st[type];
+                    if (p) L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border:1px solid white; font-weight:bold; font-size:12px; border-radius:3px;">${p.toFixed(2)}</div>` }) }).addTo(fuelLayer);
+                });
+            } catch(e) { alert("Erreur Scan Essence"); }
         }
 
         function startNav() {
             const dest = document.getElementById('search-input').value;
-            if (dest) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
+            // Lance Google Maps avec l'adresse
+            if (dest) window.open(`google.navigation:q=${encodeURIComponent(dest)}&mode=d`, '_system');
         }
 
+        function calibrate() { offset = lastG; }
         window.onload = initApp;
     </script>
 </body>
