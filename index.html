@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V46 - ECONOMY</title>
+    <title>KTM COCKPIT V47 - MISSION GUIDE</title>
     
     <script>
-        // --- PANNEAU DE CONFIGURATION ---
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
@@ -24,7 +23,6 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* --- SECURITE ORIENTATION --- */
         #portrait-warning { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FF6600; }
         @media (orientation: portrait) { #portrait-warning { display: flex; } }
 
@@ -32,34 +30,34 @@
         #nav-layer { position: absolute; inset: 0; z-index: 2; display: none; background: #000; }
         #nav-iframe { width: 100%; height: 100%; border: none; filter: brightness(0.6); }
 
-        /* --- SIDEBAR FUEL (Triage Prix) --- */
+        /* --- SIDEBAR FUEL (Optimisée Adresses) --- */
         #fuel-sidebar {
-            position: absolute; right: 10px; top: 75px; bottom: 100px; width: 210px;
+            position: absolute; right: 10px; top: 75px; bottom: 100px; width: 240px;
             background: rgba(0,0,0,0.85); border-left: 3px solid #FF6600;
             z-index: 150; display: none; flex-direction: column; overflow-y: auto;
-            backdrop-filter: blur(8px); border-radius: 4px 0 0 4px;
+            backdrop-filter: blur(10px); border-radius: 4px 0 0 4px;
         }
-        .fuel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
+        .fuel-item { padding: 12px 10px; border-bottom: 1px solid #333; cursor: pointer; }
         .fuel-item:active { background: rgba(255,102,0,0.4); }
-        .fuel-item .name { font-size: 0.65rem; color: #bbb; text-transform: uppercase; margin-bottom: 2px; }
+        .fuel-item .name { font-size: 0.75rem; color: #FF6600; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; }
+        .fuel-item .address { font-size: 0.65rem; color: #aaa; font-family: sans-serif; line-height: 1.2; margin-bottom: 6px; }
         .fuel-item .price-row { display: flex; justify-content: space-between; align-items: center; }
-        .fuel-item .price { font-size: 1.5rem; font-family: 'Barlow Condensed'; color: #FF6600; font-weight: 900; }
-        .fuel-item .dist { font-size: 0.8rem; color: #888; font-family: sans-serif; }
+        .fuel-item .price { font-size: 1.7rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
+        .fuel-item .dist { font-size: 0.9rem; color: #FF6600; font-weight: 900; border: 1px solid #FF6600; padding: 2px 5px; border-radius: 3px; }
 
-        /* --- HUD CENTRAL --- */
+        /* --- HUD & SPEED --- */
         #hud-container { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; z-index: 60; pointer-events: none; }
         #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.15); border-radius: 50%; }
         #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
         #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; text-shadow: 0 0 15px #000; }
 
-        /* --- VITESSE (TAILLE REDUITE) --- */
         #speed-block { position: absolute; bottom: 115px; left: 5%; z-index: 80; pointer-events: none; }
         #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
         .speed-unit { font-size: 1.2rem; color: #FF6600; font-weight: 900; letter-spacing: 2px; }
 
-        /* --- INTERFACE --- */
+        /* --- UI --- */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; font-size: 1rem; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; }
         .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
 
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 3px solid #FF6600; }
@@ -74,18 +72,18 @@
 
     <div id="portrait-warning">
         <h1 style="font-size: 3.5rem; margin: 0;">⚠</h1>
-        <h2 style="letter-spacing: 3px;">MODE PAYSAGE REQUIS</h2>
+        <h2 style="letter-spacing: 3px;">PAYSAGE REQUIS</h2>
     </div>
 
     <div id="top-ui">
         <input type="text" id="search-input" placeholder="DESTINATION...">
         <button id="btn-nav" class="btn-ktm" onclick="toggleNav()">NAV</button>
-        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">PRIX FUEL</button>
+        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL LIST</button>
         <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
     <div id="fuel-sidebar">
-        <div style="background:#FF6600; color:#000; padding:6px; font-weight:900; font-size:9px; text-align:center; letter-spacing:1px;">CLASSEMENT PAR PRIX (SP95/E10)</div>
+        <div style="background:#FF6600; color:#000; padding:6px; font-weight:900; font-size:9px; text-align:center; letter-spacing:1px;">TRIÉ PAR PRIX</div>
         <div id="fuel-list-container"></div>
     </div>
 
@@ -176,21 +174,21 @@
                 
                 if (data.results && data.results.length > 0) {
                     const stations = data.results.map(st => {
-                        let p = 9.99; // Prix par défaut si erreur
+                        let p = 9.99;
                         try {
                             const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
                             const item = pArr.find(x => x["@nom"].includes("95")) || pArr.find(x => x["@nom"].includes("E10")) || pArr[0];
                             p = parseFloat(item["@valeur"]);
-                        } catch(e) { p = parseFloat(st.sp95_prix) || parseFloat(st.e10_prix) || 9.99; }
+                        } catch(e) { p = parseFloat(st.sp95_prix) || 9.99; }
                         
                         const d = (map.distance(c, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
                         return { ...st, calculatedPrice: p, calculatedDist: d };
-                    }).sort((a, b) => a.calculatedPrice - b.calculatedPrice); // TRI PAR PRIX CROISSANT
+                    }).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
 
                     stations.forEach((st, idx) => {
                         const m = L.marker([st.geom.lat, st.geom.lon], {
                             icon: L.divIcon({ html: `<div class="fuel-marker">${st.calculatedPrice.toFixed(2)}</div>`, iconSize: [50, 25] })
-                        }).bindPopup(`<b>${(st.nom || st.adresse).toUpperCase()}</b>`);
+                        }).bindPopup(`<b>${(st.nom || st.adresse).toUpperCase()}</b><br>${st.adresse}, ${st.ville}`);
                         
                         m.addTo(fuelLayer);
                         stationsMarkers[idx] = m;
@@ -198,11 +196,14 @@
                         const item = document.createElement('div');
                         item.className = 'fuel-item';
                         item.onclick = () => focusStation(idx);
+                        const nomStation = st.nom || "Station Service";
+                        const adresseFull = `${st.adresse || ''}, ${st.ville || ''}`;
                         item.innerHTML = `
-                            <div class="name">${(st.nom || st.adresse).substring(0, 25)}</div>
+                            <div class="name">${nomStation.substring(0, 30)}</div>
+                            <div class="address">${adresseFull.substring(0, 50)}</div>
                             <div class="price-row">
                                 <span class="price">${st.calculatedPrice.toFixed(2)}€</span>
-                                <span class="dist">${st.calculatedDist}km</span>
+                                <span class="dist">${st.calculatedDist} KM</span>
                             </div>
                         `;
                         listContainer.appendChild(item);
@@ -211,7 +212,7 @@
                     const bounds = stations.map(s => [s.geom.lat, s.geom.lon]);
                     map.fitBounds(bounds, {padding: [80, 80]});
                 }
-            } catch(e) { console.error("Erreur Fuel API V46"); }
+            } catch(e) { console.error("Erreur Fuel List V47"); }
         }
 
         function toggleNav() {
