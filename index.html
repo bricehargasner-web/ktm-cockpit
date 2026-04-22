@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - KTM V33 FUEL HUNTER</title>
+    <title>ENERGY CONCEPT - KTM V34 DEBUG</title>
     
     <script>
-        // --- PANNEAU DE CONTRÔLE (RÉGLAGES) ---
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            SEARCH_RADIUS: '50000', // 50 km
+            RADIUS: 20000, // 20km
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
@@ -24,48 +23,34 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.4) contrast(1.3); }
-
-        /* HUD CENTRAL */
-        #hud-container {
-            position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 60; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
-        }
+        #hud-container { position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; z-index: 60; pointer-events: none; display: flex; align-items: center; justify-content: center; }
         #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
         #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 3px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
         #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4.5rem; font-weight: 900; text-shadow: 0 0 20px #000; }
-
-        /* NAVIGATION OVERLAY */
-        #nav-overlay { position: absolute; inset: 0; z-index: 150; display: none; background: #000; }
-        #nav-overlay iframe { width: 100%; height: 100%; border: none; }
-        #close-nav { position: absolute; top: 80px; right: 20px; z-index: 160; background: #FF6600; color: #000; border: none; padding: 15px; font-weight: 900; border-radius: 4px; cursor: pointer; }
-
-        /* INTERFACE HAUTE */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 8px; }
         #search-input { flex-grow: 1; background: rgba(0,0,0,0.85); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; font-weight: bold; }
         .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-
-        /* DASHBOARD BAS */
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 100; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.9); border-top: 2px solid #FF6600; }
         .widget { padding: 10px; text-align: center; border-right: 1px solid #333; }
-        .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; }
+        .label { font-size: 0.6rem; color: #FF6600; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.2rem; font-weight: 900; }
-
         #speed-main { position: absolute; bottom: 120px; left: 5%; z-index: 110; font-family: 'Barlow Condensed'; font-size: 8rem; font-weight: 900; text-shadow: 0 0 30px #000; pointer-events: none; }
-        .fuel-marker { background: #FF6600; color: #fff; padding: 4px 8px; border-radius: 5px; font-weight: 900; border: 1.5px solid white; font-size: 14px; text-align: center; box-shadow: 0 0 10px #000; }
+        .fuel-marker { background: #FF6600; color: #fff; padding: 4px 8px; border-radius: 5px; font-weight: 900; border: 1.5px solid white; font-size: 14px; box-shadow: 0 0 10px #000; }
+        #nav-overlay { position: absolute; inset: 0; z-index: 150; display: none; background: #000; }
+        #nav-overlay iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION (CALVI, BASTIA...)">
+        <input type="text" id="search-input" placeholder="RECHERCHE...">
         <button class="btn-ktm" onclick="startNav()">NAV</button>
         <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL</button>
         <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
     <div id="nav-overlay">
-        <button id="close-nav" onclick="stopNav()">RETOUR</button>
+        <button onclick="document.getElementById('nav-overlay').style.display='none'" style="position:absolute; top:80px; right:20px; z-index:160; background:#FF6600; padding:15px; border:none; font-weight:900;">RETOUR</button>
         <iframe id="nav-iframe"></iframe>
     </div>
 
@@ -76,70 +61,87 @@
     </div>
 
     <div id="speed-main">000</div>
-
     <div id="map"></div>
 
     <div id="dashboard">
         <div class="widget"><div class="label">ALTITUDE</div><div id="alt" class="value">--</div></div>
         <div class="widget"><div class="label">CAP</div><div id="cap" class="value">---</div></div>
         <div class="widget"><div class="label">TRIP</div><div id="dist" class="value">0.0</div></div>
-        <div class="widget"><div class="label">PITCH</div><div id="pitch" class="value">0°</div></div>
+        <div class="widget"><div class="label">ANGLE</div><div id="lean-alt" class="value">0°</div></div>
     </div>
 
     <script>
-        let map, userMarker, totalDist = 0, offset = 0, lastRaw = 0, smoothedLean = 0, lastCoord = null;
-        let fuelLayer = L.layerGroup();
+        let map, userMarker, offset = 0, lastRaw = 0, smoothedLean = 0, fuelLayer = L.layerGroup();
 
         function updateHUD(angle) {
             const a = Math.abs(angle);
-            const sphere = document.getElementById('aim-sphere');
-            const gyro = document.getElementById('horizon-gyro');
-            const display = document.getElementById('lean-display');
-            let color = CONFIG.SAFE_GREEN;
-            let weight = 2;
-
-            if (a >= 25 && a < 40) { color = CONFIG.KTM_ORANGE; weight = 5; }
-            else if (a >= 40) { color = CONFIG.DANGER_RED; weight = 10; }
-
-            sphere.style.borderColor = color;
-            sphere.style.borderWidth = weight + "px";
-            gyro.style.backgroundColor = color;
-            display.style.color = color;
-            display.innerText = Math.round(a) + "°";
+            const color = a < 25 ? CONFIG.SAFE_GREEN : (a < 40 ? CONFIG.KTM_ORANGE : CONFIG.DANGER_RED);
+            document.getElementById('aim-sphere').style.borderColor = color;
+            document.getElementById('horizon-gyro').style.backgroundColor = color;
+            document.getElementById('lean-display').style.color = color;
+            document.getElementById('lean-display').innerText = Math.round(a) + "°";
+            document.getElementById('lean-alt').innerText = Math.round(a) + "°";
         }
 
         function init() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 13);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.76, 1.98], 13); // Graulhet par défaut
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer.addTo(map);
-            userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#FF6600', fillOpacity: 1, weight: 3 }).addTo(map);
+            userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#FF6600', fillOpacity: 1 }).addTo(map);
 
             window.addEventListener('deviceorientation', e => {
                 let raw = (Math.abs(window.orientation) === 90) ? e.beta : e.gamma;
                 lastRaw = raw;
-                // FILTRE STABLE (0.90)
                 smoothedLean = (smoothedLean * 0.90) + ((raw - offset) * 0.10);
                 document.getElementById('horizon-gyro').style.transform = `rotate(${smoothedLean}deg)`;
                 updateHUD(smoothedLean);
-                document.getElementById('pitch').innerText = Math.round(e.beta) + "°";
             }, true);
 
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
-                if (u.coords.heading !== null && u.coords.speed > 2) map.setBearing(u.coords.heading);
-                const s = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0);
-                document.getElementById('speed-main').innerText = s.toString().padStart(3, '0');
+                document.getElementById('speed-main').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
-                if (u.coords.heading) document.getElementById('cap').innerText = Math.round(u.coords.heading) + "°";
-                if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
-                lastCoord = p;
-                document.getElementById('dist').innerText = totalDist.toFixed(1);
             }, null, { enableHighAccuracy: true });
         }
 
-        function calibrate() { offset = lastRaw; smoothedLean = 0; updateHUD(0); }
+        async function findFuel() {
+            const c = map.getCenter();
+            // --- LOG DEBUG ---
+            console.log("Recherche Fuel à Coords:", c.lat, c.lng);
+            
+            // POINT(Longitude Latitude) - Inversion ici pour l'API
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS})&limit=50`;
+            console.log("URL Appelée:", url);
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                console.log("Data reçue:", data);
+                
+                fuelLayer.clearLayers();
+                if (data.results.length === 0) alert("DEBUG: 0 station trouvée sur l'API.");
+
+                data.results.forEach(st => {
+                    let price = "?.??";
+                    try {
+                        let pArr = JSON.parse(st.prix.replace(/'/g, '"'));
+                        price = pArr.find(p => p["@nom"].includes("95"))["@valeur"];
+                    } catch(e) { 
+                        // Fallback si JSON corrompu
+                        price = st.sp95_prix || st.e10_prix || "?.??";
+                    }
+
+                    L.marker([st.geom.lat, st.geom.lon], {
+                        icon: L.divIcon({ html: `<div class="fuel-marker">${parseFloat(price).toFixed(2)}€</div>`, iconSize: [50, 25] })
+                    }).addTo(fuelLayer);
+                });
+            } catch(e) { 
+                console.error("Erreur API:", e);
+                alert("Erreur API. Regarde la console."); 
+            }
+        }
 
         function startNav() {
             const dest = document.getElementById('search-input').value;
@@ -148,49 +150,7 @@
             document.getElementById('nav-overlay').style.display = 'block';
         }
 
-        function stopNav() { document.getElementById('nav-overlay').style.display = 'none'; document.getElementById('nav-iframe').src = ''; }
-
-        async function findFuel() {
-            const c = map.getCenter();
-            // Requête optimisée
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.SEARCH_RADIUS})&limit=50`;
-            
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                fuelLayer.clearLayers();
-                
-                if (!data.results || data.results.length === 0) {
-                    alert("Aucune station à 50km.");
-                    return;
-                }
-
-                data.results.forEach(st => {
-                    let prixFinal = null;
-                    // TENTATIVE 1 : Données directes
-                    if (st.sp95_prix) prixFinal = st.sp95_prix;
-                    else if (st.e10_prix) prixFinal = st.e10_prix;
-                    // TENTATIVE 2 : Analyse du bloc 'prix' (format 2026)
-                    else if (st.prix) {
-                        try {
-                            const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                            const item = pArr.find(p => p["@nom"].includes("95")) || pArr[0];
-                            prixFinal = item["@valeur"];
-                        } catch(e) {}
-                    }
-
-                    if (prixFinal) {
-                        L.marker([st.geom.lat, st.geom.lon], {
-                            icon: L.divIcon({ 
-                                html: `<div class="fuel-marker">${parseFloat(prixFinal).toFixed(2)}€</div>`, 
-                                iconSize: [50, 25] 
-                            })
-                        }).addTo(fuelLayer).bindPopup(`<b>${st.adresse}</b><br>${st.ville}`);
-                    }
-                });
-            } catch(e) { alert("Erreur Service Essence"); }
-        }
-
+        function calibrate() { offset = lastRaw; smoothedLean = 0; }
         window.onload = init;
     </script>
 </body>
