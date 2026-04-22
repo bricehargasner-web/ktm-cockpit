@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V50 - DISCRETE</title>
+    <title>KTM COCKPIT V51 - MISSION CONTROL</title>
     
     <script>
         // --- PANNEAU DE CONTRÔLE (RÉGLAGES) ---
@@ -11,7 +11,7 @@
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            RADIUS_METER: 15000, 
+            RADIUS_METER: 20000, 
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
@@ -31,42 +31,50 @@
 
         #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
 
-        /* --- INTERFACE HAUTE DISCRÈTE --- */
+        /* --- INTERFACE HAUTE COMPACTE --- */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 5px; align-items: center; }
-        #search-input { width: 180px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,102,0,0.5); color: white; padding: 8px; border-radius: 4px; font-family: sans-serif; transition: width 0.3s; backdrop-filter: blur(5px); }
+        #search-input { width: 150px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,102,0,0.3); color: white; padding: 8px; border-radius: 4px; font-family: sans-serif; transition: width 0.3s; backdrop-filter: blur(5px); }
         #search-input:focus { width: 250px; border-color: #FF6600; background: rgba(0,0,0,0.8); }
         
-        #fuel-type-select { background: #222; color: #FF6600; border: 1px solid #FF6600; padding: 7px; border-radius: 4px; font-family: 'Barlow Condensed'; font-weight: 900; }
+        #fuel-type-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 7px; border-radius: 4px; font-family: 'Barlow Condensed'; font-weight: 900; }
         .btn-ktm { background: #FF6600; color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
+
+        /* --- NAV CONTROL (APPARAÎT QUAND TRAJET ACTIF) --- */
+        #nav-controls { position: absolute; top: 60px; left: 10px; z-index: 210; display: none; gap: 5px; }
+        .btn-nav-action { background: rgba(0,0,0,0.8); color: #FFF; border: 1px solid #FFF; padding: 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; cursor: pointer; }
+        .btn-nav-action.clear { border-color: #ff4757; color: #ff4757; }
 
         /* --- SIDEBAR FUEL --- */
         #fuel-sidebar {
-            position: absolute; right: 10px; top: 60px; bottom: 100px; width: 220px;
+            position: absolute; right: 10px; top: 60px; bottom: 100px; width: 230px;
             background: rgba(0,0,0,0.85); border-left: 3px solid #FF6600;
             z-index: 150; display: none; flex-direction: column; overflow-y: auto; backdrop-filter: blur(10px);
         }
-        .fuel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
-        .fuel-item .name { font-size: 0.7rem; color: #FF6600; font-weight: 900; }
-        .fuel-item .price-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+        .fuel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; transition: background 0.2s; }
+        .fuel-item:active { background: rgba(255,102,0,0.3); }
+        .fuel-item .name { font-size: 0.7rem; color: #FF6600; font-weight: 900; text-transform: uppercase; }
+        .fuel-item .dist-info { font-size: 0.6rem; color: #888; font-family: sans-serif; margin-bottom: 4px; }
+        .fuel-item .price-row { display: flex; justify-content: space-between; align-items: baseline; }
         .fuel-item .price { font-size: 1.6rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
-        .fuel-item .go-tag { font-size: 0.6rem; background: #FF6600; color: #000; padding: 2px 5px; border-radius: 2px; font-weight: 900; }
+        .fuel-item .km-label { font-size: 0.8rem; color: #aaa; font-weight: 900; }
 
-        /* --- HUD & SPEED (5.5rem) --- */
+        /* --- HUD & SPEED --- */
         #hud-container { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 260px; height: 260px; z-index: 60; pointer-events: none; }
         #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; }
         #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
-        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; text-shadow: 0 0 15px #000; }
+        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; }
 
         #speed-block { position: absolute; bottom: 110px; left: 5%; z-index: 80; pointer-events: none; }
         #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: #FFF; }
         .unit-label { font-size: 1rem; color: #FF6600; font-weight: 900; margin-left: 5px; }
 
+        /* DASHBOARD BAS */
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 3px solid #FF6600; }
         .widget { padding: 12px 5px; text-align: center; border-right: 1px solid #333; }
         .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.1rem; font-weight: 900; }
 
-        /* Masquage routing leaflet */
+        /* ROUTING OVERRIDES */
         .leaflet-routing-container { display: none !important; }
         .fuel-marker { background: #FF6600; color: #000; padding: 4px 6px; border-radius: 4px; font-weight: 900; border: 1.5px solid white; font-size: 14px; }
     </style>
@@ -79,21 +87,26 @@
     </div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION...">
+        <input type="text" id="search-input" placeholder="RECHERCHE...">
         <button class="btn-ktm" onclick="searchAndRoute()">NAV</button>
-        <div style="width: 20px;"></div>
+        <div style="flex-grow:1;"></div>
         <select id="fuel-type-select">
             <option value="E10">E10</option>
             <option value="SP95">SP95</option>
             <option value="SP98">SP98</option>
-            <option value="Gazole">Gazole</option>
+            <option value="Gazole">GAZOLE</option>
         </select>
-        <button class="btn-ktm" style="background:#222; color:#FF6600; border:1px solid #FF6600;" onclick="findFuel()">FUEL SCAN</button>
+        <button class="btn-ktm" style="background:#222; color:#FF6600; border:1px solid #FF6600;" onclick="findFuel()">FUEL</button>
         <button class="btn-ktm" style="background:#333; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
+    <div id="nav-controls">
+        <button class="btn-nav-action" onclick="centerRoute()">RE-CENTRER</button>
+        <button class="btn-nav-action clear" onclick="clearRoute()">ANNULER TRAJET</button>
+    </div>
+
     <div id="fuel-sidebar">
-        <div id="fuel-sidebar-header" style="background:#FF6600; color:#000; padding:5px; font-weight:900; font-size:9px; text-align:center;">PRIX : ---</div>
+        <div style="background:#FF6600; color:#000; padding:6px; font-weight:900; font-size:9px; text-align:center;">CLASSEMENT PRIX</div>
         <div id="fuel-list-container"></div>
     </div>
 
@@ -157,15 +170,28 @@
             }, null, { enableHighAccuracy: true });
         }
 
+        // --- NAVIGATION INTERNE ---
         function startInternalRoute(destLatLng) {
             if (routingControl) map.removeControl(routingControl);
+            document.getElementById('nav-controls').style.display = 'flex';
+            
             routingControl = L.Routing.control({
                 waypoints: [userMarker.getLatLng(), destLatLng],
-                lineOptions: { styles: [{ color: '#0078FF', weight: 6, opacity: 0.8 }] },
+                lineOptions: { styles: [{ color: '#0078FF', weight: 7, opacity: 0.9 }] },
                 createMarker: () => null,
                 addWaypoints: false, draggableWaypoints: false, fitSelectedRoutes: true
             }).addTo(map);
         }
+
+        function clearRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+                document.getElementById('nav-controls').style.display = 'none';
+            }
+        }
+
+        function centerRoute() { if (routingControl) map.fitBounds(routingControl.getWaypoints().map(w => w.latLng)); }
 
         async function searchAndRoute() {
             const query = document.getElementById('search-input').value;
@@ -178,9 +204,8 @@
         async function findFuel() {
             const c = map.getCenter();
             const fuelType = document.getElementById('fuel-type-select').value;
-            document.getElementById('fuel-sidebar-header').innerText = `CLASSEMENT : ${fuelType}`;
-            
             const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=25`;
+            
             try {
                 const res = await fetch(url);
                 const data = await res.json();
@@ -197,7 +222,10 @@
                             const found = pArr.find(x => x["@nom"].toUpperCase().includes(fuelType.toUpperCase()));
                             p = found ? parseFloat(found["@valeur"]) : 9.99;
                         } catch(e) { p = 9.99; }
-                        return { ...st, calculatedPrice: p };
+                        
+                        // Calcul distance précise
+                        const d = (map.distance(c, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
+                        return { ...st, calculatedPrice: p, calculatedDist: d };
                     })
                     .filter(st => st.calculatedPrice < 9.99)
                     .sort((a, b) => a.calculatedPrice - b.calculatedPrice);
@@ -212,9 +240,10 @@
                         item.onclick = () => startInternalRoute([st.geom.lat, st.geom.lon]);
                         item.innerHTML = `
                             <div class="name">${st.nom || st.adresse}</div>
+                            <div class="dist-info">${st.ville}</div>
                             <div class="price-row">
                                 <span class="price">${st.calculatedPrice.toFixed(2)}€</span>
-                                <span class="go-tag">Y ALLER</span>
+                                <span class="km-label">${st.calculatedDist} KM</span>
                             </div>
                         `;
                         listContainer.appendChild(item);
