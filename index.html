@@ -6,96 +6,111 @@
     <title>Energy Concept - Cockpit Navigation</title>
     
     <script>
+        /* ===========================================================================
+        PANNEAU DE CONTRÔLE (RÉGLAGES)
+        =========================================================================== */
         const CONFIG = {
-            COULEUR_MIN: "#ff8c00", // Orange
-            COULEUR_MAX: "#ff0000", // Rouge vif
-            VITESSE_ANIMATION: 1000, // ms pour le zoom station
-            ZOOM_STATION: 15,        // Niveau de zoom sur sélection
-            TITRE_PROJET: "Energy Concept - Navigation Solaire",
-            MSG_ERREUR_STATION: "Station introuvable ou données manquantes."
+            COULEUR_MIN: "#ff8c00",      // Orange (pour 0°)
+            COULEUR_MAX: "#ff0000",      // Rouge vif (pour 360°)
+            VITESSE_ANIMATION: 1200,     // ms pour le déplacement carte
+            ZOOM_STATION: 16,            // Zoom sur sélection station
+            NOM_ENTREPRISE: "Energy Concept-",
+            MSG_ERREUR: "Attention : Données de station incohérentes ou manquantes."
         };
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* ===========================================================================
-        STRUCTURE VISUELLE (CSS) - ÉTANCHE
-        ===========================================================================
-        */
+        STRUCTURE VISUELLE (CSS)
+        =========================================================================== */
         :root {
             --primary: #2c3e50;
             --accent: #e67e22;
             --panel-width: 350px;
+            --bg-cockpit: rgba(255, 255, 255, 0.95);
         }
 
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
 
         #app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
 
-        /* Panneau de recherche Latéral */
+        /* Panneau Latéral */
         #side-panel {
             width: var(--panel-width);
-            background: #f8f9fa;
+            background: #ffffff;
             border-right: 1px solid #ddd;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
 
-        #side-panel.hidden { transform: translateX(-100%); position: absolute; }
+        #side-panel.hidden { margin-left: calc(-1 * var(--panel-width)); }
 
-        .panel-header { padding: 15px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .panel-header { padding: 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
 
-        .search-box { padding: 15px; border-bottom: 1px solid #ddd; }
-        input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .search-box { padding: 15px; border-bottom: 1px solid #eee; background: #fdfdfd; }
+        input { 
+            width: 100%; padding: 10px; margin-bottom: 8px; box-sizing: border-box; 
+            border: 1px solid #ccc; border-radius: 5px; outline: none; 
+        }
+        input:focus { border-color: var(--accent); }
 
-        #station-list { flex: 1; overflow-y: auto; padding: 10px; }
+        #station-list { flex: 1; overflow-y: auto; padding: 5px; }
         .station-item { 
-            padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;
-            border-left: 4px solid transparent;
+            padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; 
+            transition: all 0.2s; border-left: 5px solid transparent;
         }
-        .station-item:hover { background: #e9ecef; border-left: 4px solid var(--accent); }
+        .station-item:hover { background: #f8f9fa; border-left-color: var(--accent); }
 
-        /* Bouton bascule (Toggle) */
+        /* Boutons de navigation */
         #toggle-panel {
-            position: absolute; left: 10px; top: 10px; z-index: 1100;
-            background: var(--primary); color: white; border: none; padding: 10px;
-            border-radius: 4px; cursor: pointer; display: none;
+            position: absolute; left: 15px; top: 15px; z-index: 1100;
+            background: var(--primary); color: white; border: none; padding: 12px 18px;
+            border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-weight: bold; display: none;
         }
 
         /* Zone Carte */
-        #map-wrapper { flex: 1; position: relative; }
+        #map-wrapper { flex: 1; position: relative; background: #eee; }
         #map { height: 100%; width: 100%; }
 
-        /* COCKPIT (Boussole) */
-        #cockpit {
-            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
-            background: rgba(255,255,255,0.9); padding: 15px; border-radius: 50%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 150px; height: 150px;
-            display: flex; align-items: center; justify-content: center; border: 4px solid #333;
+        /* COCKPIT (Boussole graduée) */
+        #cockpit-container {
+            position: absolute; bottom: 30px; right: 30px; z-index: 1000;
+            width: 180px; height: 180px; background: var(--bg-cockpit);
+            border-radius: 50%; border: 4px solid #333;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
         }
 
-        .compass-ring {
-            position: absolute; width: 100%; height: 100%;
-            background-image: repeating-conic-gradient(
-                from 0deg,
-                #333 0deg 1deg,
-                transparent 1deg 10deg
-            );
-            border-radius: 50%;
+        .compass-scale {
+            position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            background: 
+                repeating-conic-gradient(from -0.5deg, #333 0 1deg, transparent 1deg 10deg),
+                repeating-conic-gradient(from -1deg, #999 0 2deg, transparent 2deg 30deg);
+            mask: radial-gradient(circle, transparent 70%, black 71%);
+            -webkit-mask: radial-gradient(circle, transparent 70%, black 71%);
         }
+
+        .cardinal {
+            position: absolute; font-weight: 900; font-size: 14px; color: #333;
+        }
+        .n { top: 10px; } .e { right: 10px; } .s { bottom: 10px; } .w { left: 10px; }
 
         #angle-display {
-            font-size: 1.5rem; font-weight: bold; z-index: 2;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            font-size: 2rem; font-weight: 800; text-align: center;
+            transition: color 0.3s ease;
         }
+        #angle-display span { font-size: 1rem; display: block; color: #666; margin-top: -5px; }
 
-        /* Alerte Erreur */
+        /* Alertes */
         #alert-box {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #ff4444; color: white; padding: 15px 30px; border-radius: 8px;
-            display: none; z-index: 2000; font-weight: bold;
+            background: #d63031; color: white; padding: 15px 40px; border-radius: 30px;
+            display: none; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -107,12 +122,12 @@
     <div id="app-container">
         <aside id="side-panel">
             <div class="panel-header">
-                <span>STATIONS</span>
-                <button onclick="toggleSidebar()" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2rem;">✖</button>
+                <span style="letter-spacing: 1px; font-weight: bold;">NAVIGATEUR</span>
+                <button onclick="toggleSidebar()" style="background:none; border:none; color:white; cursor:pointer; font-size:1.5rem;">×</button>
             </div>
             <div class="search-box">
-                <input type="text" id="city-search" placeholder="Rechercher une ville..." onkeyup="searchCity(this.value)">
-                <input type="text" id="station-filter" placeholder="Filtrer les stations..." onkeyup="filterStations(this.value)" style="margin-top:10px;">
+                <input type="text" id="city-search" placeholder="📍 Rechercher une ville..." onkeyup="searchCity(this.value)">
+                <input type="text" id="station-filter" placeholder="🔍 Filtrer les stations..." onkeyup="filterStations(this.value)">
             </div>
             <div id="station-list">
                 </div>
@@ -121,9 +136,13 @@
         <main id="map-wrapper">
             <div id="map"></div>
             
-            <div id="cockpit">
-                <div class="compass-ring"></div>
-                <div id="angle-display">0°</div>
+            <div id="cockpit-container">
+                <div class="compass-scale"></div>
+                <div class="cardinal n">N</div>
+                <div class="cardinal e">E</div>
+                <div class="cardinal s">S</div>
+                <div class="cardinal w">O</div>
+                <div id="angle-display">0<small>°</small><span>AZIMUT</span></div>
             </div>
         </main>
     </div>
@@ -131,33 +150,36 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         /* ===========================================================================
-        LOGIQUE (JS) - ÉTANCHE
-        ===========================================================================
-        */
+        LOGIQUE DE L'APPLICATION (JS)
+        =========================================================================== */
         let map;
         let markers = [];
-        let allStations = [ // Exemple de données (Simulant le retour de ton API actuelle)
-            { id: 1, name: "Station Alpha", lat: 43.6047, lng: 1.4442, angle: 45 },
-            { id: 2, name: "Station Beta", lat: 48.8566, lng: 2.3522, angle: 120 },
-            { id: 3, name: "Station Gamma", lat: 45.7640, lng: 4.8357, angle: 310 }
+        
+        // Simu Data (Remplacé par ton appel API)
+        const allStations = [
+            { id: 1, name: "Centrale Solaire Tarn", lat: 43.76, lng: 1.98, angle: 42 },
+            { id: 2, name: "Parc Sonnenkraft Alsace", lat: 48.92, lng: 7.86, angle: 185 },
+            { id: 3, name: "Station Bio ETA Sud", lat: 44.35, lng: 1.21, angle: 310 }
         ];
 
-        // Initialisation
         function initApp() {
-            map = L.map('map').setView([46.6033, 1.8883], 6);
+            map = L.map('map', { zoomControl: false }).setView([46.6, 2.0], 6);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            L.control.zoom({ position: 'topright' }).addTo(map);
+            
             renderStationList(allStations);
             allStations.forEach(s => addMarker(s));
         }
 
-        // --- VISUEL & NAVIGATION ---
+        // --- NAVIGATION ET AFFICHAGE ---
 
         function toggleSidebar() {
             const panel = document.getElementById('side-panel');
             const btn = document.getElementById('toggle-panel');
-            panel.classList.toggle('hidden');
-            btn.style.display = panel.classList.contains('hidden') ? 'block' : 'none';
-            setTimeout(() => map.invalidateSize(), 300);
+            const isHidden = panel.classList.toggle('hidden');
+            
+            btn.style.display = isHidden ? 'block' : 'none';
+            setTimeout(() => map.invalidateSize(), 400);
         }
 
         function renderStationList(stations) {
@@ -166,7 +188,7 @@
             stations.forEach(s => {
                 const div = document.createElement('div');
                 div.className = 'station-item';
-                div.innerHTML = `<strong>${s.name}</strong><br><small>Angle: ${s.angle}°</small>`;
+                div.innerHTML = `<strong>${s.name}</strong><br><small style="color:#777">Localisation: ${s.lat}, ${s.lng}</small>`;
                 div.onclick = () => selectStation(s);
                 list.appendChild(div);
             });
@@ -174,10 +196,9 @@
 
         function selectStation(station) {
             if(!station || !station.lat) {
-                showAlert(CONFIG.MSG_ERREUR_STATION);
+                showAlert(CONFIG.MSG_ERREUR);
                 return;
             }
-            // Animation vers la station
             map.flyTo([station.lat, station.lng], CONFIG.ZOOM_STATION, {
                 animate: true,
                 duration: CONFIG.VITESSE_ANIMATION / 1000
@@ -187,18 +208,20 @@
 
         function updateCockpit(angle) {
             const display = document.getElementById('angle-display');
-            display.innerText = `${angle}°`;
+            const container = document.getElementById('cockpit-container');
+            
+            display.innerHTML = `${angle}<small>°</small><span>AZIMUT</span>`;
 
-            // Calcul du dégradé (Orange -> Rouge vif)
-            // L'angle est ramené entre 0 et 1 (ratio)
-            const ratio = angle / 360;
-            const color = interpolateColor(CONFIG.COULEUR_MIN, CONFIG.COULEUR_MAX, ratio);
+            // Interpolation de la couleur
+            const factor = angle / 360;
+            const color = interpolateColor(CONFIG.COULEUR_MIN, CONFIG.COULEUR_MAX, factor);
             
             display.style.color = color;
-            document.getElementById('cockpit').style.borderColor = color;
+            container.style.borderColor = color;
+            container.style.boxShadow = `0 8px 25px ${color}44`; // Ajoute un halo léger
         }
 
-        // --- LOGIQUE MATHÉMATIQUE ---
+        // --- OUTILS MATHS ---
 
         function interpolateColor(color1, color2, factor) {
             const r1 = parseInt(color1.substring(1,3), 16);
@@ -216,34 +239,33 @@
             return `rgb(${r}, ${g}, ${b})`;
         }
 
-        // --- GESTION DES ERREURS ---
-
-        function showAlert(msg) {
-            const box = document.getElementById('alert-box');
-            box.innerText = msg;
-            box.style.display = 'block';
-            setTimeout(() => box.style.display = 'none', 4000);
-        }
-
-        // --- RECHERCHE (API SIMULÉE) ---
+        // --- RECHERCHE ET FILTRES ---
 
         function searchCity(val) {
-            // Ici, garde ton code de recherche API ville existant
-            console.log("Recherche ville : " + val);
+            // Logique de recherche API Nomninatim ou autre ici
+            if(val.length > 3) console.log("Energy Concept - Recherche Ville:", val);
         }
 
         function filterStations(val) {
-            const filtered = allStations.filter(s => 
-                s.name.toLowerCase().includes(val.toLowerCase())
-            );
+            const term = val.toLowerCase();
+            const filtered = allStations.filter(s => s.name.toLowerCase().includes(term));
             renderStationList(filtered);
         }
 
         function addMarker(s) {
             const marker = L.marker([s.lat, s.lng]).addTo(map);
-            marker.bindPopup(`<b>${s.name}</b><br>Angle: ${s.angle}°`);
-            marker.on('click', () => updateCockpit(s.angle));
+            marker.on('click', () => {
+                updateCockpit(s.angle);
+                map.setView([s.lat, s.lng], CONFIG.ZOOM_STATION);
+            });
             markers.push(marker);
+        }
+
+        function showAlert(msg) {
+            const box = document.getElementById('alert-box');
+            box.innerText = msg;
+            box.style.display = 'block';
+            setTimeout(() => box.style.display = 'none', 5000);
         }
 
         window.onload = initApp;
