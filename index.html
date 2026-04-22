@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V48 - COMMANDER</title>
+    <title>KTM COCKPIT V50 - DISCRETE</title>
     
     <script>
+        // --- PANNEAU DE CONTRÔLE (RÉGLAGES) ---
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
@@ -17,7 +18,9 @@
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 
     <style>
@@ -28,57 +31,69 @@
 
         #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
 
-        /* --- SIDEBAR FUEL AVEC BOUTON NAV --- */
-        #fuel-sidebar {
-            position: absolute; right: 10px; top: 75px; bottom: 100px; width: 260px;
-            background: rgba(0,0,0,0.9); border-left: 3px solid #FF6600;
-            z-index: 150; display: none; flex-direction: column; overflow-y: auto;
-            backdrop-filter: blur(10px);
-        }
-        .fuel-item { padding: 12px 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .fuel-info { flex-grow: 1; cursor: pointer; }
-        .fuel-item .name { font-size: 0.7rem; color: #FF6600; font-weight: 900; text-transform: uppercase; }
-        .fuel-item .address { font-size: 0.6rem; color: #888; font-family: sans-serif; margin-bottom: 4px; }
-        .fuel-item .price { font-size: 1.5rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
-        .btn-go { background: #FF6600; color: #000; border: none; padding: 10px; border-radius: 4px; font-weight: 900; font-size: 0.8rem; cursor: pointer; margin-left: 10px; }
+        /* --- INTERFACE HAUTE DISCRÈTE --- */
+        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 5px; align-items: center; }
+        #search-input { width: 180px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,102,0,0.5); color: white; padding: 8px; border-radius: 4px; font-family: sans-serif; transition: width 0.3s; backdrop-filter: blur(5px); }
+        #search-input:focus { width: 250px; border-color: #FF6600; background: rgba(0,0,0,0.8); }
+        
+        #fuel-type-select { background: #222; color: #FF6600; border: 1px solid #FF6600; padding: 7px; border-radius: 4px; font-family: 'Barlow Condensed'; font-weight: 900; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
 
-        /* --- HUD & SPEED --- */
-        #hud-container { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; z-index: 60; pointer-events: none; }
+        /* --- SIDEBAR FUEL --- */
+        #fuel-sidebar {
+            position: absolute; right: 10px; top: 60px; bottom: 100px; width: 220px;
+            background: rgba(0,0,0,0.85); border-left: 3px solid #FF6600;
+            z-index: 150; display: none; flex-direction: column; overflow-y: auto; backdrop-filter: blur(10px);
+        }
+        .fuel-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
+        .fuel-item .name { font-size: 0.7rem; color: #FF6600; font-weight: 900; }
+        .fuel-item .price-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+        .fuel-item .price { font-size: 1.6rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
+        .fuel-item .go-tag { font-size: 0.6rem; background: #FF6600; color: #000; padding: 2px 5px; border-radius: 2px; font-weight: 900; }
+
+        /* --- HUD & SPEED (5.5rem) --- */
+        #hud-container { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 260px; height: 260px; z-index: 60; pointer-events: none; }
         #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; }
         #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
-        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; }
+        #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; text-shadow: 0 0 15px #000; }
 
-        #speed-block { position: absolute; bottom: 115px; left: 5%; z-index: 80; pointer-events: none; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; }
-
-        /* --- UI HAUTE --- */
-        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 200; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #FF6600; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        #speed-block { position: absolute; bottom: 110px; left: 5%; z-index: 80; pointer-events: none; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: #FFF; }
+        .unit-label { font-size: 1rem; color: #FF6600; font-weight: 900; margin-left: 5px; }
 
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 3px solid #FF6600; }
         .widget { padding: 12px 5px; text-align: center; border-right: 1px solid #333; }
         .label { font-size: 0.6rem; color: #FF6600; font-weight: bold; }
         .value { font-family: 'Barlow Condensed'; font-size: 2.1rem; font-weight: 900; }
 
+        /* Masquage routing leaflet */
+        .leaflet-routing-container { display: none !important; }
         .fuel-marker { background: #FF6600; color: #000; padding: 4px 6px; border-radius: 4px; font-weight: 900; border: 1.5px solid white; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div id="portrait-warning">
-        <h1 style="font-size: 3.5rem; margin: 0;">⚠</h1>
-        <h2 style="letter-spacing: 3px;">MODE PAYSAGE REQUIS</h2>
+        <h1 style="font-size: 3rem;">⚠</h1>
+        <h2 style="letter-spacing: 2px;">MODE PAYSAGE</h2>
     </div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="VILLE OU ADRESSE...">
-        <button class="btn-ktm" onclick="navToDest()">NAV</button>
-        <button class="btn-ktm" style="background:#222; color:#FF6600;" onclick="findFuel()">FUEL</button>
-        <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
+        <input type="text" id="search-input" placeholder="DESTINATION...">
+        <button class="btn-ktm" onclick="searchAndRoute()">NAV</button>
+        <div style="width: 20px;"></div>
+        <select id="fuel-type-select">
+            <option value="E10">E10</option>
+            <option value="SP95">SP95</option>
+            <option value="SP98">SP98</option>
+            <option value="Gazole">Gazole</option>
+        </select>
+        <button class="btn-ktm" style="background:#222; color:#FF6600; border:1px solid #FF6600;" onclick="findFuel()">FUEL SCAN</button>
+        <button class="btn-ktm" style="background:#333; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
     <div id="fuel-sidebar">
+        <div id="fuel-sidebar-header" style="background:#FF6600; color:#000; padding:5px; font-weight:900; font-size:9px; text-align:center;">PRIX : ---</div>
         <div id="fuel-list-container"></div>
     </div>
 
@@ -89,8 +104,7 @@
     </div>
 
     <div id="speed-block">
-        <div id="speed-val">000</div>
-        <div style="font-size:1.2rem; color:#FF6600; font-weight:900;">KM/H</div>
+        <span id="speed-val">000</span><span class="unit-label">KM/H</span>
     </div>
 
     <div id="map"></div>
@@ -103,14 +117,12 @@
     </div>
 
     <script>
-        let map, userMarker, totalDist = 0, offset = 0, lastRaw = 0, smoothedLean = 0, lastCoord = null;
-        let fuelLayer = L.layerGroup();
-        let stationsMarkers = {};
+        let map, userMarker, offset = 0, lastRaw = 0, smoothedLean = 0, totalDist = 0, lastCoord = null;
+        let fuelLayer = L.layerGroup(), routingControl = null;
 
         function updateHUD(angle) {
             const a = Math.abs(angle);
             const color = a < 25 ? CONFIG.SAFE_GREEN : (a < 40 ? CONFIG.KTM_ORANGE : CONFIG.DANGER_RED);
-            document.getElementById('aim-sphere').style.borderColor = color;
             document.getElementById('horizon-gyro').style.backgroundColor = color;
             document.getElementById('lean-display').style.color = color;
             document.getElementById('lean-display').innerText = Math.round(a) + "°";
@@ -137,72 +149,73 @@
                 map.panTo(p);
                 document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
-                if (u.coords.heading) document.getElementById('cap').innerText = Math.round(u.coords.heading) + "°";
+                if (u.coords.heading) document.getElementById('cap').innerText = Math.round(u.coords.heading).toString().padStart(3, '0') + "°";
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
+                if (routingControl) routingControl.spliceWaypoints(0, 1, p);
             }, null, { enableHighAccuracy: true });
         }
 
-        // LANCE LA NAVIGATION EXTERNE (Google Maps App)
-        function launchNav(dest) {
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
+        function startInternalRoute(destLatLng) {
+            if (routingControl) map.removeControl(routingControl);
+            routingControl = L.Routing.control({
+                waypoints: [userMarker.getLatLng(), destLatLng],
+                lineOptions: { styles: [{ color: '#0078FF', weight: 6, opacity: 0.8 }] },
+                createMarker: () => null,
+                addWaypoints: false, draggableWaypoints: false, fitSelectedRoutes: true
+            }).addTo(map);
         }
 
-        function navToDest() {
-            const dest = document.getElementById('search-input').value;
-            if (dest) launchNav(dest);
-        }
-
-        function focusStation(id) {
-            const marker = stationsMarkers[id];
-            if (marker) {
-                map.setView(marker.getLatLng(), 16);
-                marker.openPopup();
-            }
+        async function searchAndRoute() {
+            const query = document.getElementById('search-input').value;
+            if (!query) return;
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (data.length > 0) startInternalRoute([data[0].lat, data[0].lon]);
         }
 
         async function findFuel() {
             const c = map.getCenter();
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=15`;
+            const fuelType = document.getElementById('fuel-type-select').value;
+            document.getElementById('fuel-sidebar-header').innerText = `CLASSEMENT : ${fuelType}`;
             
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.RADIUS_METER}m)&limit=25`;
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 fuelLayer.clearLayers();
-                stationsMarkers = {};
                 const listContainer = document.getElementById('fuel-list-container');
                 listContainer.innerHTML = '';
                 document.getElementById('fuel-sidebar').style.display = 'flex';
                 
                 if (data.results && data.results.length > 0) {
                     const stations = data.results.map(st => {
-                        let p = 0;
+                        let p = 9.99;
                         try {
                             const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                            const item = pArr.find(x => x["@nom"].includes("95")) || pArr[0];
-                            p = parseFloat(item["@valeur"]);
-                        } catch(e) { p = parseFloat(st.sp95_prix) || 0; }
+                            const found = pArr.find(x => x["@nom"].toUpperCase().includes(fuelType.toUpperCase()));
+                            p = found ? parseFloat(found["@valeur"]) : 9.99;
+                        } catch(e) { p = 9.99; }
                         return { ...st, calculatedPrice: p };
-                    }).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
+                    })
+                    .filter(st => st.calculatedPrice < 9.99)
+                    .sort((a, b) => a.calculatedPrice - b.calculatedPrice);
 
-                    stations.forEach((st, idx) => {
-                        const m = L.marker([st.geom.lat, st.geom.lon], {
+                    stations.forEach(st => {
+                        L.marker([st.geom.lat, st.geom.lon], {
                             icon: L.divIcon({ html: `<div class="fuel-marker">${st.calculatedPrice.toFixed(2)}</div>`, iconSize: [50, 25] })
-                        }).bindPopup(`<b>${st.adresse}</b>`);
-                        
-                        m.addTo(fuelLayer);
-                        stationsMarkers[idx] = m;
+                        }).addTo(fuelLayer);
 
                         const item = document.createElement('div');
                         item.className = 'fuel-item';
+                        item.onclick = () => startInternalRoute([st.geom.lat, st.geom.lon]);
                         item.innerHTML = `
-                            <div class="fuel-info" onclick="focusStation(${idx})">
-                                <div class="name">${(st.nom || st.adresse).substring(0, 20)}</div>
-                                <div class="address">${st.ville}</div>
-                                <div class="price">${st.calculatedPrice.toFixed(2)}€</div>
+                            <div class="name">${st.nom || st.adresse}</div>
+                            <div class="price-row">
+                                <span class="price">${st.calculatedPrice.toFixed(2)}€</span>
+                                <span class="go-tag">Y ALLER</span>
                             </div>
-                            <button class="btn-go" onclick="launchNav('${st.adresse}, ${st.ville}')">GO</button>
                         `;
                         listContainer.appendChild(item);
                     });
