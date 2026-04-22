@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V57 - LENS SYSTEM</title>
+    <title>KTM HUD V58 - SCAN & LENS FIX</title>
     
     <script>
-        /* --- PANNEAU DE CONTRÔLE (MODIFIABLE) --- */
+        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
         const CONFIG = {
-            NAME: "CARDONA",
+            USER_NAME: "CARDONA",
             KTM_ORANGE: '#FF6600',
-            ZOOM_LENS: 1.5, // Puissance de la loupe
+            ZOOM_LENS_OFFSET: 1.8, // Niveau de zoom de la loupe (+1.8 par rapport au fond)
+            SEARCH_RADIUS: 30000,   // Rayon scan essence (30km)
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
         };
@@ -23,88 +24,93 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* BLOQUEUR PORTRAIT */
+        /* VERROUILLAGE PAYSAGE STRICT */
         #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: #FF6600; text-align: center; }
         @media (orientation: portrait) { #portrait-blocker { display: flex; } }
 
-        /* CARTES */
-        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.6) contrast(1.1); }
+        /* DOUBLE CARTE (FOND + LOUPE) */
+        #map-background { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.6) contrast(1.1); }
         
-        /* LA LOUPE CENTRALE */
         #lens-container {
             position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
-            width: 280px; height: 280px; z-index: 60; border-radius: 50%;
-            border: 3px solid #FF6600; box-shadow: 0 0 30px rgba(255,102,0,0.4);
+            width: 300px; height: 300px; z-index: 60; border-radius: 50%;
+            border: 4px solid #FF6600; box-shadow: 0 0 40px rgba(255,102,0,0.5);
             overflow: hidden; pointer-events: none;
         }
-        #lens-map { width: 100%; height: 100%; filter: brightness(1.1) contrast(1.2); }
+        #map-lens { width: 100%; height: 100%; filter: brightness(1.1) contrast(1.2); }
 
-        /* HUD ELEMENTS */
-        #horizon-line { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FFF; box-shadow: 0 0 15px #FFF; z-index: 65; transition: transform 0.1s linear; }
-        #fixed-aim { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; border: 2px solid #FF6600; border-radius: 50%; z-index: 70; }
+        /* INSTRUMENTS HUD */
+        #horizon-line { position: absolute; top: 50%; width: 150%; left: -25%; height: 2px; background: #FFF; box-shadow: 0 0 15px #FFF; z-index: 65; transition: transform 0.1s linear; }
+        #fixed-aim { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 25px; height: 25px; border: 2px solid #FF6600; border-radius: 50%; z-index: 70; }
 
         /* VITESSE */
         #speed-block { position: absolute; bottom: 85px; left: 30px; z-index: 80; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 6.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 7rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
 
         /* INTERFACE HAUTE */
-        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; align-items: center; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; }
-        .fuel-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 9px; border-radius: 4px; font-weight: bold; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 10px; align-items: center; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; font-size: 1rem; }
+        .fuel-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 11px; border-radius: 4px; font-weight: bold; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 11px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
 
         /* DASHBOARD BAS */
-        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.85); border-top: 2px solid #FF6600; }
-        .widget { padding: 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
-        .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
-        .value { font-family: 'Barlow Condensed'; font-size: 1.8rem; font-weight: 900; }
+        #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.9); border-top: 2px solid #FF6600; }
+        .widget { padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
+        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+        .value { font-family: 'Barlow Condensed'; font-size: 2rem; font-weight: 900; }
 
-        #btn-zero { position: absolute; bottom: 4px; right: 4px; background: #222; color: #666; font-size: 8px; padding: 3px; border: 1px solid #444; border-radius: 2px; cursor: pointer; }
-        
-        /* BOUSSOLE TACTIQUE */
-        #compass-disk { width: 50px; height: 50px; border: 1px solid #FF6600; border-radius: 50%; margin: 0 auto; position: relative; transition: transform 0.2s linear; }
-        #dir-txt { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 14px; font-weight: 900; }
+        /* BOUSSOLE / CAP */
+        #compass-disk { width: 55px; height: 55px; border: 1.5px solid #FF6600; border-radius: 50%; margin: 0 auto; position: relative; transition: transform 0.2s linear; }
+        #dir-txt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: 900; color: #FFF; }
+        #compass-needle { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); color: #FF6600; font-size: 12px; }
 
-        .fuel-marker { background: #FF6600; color: white; padding: 2px 5px; border: 1px solid white; font-weight: bold; font-size: 11px; border-radius: 3px; }
+        /* BOUTON ZERO DANS LE COIN DE L'ANGLE */
+        #btn-zero { position: absolute; bottom: 4px; right: 4px; background: #222; color: #666; font-size: 8px; padding: 4px 6px; border: 1px solid #444; border-radius: 2px; cursor: pointer; z-index: 100; }
+        #btn-zero:active { color: #FF6600; border-color: #FF6600; }
+
+        .fuel-marker { background: #FF6600; color: white; padding: 2px 6px; border: 1px solid white; font-weight: bold; font-size: 12px; border-radius: 3px; box-shadow: 0 2px 5px #000; white-space: nowrap; }
     </style>
 </head>
 <body>
 
     <div id="portrait-blocker">
-        <h1 style="font-size: 3rem; margin: 0;">KTM</h1>
-        <p>REPASSEZ EN PAYSAGE Brice</p>
+        <h1 style="font-size: 4rem; margin: 0;">KTM</h1>
+        <p style="letter-spacing: 3px;">MODE PAYSAGE REQUIS<br>POUR LE COCKPIT DE Brice</p>
     </div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION...">
+        <input type="text" id="search-input" placeholder="RECHERCHE DESTINATION...">
         <button class="btn-ktm" onclick="startNav()">NAV</button>
         <select id="fuel-type" class="fuel-select">
+            <option value="gazole_prix">GAZOLE</option>
             <option value="sp95_prix">SP95</option>
             <option value="sp98_prix">SP98</option>
-            <option value="gazole_prix">GAZ</option>
             <option value="e10_prix">E10</option>
         </select>
         <button class="btn-ktm" onclick="findFuel()">⛽ SCAN</button>
     </div>
 
     <div id="lens-container">
-        <div id="lens-map"></div>
+        <div id="map-lens"></div>
         <div id="horizon-line"></div>
         <div id="fixed-aim"></div>
     </div>
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div style="font-size:1rem; color:#FF6600; font-weight:900;">KM/H</div>
+        <div style="font-size:1.2rem; color:#FF6600; font-weight:900; letter-spacing: 2px;">KM/H</div>
     </div>
 
-    <div id="map"></div>
+    <div id="map-background"></div>
 
     <div id="dashboard">
         <div class="widget"><div class="label">Altitude</div><div id="alt" class="value">--</div></div>
         <div class="widget">
             <div class="label">CAP</div>
-            <div id="compass-disk"><div id="dir-txt">N</div></div>
+            <div id="compass-disk">
+                <div id="compass-needle">▼</div>
+                <div id="dir-txt">N</div>
+            </div>
         </div>
         <div class="widget"><div class="label">Trip</div><div id="dist" class="value">0.0</div></div>
         <div class="widget">
@@ -119,13 +125,13 @@
         let fuelLayer = L.layerGroup();
 
         function init() {
-            // Carte Principale
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 14);
+            // Carte Fond (Vue Large)
+            map = L.map('map-background', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 14);
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer.addTo(map);
             
             // Carte Loupe (Zoomée)
-            lensMap = L.map('lens-map', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, touchZoom: false }).setView([42.15, 9.1], 15.5);
+            lensMap = L.map('map-lens', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, touchZoom: false }).setView([42.15, 9.1], 16);
             L.tileLayer(CONFIG.MAP_STYLE).addTo(lensMap);
 
             userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#FF6600', fillOpacity: 1, weight: 2 }).addTo(map);
@@ -137,12 +143,13 @@
 
         function handleOrientation(e) {
             let screenAngle = window.orientation || 0;
+            // En paysage, l'inclinaison latérale est sur l'axe Beta
             let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
             if (screenAngle === -90) raw = -raw;
 
             lastRaw = raw;
             let currentLean = raw - offset;
-            smoothedLean = (smoothedLean * 0.85) + (currentLean * 0.15);
+            smoothedLean = (smoothedLean * 0.85) + (currentLean * 0.15); // Lissage anti-vibration
             let angle = Math.abs(Math.round(smoothedLean));
 
             document.getElementById('horizon-line').style.transform = `translateY(-50%) rotate(${smoothedLean}deg)`;
@@ -153,14 +160,14 @@
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 
-                // Sync Cartes
+                // Synchronisation des deux cartes
                 map.panTo(p);
-                lensMap.setView(p, map.getZoom() + CONFIG.ZOOM_LENS);
+                lensMap.setView(p, map.getZoom() + CONFIG.ZOOM_LENS_OFFSET);
                 
                 userMarker.setLatLng(p);
                 lensMarker.setLatLng(p);
 
-                // Boussole / Cap
+                // Boussole / Cap (Utilise le haut du tel comme repère)
                 if (u.coords.heading !== null) {
                     const h = Math.round(u.coords.heading);
                     document.getElementById('compass-disk').style.transform = `rotate(${-h}deg)`;
@@ -173,7 +180,7 @@
                 document.getElementById('speed-val').innerText = s.toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
                 
-                // Trip
+                // Calcul du Trip (Distance)
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
@@ -183,26 +190,30 @@
         async function findFuel() {
             const c = map.getCenter();
             const fuelType = document.getElementById('fuel-type').value;
-            // Retour méthode V27 : utilisation des champs directs sp95_prix, gazole_prix...
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=40`;
+            
+            // Logique de recherche V27 corrigée (API v2.1)
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', ${CONFIG.SEARCH_RADIUS})&limit=50`;
             
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 fuelLayer.clearLayers();
                 
-                data.results.forEach(st => {
-                    let price = st[fuelType]; // V27 Logic
-                    if (price) {
-                        L.marker([st.geom.lat, st.geom.lon], {
-                            icon: L.divIcon({ 
-                                html: `<div class="fuel-marker">${price.toFixed(2)}</div>`,
-                                iconSize: [40, 20]
-                            })
-                        }).addTo(fuelLayer);
-                    }
-                });
-            } catch(e) { console.error("Erreur Scan"); }
+                if (data.results) {
+                    data.results.forEach(st => {
+                        let price = st[fuelType]; // Utilisation directe des champs sp95_prix, gazole_prix...
+                        if (price) {
+                            L.marker([st.geom.lat, st.geom.lon], {
+                                icon: L.divIcon({ 
+                                    html: `<div class="fuel-marker">${price.toFixed(2)}€</div>`,
+                                    iconSize: [45, 20],
+                                    className: 'custom-div-icon'
+                                })
+                            }).addTo(fuelLayer);
+                        }
+                    });
+                }
+            } catch(e) { console.error("Erreur API Carburant"); }
         }
 
         function startNav() {
@@ -210,7 +221,11 @@
             if (dest) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
         }
 
-        function calibrate() { offset = lastRaw; }
+        function calibrate() { 
+            offset = lastRaw; 
+            smoothedLean = 0; 
+        }
+
         window.onload = init;
     </script>
 </body>
