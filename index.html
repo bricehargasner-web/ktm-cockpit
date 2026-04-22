@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>CARDONA KTM 890 ADV R</title>
+    <title>CARDONA KTM 890 ADV R - HUD V17</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            // Serveur CartoDB : Le plus fiable pour éviter les blocages 403
             MAP_URL: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
         };
@@ -20,33 +19,72 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; filter: contrast(1.1); }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; filter: contrast(1.1) brightness(0.9); }
 
-        /* EFFET VERRE FUMÉ - LOOK AUDI/KTM */
-        .glass { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 102, 0, 0.3); border-radius: 8px; }
+        /* EFFET VERRE FUMÉ - AUDI/KTM */
+        .glass {
+            background: rgba(0, 0, 0, 0.7); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 102, 0, 0.15); border-radius: 4px;
+        }
 
-        /* INTERFACE HAUTE */
+        /* --- SYSTÈME TACTIQUE CENTRAL (HUD) --- */
+        #hud-central {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; height: 60%; z-index: 60; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* VITESSE CENTRALE (PLUS GROSSE) */
+        #speed-hud {
+            font-size: 5rem; font-weight: 900; color: white; line-height: 1;
+            text-shadow: 0 0 15px rgba(255,255,255,0.4); margin-bottom: 10px;
+        }
+        .unit-hud { font-size: 1rem; color: #FF6600; vertical-align: bottom; }
+
+        /* INCLINAISON TYPE AVION (HORIZON ARTIFICIEL) */
+        #lean-hud {
+            position: relative; width: 300px; height: 150px;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        #horizon-line {
+            position: absolute; width: 200%; height: 3px;
+            background: #FF6600; top: 50%; transform: translateY(-50%);
+            transition: transform 0.1s linear; /* Rotation fluide */
+            box-shadow: 0 0 10px #FF6600;
+        }
+        #pitch-scale {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.3; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><line x1="10" y1="10" x2="90" y2="10" stroke="%23fff" stroke-width="0.5"/><line x1="20" y1="20" x2="80" y2="20" stroke="%23fff" stroke-width="0.5"/><line x1="30" y1="30" x2="70" y2="30" stroke="%23fff" stroke-width="0.5"/></svg>') no-repeat center;
+            background-size: contain;
+        }
+        #lean-value-hud {
+            font-size: 1.5rem; color: #FF6600; font-weight: 900;
+            background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px;
+        }
+
+        /* BARRE DE MISSION (TOP) */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 50; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; font-family: sans-serif; font-size: 14px; }
-        .btn-ktm { background: #FF6600; color: white; border: none; padding: 10px 18px; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: white; padding: 10px; font-family: sans-serif; border-radius: 4px; }
+        .btn-ktm { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
+        .btn-ktm.active { background: #FF6600; color: #000; box-shadow: 0 0 15px #FF6600; }
 
-        /* FENÊTRE NAVIGATION GOOGLE */
-        #nav-window { position: absolute; top: 65px; left: 2%; width: 38%; height: 52%; z-index: 60; display: none; flex-direction: column; border: 2px solid #FF6600; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
-        #nav-window iframe { width: 100%; height: 100%; border: none; background: #fff; }
+        /* FENÊTRE NAVIGATION */
+        #nav-window { position: absolute; top: 60px; left: 2%; width: 35%; height: 48%; z-index: 60; display: none; flex-direction: column; border: 2px solid #FF6600; }
+        #nav-window iframe { width: 100%; height: 100%; border: none; background: #fff; opacity: 0.85; }
 
         /* DASHBOARD - 4 BLOCS FIGÉS */
         #dashboard { position: absolute; bottom: 10px; width: 96%; left: 2%; z-index: 40; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .widget { height: 95px; padding: 10px; text-align: center; color: white; position: relative; border-bottom: 5px solid #FF6600; overflow: hidden; }
-        .label { font-size: 0.6rem; color: #aaa; text-transform: uppercase; letter-spacing: 2px; }
-        .value { font-size: 1.9rem; font-weight: 900; line-height: 1.1; margin-top: 5px; }
-        .unit { font-size: 0.8rem; color: #FF6600; margin-left: 3px; }
+        .widget { height: 85px; padding: 10px; text-align: center; color: white; position: relative; border-bottom: 5px solid #FF6600; overflow: hidden; }
+        .label { font-size: 0.6rem; color: #999; text-transform: uppercase; letter-spacing: 2px; }
+        .value { font-family: 'Orbitron'; font-size: 1.6rem; font-weight: 900; line-height: 1.1; margin-top: 3px; }
+        .unit { font-size: 0.8rem; color: #FF6600; }
 
-        /* ICONES ET SILHOUETTE CORSE */
-        #corse-svg { position: absolute; right: 8px; bottom: 8px; height: 65px; opacity: 0.4; pointer-events: none; }
+        /* ICONES ET PRIX */
+        #corse-svg { position: absolute; right: 5px; bottom: 5px; height: 60px; opacity: 0.3; pointer-events: none; }
         .price-flag { background: #FF6600; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; border: 2px solid white; font-size: 12px; white-space: nowrap; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
         .cheapest { background: #2ecc71 !important; }
 
-        /* ÉCRAN DE DÉMARRAGE */
         #splash { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -54,19 +92,26 @@
 
     <div id="splash">
         <h1 style="color:white; letter-spacing: 2px; text-shadow: 0 0 20px #FF6600; text-align: center;">CARDONA<br>KTM 890 ADV R</h1>
-        <button class="btn-ktm" style="padding: 20px 40px; font-size: 1.5rem;" onclick="startApp()">Ready to Race</button>
-        <p style="color: #666; margin-top: 15px; font-size: 0.8rem;">ROAD TRIP CORSICA 2026</p>
+        <button class="btn-ktm" style="padding: 20px 40px; font-size: 1.5rem;" onclick="startApp()"> Ready to Race</button>
     </div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="DESTINATION (ex: Porto, Calvi)...">
-        <button class="btn-ktm" onclick="goNav()">NAVIGUER</button>
-        <button class="btn-ktm" style="background:#222;" onclick="findFuel()">⛽ ESSENCE</button>
+        <input type="text" id="search-input" placeholder="PORTO, CALVI, CORTE...">
+        <button class="btn-ktm" onclick="goNav()">Mission NAV</button>
+        <button class="btn-ktm" style="background:#222;" onclick="findFuel()">⛽ Fuel Scan</button>
+        <button onclick="calibrate()" style="background:none; border:1px solid #444; color:#444; font-size:8px; cursor:pointer;">ZERO</button>
+    </div>
+
+    <div id="hud-central">
+        <div id="speed-hud">000<span class="unit-hud">KM/H</span></div>
+        <div id="lean-hud">
+            <div id="pitch-scale"></div> <div id="horizon-line"></div> <div id="lean-value-hud">0<span class="unit">°</span></div>
+        </div>
     </div>
 
     <div id="nav-window" class="glass">
         <div style="background:#FF6600; color:white; font-size:10px; padding:5px; display:flex; justify-content:space-between; font-weight:bold;">
-            <span>MISSION GUIDANCE SYSTEM</span>
+            <span>GPS FLIGHT SYSTEM</span>
             <span onclick="document.getElementById('nav-window').style.display='none'" style="cursor:pointer;">[ FERMER ]</span>
         </div>
         <iframe id="nav-iframe"></iframe>
@@ -77,21 +122,20 @@
     <div id="dashboard">
         <div class="widget glass">
             <svg id="corse-svg" viewBox="0 0 320 600"><path d="M192 1c18 10 43 12 55 24 9 9 7 24 16 33 24 23 20 62 19 88 0 14-8 27-6 41 5 19 22 34 22 56 1 11-1 22-1 32 0 16 5 32 3 48-1 11-8 19-11 30-11 33-1 74-6 108-3 23-14 42-17 66-5 29-23 51-31 79 0 25-10 47-21 70-12 18-35 24-51 43-7 8-7 19-14 27-22 28-56 38-84 63-14 13-20 30-31 44-24 28-66 38-100 42-12 2-24-3-37-3-22 0-47-1-65-15-18-13-25-36-41-51-12-11-30-15-41-28-26-29-25-83-50-113-14-16-36-21-50-37-14-16-16-39-19-60-2-19 6-40 2-59-1-7-10-10-10-18-1-20 11-38 10-58-1-17-9-34-7-51 1-10 6-18 6-28 0-14-4-28-5-42-1-31 5-63 7-95 1-27-8-55-1-82 5-21 21-36 29-56 12-29 11-64 16-95 3-19 14-36 17-56z" fill="#FF6600"/></svg>
-            <div class="label">Course</div>
-            <div class="value" style="color:#FF6600; font-size: 1.5rem;">ROAD TRIP</div>
+            <div class="label">Trip</div>
+            <div class="value" style="color:#FF6600; font-size: 1.2rem;">ROAD TRIP</div>
             <div style="font-size:0.8rem; color:#fff;">CORSICA</div>
         </div>
 
         <div class="widget glass">
             <div class="label">Airspeed</div>
-            <div id="speed" class="value">000</div>
+            <div id="speed-widget" class="value" style="color:#aaa;">000</div>
             <div class="unit">KM/H</div>
         </div>
 
         <div class="widget glass">
             <div class="label">Lean Angle</div>
-            <div id="lean" class="value" style="color:#FF6600;">0<span class="unit">°</span></div>
-            <button onclick="calibrate()" style="position:absolute; top:2px; right:2px; background:none; border:1px solid #444; color:#444; font-size:7px; cursor:pointer;">ZERO</button>
+            <div id="lean-widget" class="value" style="color:#aaa;">0<span class="unit">°</span></div>
         </div>
 
         <div class="widget glass">
@@ -106,7 +150,6 @@
 
         function startApp() {
             document.getElementById('splash').style.display = 'none';
-            // Demande l'autorisation pour les capteurs (nécessaire sur iPhone)
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
@@ -122,54 +165,51 @@
         }
 
         function handleOrientation(e) {
-            lastG = e.gamma; // Utilise l'axe gamma pour l'inclinaison gauche/droite
-            document.getElementById('lean').innerHTML = Math.abs(Math.round(e.gamma - offset)) + "<span class='unit'>°</span>";
+            lastG = e.gamma;
+            let a = Math.abs(Math.round(e.gamma - offset));
+            
+            // Mise à jour de l'horizon artificiel (Rotation de la ligne orange)
+            document.getElementById('horizon-line').style.transform = `translateY(-50%) rotate(${e.gamma - offset}deg)`;
+            
+            // Mise à jour des valeurs textuelles
+            document.getElementById('lean-value-hud').innerHTML = a + "<span class='unit'>°</span>";
+            document.getElementById('lean-widget').innerHTML = a + "<span class='unit'>°</span>";
         }
 
         function init() {
-            // Vue initiale sur la Corse
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 10);
-            
-            L.tileLayer(CONFIG.MAP_URL, {
-                attribution: '&copy; CartoDB'
-            }).addTo(map);
-
+            L.tileLayer(CONFIG.MAP_URL, { attribution: '© CartoDB' }).addTo(map);
             fuelLayer.addTo(map);
             path = L.polyline([], { color: CONFIG.KTM_ORANGE, weight: 8, opacity: 0.9 }).addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#005fb7', fillOpacity: 1, weight: 4 }).addTo(map);
             
-            // Suivi GPS haute précision
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
                 
-                // Affichage de la vitesse
                 const speed = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0);
-                document.getElementById('speed').innerText = speed.toString().padStart(3, '0');
+                const sStr = speed.toString().padStart(3, '0');
                 
-                // Calcul de la distance parcourue
-                if (coords.length > 0) {
-                    totalDist += map.distance(coords[coords.length-1], p) / 1000;
-                }
+                // Vitesse centrale + widget discret
+                document.getElementById('speed-hud').innerHTML = `${sStr}<span class='unit-hud'>KM/H</span>`;
+                document.getElementById('speed-widget').innerText = sStr;
+                
+                if (coords.length > 0) totalDist += map.distance(coords[coords.length-1], p) / 1000;
                 coords.push(p);
                 path.setLatLngs(coords);
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
             }, null, { enableHighAccuracy: true });
         }
 
-        // Navigation Google Maps intégrée
         function goNav() {
             const dest = document.getElementById('search-input').value;
             if (!dest) return;
-            const url = `https://www.google.com/maps/embed/v1/directions?key=YOUR_API_KEY&origin=current+location&destination=${encodeURIComponent(dest)}+Corse&mode=driving`;
-            // Note: Comme nous n'avons pas de clé API ici, on utilise le lien direct vers Google Maps
             const fallback = `https://maps.google.com/maps?q=${encodeURIComponent(dest)}+Corse&output=embed`;
             document.getElementById('nav-iframe').src = fallback;
             document.getElementById('nav-window').style.display = 'flex';
         }
 
-        // Recherche des stations essence via l'API du gouvernement
         async function findFuel() {
             const c = map.getCenter();
             const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${c.lng} ${c.lat})', 30000)&limit=15`;
@@ -179,21 +219,14 @@
                 fuelLayer.clearLayers();
                 let prices = data.results.filter(st => st.sp95_prix || st.e10_prix);
                 if (!prices.length) return;
-                
-                // On trouve le prix le plus bas
                 let min = Math.min(...prices.map(st => st.sp95_prix || st.e10_prix));
-                
                 prices.forEach(st => {
                     let p = st.sp95_prix || st.e10_prix;
                     L.marker([st.geom.lat, st.geom.lon], {
-                        icon: L.divIcon({ 
-                            className: '', 
-                            html: `<div class="price-flag ${p === min ? 'cheapest':''}">${p.toFixed(2)}€</div>`, 
-                            iconSize:[50,25] 
-                        })
-                    }).addTo(fuelLayer).bindPopup(`<b>${st.ville}</b><br>Station: ${st.adresse}<br>SP95: ${p.toFixed(3)}€`);
+                        icon: L.divIcon({ className: '', html: `<div class="price-flag ${p === min ? 'cheapest':''}">${p.toFixed(2)}€</div>`, iconSize:[50,25] })
+                    }).addTo(fuelLayer).bindPopup(`<b>${st.ville}</b><br>SP95: ${p.toFixed(3)}€`);
                 });
-            } catch (e) { console.error("Erreur API Essence:", e); }
+            } catch (e) { console.error(e); }
         }
 
         function calibrate() { offset = lastG; }
