@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V53 - RALLYE 3D</title>
+    <title>KTM COCKPIT V54 - FINAL ROUTE</title>
     
     <script>
+        // --- PANNEAU DE CONFIGURATION (LIGNES 1-20) ---
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
+            NAV_ZOOM: 20,            // Zoom ultra puissant
+            DEFAULT_ZOOM: 16,
             RADIUS_METER: 20000, 
             MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
@@ -24,52 +27,48 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
-        
         #portrait-warning { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FF6600; }
         @media (orientation: portrait) { #portrait-warning { display: flex; } }
 
-        /* --- EFFET PERSPECTIVE 3D --- */
+        /* PERSPECTIVE 3D RALLYE */
         #map { 
-            position: absolute; inset: 0; z-index: 1; 
-            filter: brightness(0.4) contrast(1.2); 
-            transform: perspective(600px) rotateX(25deg); /* Simulation 3D */
-            transform-origin: bottom;
-            height: 120vh; top: -10vh; /* Compense l'inclinaison */
+            position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); 
+            transform: perspective(600px) rotateX(25deg); transform-origin: bottom;
+            height: 125vh; top: -15vh; transition: transform 0.5s ease;
         }
 
-        #nav-info-box { 
-            position: absolute; top: 70px; right: 10px; z-index: 200; 
-            background: rgba(0,0,0,0.85); border-right: 4px solid #0078FF; 
-            padding: 10px; display: none; flex-direction: column; align-items: flex-end;
-            backdrop-filter: blur(5px);
-        }
-        .nav-val { font-family: 'Barlow Condensed'; font-size: 2rem; font-weight: 900; color: #FFF; }
-
+        /* UI HAUTE DISCRETE */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 250; display: flex; gap: 6px; align-items: center; }
-        #search-input { width: 160px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,102,0,0.5); color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; }
+        #search-input { width: 150px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,102,0,0.5); color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; transition: width 0.3s; }
+        #search-input:focus { width: 250px; background: rgba(0,0,0,0.9); }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
 
-        #nav-actions { position: absolute; top: 70px; left: 10px; z-index: 250; display: none; gap: 5px; }
-        .btn-action { background: rgba(0,0,0,0.8); color: #FFF; border: 1px solid #FFF; padding: 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; cursor: pointer; }
+        /* ZOOM CONTROLS (DYNAMIQUES) */
+        #zoom-controls { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 250; display: none; flex-direction: column; gap: 15px; }
+        .btn-zoom { width: 50px; height: 50px; background: rgba(0,0,0,0.7); border: 2px solid #FF6600; color: #FF6600; border-radius: 50%; font-size: 1.5rem; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        #fuel-sidebar {
-            position: absolute; right: 10px; top: 70px; bottom: 100px; width: 240px;
-            background: rgba(0,0,0,0.9); border-left: 3px solid #FF6600;
-            z-index: 220; display: none; flex-direction: column; overflow-y: auto;
-        }
-        .fuel-item { padding: 12px 10px; border-bottom: 1px solid #333; cursor: pointer; }
-        .fuel-item .price { font-size: 1.6rem; font-family: 'Barlow Condensed'; color: #FFF; font-weight: 900; }
+        /* NAV ACTIONS & INFO */
+        #nav-actions { position: absolute; top: 60px; left: 10px; z-index: 250; display: none; gap: 5px; }
+        .btn-action { background: rgba(0,0,0,0.8); color: #FFF; border: 1px solid #FFF; padding: 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; }
+        #nav-info { position: absolute; top: 60px; right: 10px; z-index: 200; background: rgba(0,0,0,0.85); border-right: 4px solid #0078FF; padding: 10px; display: none; flex-direction: column; align-items: flex-end; }
+        .nav-val { font-family: 'Barlow Condensed'; font-size: 1.8rem; font-weight: 900; color: #FFF; line-height: 1; }
 
+        /* SIDEBAR FUEL */
+        #fuel-sidebar { position: absolute; right: 10px; top: 60px; bottom: 100px; width: 240px; background: rgba(0,0,0,0.9); border-left: 3px solid #FF6600; z-index: 220; display: none; flex-direction: column; overflow-y: auto; }
+        .fuel-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .fuel-info { flex-grow: 1; cursor: pointer; }
+        .btn-go-fuel { background: #FF6600; color: #000; padding: 10px; border-radius: 4px; font-weight: 900; border: none; font-size: 0.8rem; }
+
+        /* HUD & SPEED (5.5rem) */
         #hud-container { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); width: 260px; height: 260px; z-index: 60; pointer-events: none; }
-        #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; }
+        #horizon-gyro { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; box-shadow: 0 0 15px currentColor; transition: transform 0.05s linear; }
         #lean-display { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); text-align: center; font-size: 4rem; font-weight: 900; }
-
         #speed-block { position: absolute; bottom: 110px; left: 5%; z-index: 80; pointer-events: none; }
         #speed-val { font-family: 'Barlow Condensed'; font-size: 5.5rem; font-weight: 900; line-height: 0.8; }
 
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.95); border-top: 3px solid #FF6600; }
         .widget { padding: 12px 5px; text-align: center; border-right: 1px solid #333; }
-        .value { font-family: 'Barlow Condensed'; font-size: 2.1rem; font-weight: 900; }
+        .value { font-family: 'Barlow Condensed'; font-size: 2rem; font-weight: 900; }
 
         .leaflet-routing-container { display: none !important; }
         .fuel-marker { background: #FF6600; color: #000; padding: 4px 6px; border-radius: 4px; font-weight: 900; border: 1.5px solid white; font-size: 14px; }
@@ -87,11 +86,16 @@
         <button class="btn-ktm" style="background:#333; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
+    <div id="zoom-controls">
+        <button class="btn-zoom" onclick="map.zoomIn()">+</button>
+        <button class="btn-zoom" onclick="map.zoomOut()">-</button>
+    </div>
+
     <div id="nav-actions">
         <button class="btn-action" onclick="clearMission()" style="color:#ff4757; border-color:#ff4757;">ANNULER MISSION</button>
     </div>
 
-    <div id="nav-info-box">
+    <div id="nav-info">
         <div id="nav-dist-val" class="nav-val">-- KM</div>
         <div id="nav-time-val" class="nav-val" style="color:#2ecc71;">-- MIN</div>
     </div>
@@ -108,10 +112,10 @@
     <div id="map"></div>
 
     <div id="dashboard">
-        <div class="widget"><div class="label" style="font-size:0.6rem; color:#FF6600;">ALTITUDE</div><div id="alt" class="value">--</div></div>
-        <div class="widget"><div class="label" style="font-size:0.6rem; color:#FF6600;">CAP</div><div id="cap" class="value">---</div></div>
-        <div class="widget"><div class="label" style="font-size:0.6rem; color:#FF6600;">TRIP</div><div id="dist" class="value">0.0</div></div>
-        <div class="widget"><div class="label" style="font-size:0.6rem; color:#FF6600;">ANGLE</div><div id="lean-alt" class="value">0°</div></div>
+        <div class="widget"><div class="label" style="font-size:0.5rem; color:#FF6600;">ALTITUDE</div><div id="alt" class="value">--</div></div>
+        <div class="widget"><div class="label" style="font-size:0.5rem; color:#FF6600;">CAP</div><div id="cap" class="value">---</div></div>
+        <div class="widget"><div class="label" style="font-size:0.5rem; color:#FF6600;">TRIP</div><div id="dist" class="value">0.0</div></div>
+        <div class="widget"><div class="label" style="font-size:0.5rem; color:#FF6600;">ANGLE</div><div id="lean-alt" class="value">0°</div></div>
     </div>
 
     <script>
@@ -119,9 +123,8 @@
         let fuelLayer = L.layerGroup(), routingControl = null;
 
         function init() {
-            // Vue 3D simulée par inclinaison CSS
-            map = L.map('map', { zoomControl: false, attributionControl: false, inertia: true }).setView([43.76, 1.98], 18);
-            L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
+            map = L.map('map', { zoomControl: false, attributionControl: false, zoomSnap: 0.1 }).setView([43.76, 1.98], CONFIG.DEFAULT_ZOOM);
+            L.tileLayer(CONFIG.MAP_STYLE, { maxZoom: 21 }).addTo(map);
             fuelLayer.addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#0078FF', fillOpacity: 1, weight: 3 }).addTo(map);
 
@@ -137,11 +140,8 @@
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
+                map.setView(p, map.getZoom(), { animate: true, duration: 0.5 });
                 
-                // RECENTRAGE FLUIDE SANS SAUT
-                map.setView(p, map.getZoom(), { animate: true, duration: 0.8 });
-                
-                // ROTATION DE LA CARTE SELON LE CAP (SI DISPONIBLE)
                 if (u.coords.heading !== null && u.coords.speed > 1) {
                     const heading = u.coords.heading;
                     document.getElementById('map').style.transform = `perspective(600px) rotateX(25deg) rotateZ(${-heading}deg)`;
@@ -150,11 +150,9 @@
 
                 document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
-                
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
-                
                 if (routingControl) routingControl.spliceWaypoints(0, 1, p);
             }, null, { enableHighAccuracy: true });
         }
@@ -162,20 +160,21 @@
         function startMission(latlng) {
             fuelLayer.clearLayers();
             document.getElementById('fuel-sidebar').style.display = 'none';
+            document.getElementById('zoom-controls').style.display = 'flex';
             if (routingControl) map.removeControl(routingControl);
             
             routingControl = L.Routing.control({
                 waypoints: [userMarker.getLatLng(), latlng],
-                lineOptions: { styles: [{ color: '#0078FF', weight: 10, opacity: 0.9 }] }, // Ligne épaisse pour guidage
+                lineOptions: { styles: [{ color: '#0078FF', weight: 10, opacity: 0.9 }] },
                 createMarker: () => null,
                 addWaypoints: false, draggableWaypoints: false, fitSelectedRoutes: false
             }).on('routesfound', function(e) {
                 const route = e.routes[0];
-                document.getElementById('nav-info-box').style.display = 'flex';
+                document.getElementById('nav-info').style.display = 'flex';
                 document.getElementById('nav-actions').style.display = 'flex';
                 document.getElementById('nav-dist-val').innerText = (route.summary.totalDistance / 1000).toFixed(1) + " KM";
                 document.getElementById('nav-time-val').innerText = Math.round(route.summary.totalTime / 60) + " MIN";
-                map.setZoom(18); // Zoom max pour naviguer
+                map.setZoom(CONFIG.NAV_ZOOM);
             }).addTo(map);
         }
 
@@ -183,18 +182,12 @@
             if (routingControl) {
                 map.removeControl(routingControl);
                 routingControl = null;
-                document.getElementById('nav-info-box').style.display = 'none';
+                document.getElementById('nav-info').style.display = 'none';
                 document.getElementById('nav-actions').style.display = 'none';
+                document.getElementById('zoom-controls').style.display = 'none';
                 document.getElementById('map').style.transform = `perspective(600px) rotateX(25deg) rotateZ(0deg)`;
+                map.setZoom(CONFIG.DEFAULT_ZOOM);
             }
-        }
-
-        async function startNavSearch() {
-            const query = document.getElementById('search-input').value;
-            if (!query) return;
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-            const data = await res.json();
-            if (data.length > 0) startMission([data[0].lat, data[0].lon]);
         }
 
         async function findFuel() {
@@ -208,34 +201,32 @@
                 listContainer.innerHTML = '';
                 document.getElementById('fuel-sidebar').style.display = 'flex';
                 
-                if (data.results && data.results.length > 0) {
+                if (data.results) {
                     const stations = data.results.map(st => {
-                        let p = 0;
-                        try {
-                            const pArr = JSON.parse(st.prix.replace(/'/g, '"'));
-                            p = parseFloat(pArr[0]["@valeur"]);
-                        } catch(e) { p = parseFloat(st.sp95_prix) || 0; }
-                        const d = (map.distance(c, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
-                        return { ...st, calculatedPrice: p, calculatedDist: d };
-                    }).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
+                        let p = 0; try { p = parseFloat(JSON.parse(st.prix.replace(/'/g, '"'))[0]["@valeur"]); } catch(e) { p = parseFloat(st.sp95_prix) || 0; }
+                        return { ...st, p: p, d: (map.distance(c, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1) };
+                    }).sort((a, b) => a.p - b.p);
 
                     stations.forEach(st => {
-                        L.marker([st.geom.lat, st.geom.lon], {
-                            icon: L.divIcon({ html: `<div class="fuel-marker">${st.calculatedPrice.toFixed(2)}</div>`, iconSize: [50, 25] })
-                        }).addTo(fuelLayer);
-
+                        L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div class="fuel-marker">${st.p.toFixed(2)}</div>`, iconSize: [50, 25] }) }).addTo(fuelLayer);
                         const item = document.createElement('div');
                         item.className = 'fuel-item';
-                        item.onclick = () => startMission([st.geom.lat, st.geom.lon]);
-                        item.innerHTML = `<div class="name" style="font-size:0.7rem; color:#FF6600;">${st.nom || st.adresse}</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="price">${st.calculatedPrice.toFixed(2)}€</span>
-                                <span style="font-size:0.8rem; color:#888;">${st.calculatedDist}KM</span>
-                            </div>`;
+                        item.innerHTML = `<div class="fuel-info" onclick="map.setView([${st.geom.lat}, ${st.geom.lon}], 18)">
+                            <div style="font-size:0.6rem; color:#FF6600; font-weight:900;">${(st.nom || st.adresse).substring(0,20)}</div>
+                            <div style="font-size:1.4rem; font-family:'Barlow Condensed'; font-weight:900;">${st.p.toFixed(2)}€ <span style="font-size:0.8rem; color:#888;">${st.d}KM</span></div>
+                        </div><button class="btn-go-fuel" onclick="startMission([${st.geom.lat}, ${st.geom.lon}])">GO</button>`;
                         listContainer.appendChild(item);
                     });
                 }
             } catch(e) { console.error("Fuel Error"); }
+        }
+
+        async function startNavSearch() {
+            const query = document.getElementById('search-input').value;
+            if (!query) return;
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (data.length > 0) startMission([data[0].lat, data[0].lon]);
         }
 
         function calibrate() { offset = lastRaw; smoothedLean = 0; }
