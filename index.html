@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM COCKPIT V55 - TACTICAL</title>
+    <title>KTM COCKPIT V56 - MATRIX</title>
     
     <script>
         const CONFIG = {
@@ -20,36 +20,36 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: #FF6600; }
+        #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: #FF6600; text-align: center; }
         @media (orientation: portrait) { #portrait-blocker { display: flex; } }
 
-        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.7) contrast(1.1); }
+        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.6) contrast(1.1); }
 
         /* HUD CENTRAL */
-        #hud-container { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; z-index: 60; pointer-events: none; }
-        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid #2ecc71; border-radius: 50%; }
+        #hud-container { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 320px; height: 320px; z-index: 60; pointer-events: none; }
+        #aim-sphere { position: absolute; width: 100%; height: 100%; border: 2px solid #2ecc71; border-radius: 50%; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
         #horizon-line { position: absolute; top: 50%; width: 140%; left: -20%; height: 2px; background: #FFF; box-shadow: 0 0 10px #FFF; transition: transform 0.1s linear; }
 
         /* VITESSE */
         #speed-block { position: absolute; bottom: 85px; left: 30px; z-index: 80; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 6rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 6.5rem; font-weight: 900; line-height: 0.8; color: #FFF; text-shadow: 0 0 20px #000; }
 
         /* TOP BAR */
         #top-ui { position: absolute; top: 10px; width: 96%; left: 2%; z-index: 100; display: flex; gap: 8px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.7); border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; font-family: sans-serif; }
         .fuel-select { background: #111; color: #FF6600; border: 1px solid #FF6600; padding: 9px; border-radius: 4px; font-weight: bold; }
         .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 900; cursor: pointer; }
 
         /* DASHBOARD */
         #dashboard { position: absolute; bottom: 0; width: 100%; z-index: 90; display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(0,0,0,0.85); border-top: 2px solid #FF6600; }
         .widget { padding: 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); position: relative; }
-        .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
+        .label { font-size: 0.55rem; color: #888; text-transform: uppercase; margin-bottom: 2px; }
         .value { font-family: 'Barlow Condensed'; font-size: 1.8rem; font-weight: 900; }
 
-        /* BOUSSOLE TACTIQUE */
-        #compass-disk { width: 50px; height: 50px; border: 1px solid #FF6600; border-radius: 50%; margin: 0 auto; position: relative; transition: transform 0.2s linear; }
-        #compass-arrow { position: absolute; top: -5px; left: 50%; transform: translateX(-50%); color: #FF6600; font-size: 10px; }
-        #compass-val { font-size: 1rem; margin-top: 2px; }
+        /* BOUSSOLE TACTIQUE CORRIGÉE */
+        #compass-disk { width: 55px; height: 55px; border: 1.5px solid #FF6600; border-radius: 50%; margin: 0 auto; position: relative; transition: transform 0.2s cubic-bezier(0.1, 0, 0.3, 1); background: rgba(255,102,0,0.05); }
+        #compass-needle { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); color: #FF6600; font-size: 12px; filter: drop-shadow(0 0 5px #FF6600); }
+        #dir-txt { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 14px; font-weight: 900; color: #FFF; }
 
         #btn-zero { position: absolute; bottom: 4px; right: 4px; background: #222; color: #666; font-size: 8px; padding: 3px; border: 1px solid #444; border-radius: 2px; }
     </style>
@@ -57,8 +57,8 @@
 <body>
 
     <div id="portrait-blocker">
-        <h1>KTM COCKPIT</h1>
-        <p>BASCULEZ EN PAYSAGE</p>
+        <h1 style="font-size: 3rem; margin: 0;">KTM</h1>
+        <p style="letter-spacing: 2px;">BASCULEZ EN PAYSAGE<br>POUR ACTIVER LE HUD</p>
     </div>
 
     <div id="top-ui">
@@ -80,7 +80,7 @@
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div style="font-size:1rem; color:#FF6600; font-weight:900;">KM/H</div>
+        <div style="font-size:1rem; color:#FF6600; font-weight:900; letter-spacing: 2px;">KM/H</div>
     </div>
 
     <div id="map"></div>
@@ -88,12 +88,11 @@
     <div id="dashboard">
         <div class="widget"><div class="label">Altitude</div><div id="alt" class="value">--</div></div>
         <div class="widget">
-            <div class="label">Cap</div>
+            <div class="label">Boussole</div>
             <div id="compass-disk">
-                <div id="compass-arrow">▼</div>
-                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:10px;" id="dir-txt">N</div>
+                <div id="compass-needle">▼</div>
+                <div id="dir-txt">N</div>
             </div>
-            <div id="compass-val">0°</div>
         </div>
         <div class="widget"><div class="label">Trip</div><div id="dist" class="value">0.0</div></div>
         <div class="widget">
@@ -113,37 +112,50 @@
             fuelLayer.addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 2 }).addTo(map);
             
-            window.addEventListener('deviceorientation', e => {
-                let raw = e.beta; 
-                lastRaw = raw;
-                let currentLean = raw - offset;
-                smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
-                let angle = Math.abs(Math.round(smoothedLean));
+            window.addEventListener('deviceorientation', handleOrientation);
+            startTracking();
+        }
 
-                document.getElementById('horizon-line').style.transform = `rotate(${smoothedLean}deg)`;
-                document.getElementById('lean-val').innerText = angle + "°";
-                
-                const sphere = document.getElementById('aim-sphere');
-                if(angle < 25) sphere.style.borderColor = "#2ecc71";
-                else if(angle < 45) sphere.style.borderColor = "#FF6600";
-                else sphere.style.borderColor = "#ff4757";
-            });
+        function handleOrientation(e) {
+            // COMPENSATION DE L'ORIENTATION (Screen Rotation)
+            let screenAngle = window.orientation || 0;
+            let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
+            
+            // Si le tel est tourné de l'autre côté (90 vs -90), on inverse
+            if (screenAngle === -90) raw = -raw;
 
+            lastRaw = raw;
+            let currentLean = raw - offset;
+            smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
+            let angle = Math.abs(Math.round(smoothedLean));
+
+            document.getElementById('horizon-line').style.transform = `rotate(${smoothedLean}deg)`;
+            document.getElementById('lean-val').innerText = angle + "°";
+            
+            const sphere = document.getElementById('aim-sphere');
+            if(angle < 25) sphere.style.borderColor = "#2ecc71";
+            else if(angle < 45) sphere.style.borderColor = "#FF6600";
+            else sphere.style.borderColor = "#ff4757";
+        }
+
+        function startTracking() {
             navigator.geolocation.watchPosition(u => {
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
 
+                // BOUSSOLE CALCULÉE (Indique le vrai Nord par rapport au haut du tel)
                 if (u.coords.heading !== null) {
-                    const h = Math.round(u.coords.heading);
-                    document.getElementById('compass-val').innerText = h + "°";
-                    document.getElementById('compass-disk').style.transform = `rotate(${-h}deg)`;
+                    let heading = u.coords.heading;
+                    document.getElementById('compass-disk').style.transform = `rotate(${-heading}deg)`;
+                    
                     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-                    document.getElementById('dir-txt').innerText = dirs[Math.round(h / 45) % 8];
+                    document.getElementById('dir-txt').innerText = dirs[Math.round(heading / 45) % 8];
                 }
 
                 document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
+                
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
                 lastCoord = p;
                 document.getElementById('dist').innerText = totalDist.toFixed(1);
@@ -161,25 +173,26 @@
                 fuelLayer.clearLayers();
                 
                 data.results.forEach(st => {
-                    let price = "N/A";
+                    let price = null;
                     if (st.prix) {
                         try {
-                            const pData = JSON.parse(st.prix);
+                            // On gère les deux formats possibles (JSON string ou Object)
+                            const pData = (typeof st.prix === 'string') ? JSON.parse(st.prix) : st.prix;
                             const found = pData.find(f => f["@nom"] === fuel);
                             if (found) price = parseFloat(found["@valeur"]).toFixed(2);
                         } catch(e) { }
                     }
 
-                    if (price !== "N/A") {
+                    if (price) {
                         L.marker([st.geom.lat, st.geom.lon], {
                             icon: L.divIcon({ 
-                                html: `<div style="background:#FF6600; color:white; padding:2px 5px; border:1px solid white; font-weight:bold; font-size:11px; border-radius:3px;">${price}</div>`,
+                                html: `<div style="background:#FF6600; color:white; padding:2px 6px; border:1px solid white; font-weight:bold; font-size:11px; border-radius:3px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${price}</div>`,
                                 iconSize: [40, 20]
                             })
                         }).addTo(fuelLayer);
                     }
                 });
-            } catch(e) { alert("Erreur Scan"); }
+            } catch(e) { console.error("Erreur Scan"); }
         }
 
         function startNav() {
