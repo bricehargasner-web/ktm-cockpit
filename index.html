@@ -3,274 +3,472 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - GPS COCKPIT V7</title>
+    <title>ENERGY CONCEPT - KTM V109 TELEMETRY</title>
     
     <script>
-        /* ============================================================
-           PANNEAU DE CONTRÔLE (MODIFIABLE)
-           ============================================================ */
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            SITE_WEB: 'https://www.energy-concept.fr',
-            HAUT_TELEPHONE_A_DROITE: true, 
-            MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            SAFE_WHITE: '#FFFFFF',
+            DANGER_RED: '#FF0000',
+            NAV_BLUE: '#00D2FF',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            WEATHER_API: 'https://api.open-meteo.com/v1/forecast',
+            MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
-            SEARCH_API: 'https://nominatim.openstreetmap.org/search?format=json&countrycodes=fr&limit=5&q='
+            WEATHER_UPDATE_MS: 900000,
+            DEFAULT_ZOOM: 14
         };
     </script>
 
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        :root { --accent: #FF6600; --panel-bg: rgba(15, 15, 20, 0.98); --border: rgba(255,255,255,0.1); }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-
-        /* HEADER & LOGO */
-        #header { position: fixed; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; pointer-events: none; }
-        .head-btn { background: var(--panel-bg); border: 1px solid var(--accent); color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; pointer-events: auto; font-weight: bold; text-transform: uppercase; }
-
-        /* CARTE & NAV */
-        #viewport { position: absolute; inset: 0; z-index: 1; perspective: 1000px; }
-        #map-rotate { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; transform: rotateX(45deg); }
-        #map { width: 100%; height: 100%; }
-
-        #user-arrow { width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 28px solid var(--accent); filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.9)); }
-        #nav-banner { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: var(--panel-bg); border: 2px solid var(--accent); border-radius: 8px; padding: 10px; z-index: 1100; display: none; width: 60%; text-align: center; pointer-events: auto; }
-
-        /* HUD 4 PAVÉS */
-        #hud-container { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 98%; height: 145px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; z-index: 100; pointer-events: none; }
-        .pane { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
-        .pane-label { position: absolute; top: 5px; left: 8px; font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; z-index: 10; }
-
-        /* PAVÉ 4 : MINI-MAP + BOUTON RECENTER */
-        #recenter-overlay { position: absolute; top: 5px; right: 5px; background: var(--accent); color: black; padding: 5px; border-radius: 3px; font-size: 1rem; cursor: pointer; pointer-events: auto; z-index: 30; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        #weather-bar { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; padding: 4px 0; display: flex; justify-content: space-around; z-index: 20; border-top: 1px solid #333; }
-
-        /* MENU */
-        #drawer { position: fixed; top: 0; left: -350px; width: 340px; height: 100%; background: #111; z-index: 2000; transition: 0.3s; padding: 20px; border-right: 2px solid var(--accent); pointer-events: auto; overflow-y: auto; box-sizing: border-box; }
-        #drawer.open { left: 0; }
-        input, select { background: #000; border: 1px solid #333; color: white; padding: 12px; width: 100%; border-radius: 4px; margin-bottom: 10px; box-sizing: border-box; }
-        .btn-go { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 5px; }
+        :root { --ktm: #FF6600; --dynamic-hud: #FFFFFF; }
         
-        #speed-val { font-size: 3.5rem; font-weight: 900; line-height: 1; }
-        #needle { position: absolute; bottom: 0; left: 50%; width: 4px; height: 40px; background: var(--accent); transform-origin: bottom center; }
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100%; 
+            background: #000; color: white; font-family: 'Saira Condensed', sans-serif; 
+            overflow: hidden; touch-action: none; overscroll-behavior: none; 
+            user-select: none; -webkit-user-select: none;
+        }
+        
+        #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); transition: 0.5s; }
+
+        /* COMPAS CENTRAL (ABSOLUMENT FIXÉ) */
+        #central-hud {
+            position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            width: 88vmin; height: 88vmin; z-index: 100; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #compass-svg { width: 100%; height: 100%; filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.9)); }
+        .tick-line { stroke: var(--dynamic-hud); stroke-width: 2.5; transition: 0.3s; }
+        .azimut-text { fill: var(--dynamic-hud); font-weight: 900; font-size: 11px; transition: 0.3s; paint-order: stroke; stroke: rgba(0,0,0,0.8); stroke-width: 1px; }
+
+        #horizon-line {
+            position: absolute; width: calc(100% + 10vmin); height: 4px;
+            background: linear-gradient(90deg, transparent 0%, var(--dynamic-hud) 15%, #fff 50%, var(--dynamic-hud) 85%, transparent 100%);
+            border-top: 1.5px solid rgba(255, 102, 0, 0.7);
+            box-shadow: 0 0 15px var(--dynamic-hud), 0 -2px 8px rgba(255, 102, 0, 0.5);
+            transition: transform 0.1s linear, background 0.3s; z-index: 110;
+        }
+
+        /* WIDGETS DYNAMIQUES AÉRÉS */
+        .flight-widget { position: fixed; bottom: 16dvh; z-index: 700; color: var(--ktm); display: flex; flex-direction: column; }
+        .val-big { font-size: clamp(3.5rem, 11vmin, 7.5rem); font-weight: 900; line-height: 0.75; text-shadow: 4px 4px 15px rgba(0,0,0,1); }
+        .sub-label { font-size: clamp(1rem, 3vmin, 1.4rem); font-weight: 800; letter-spacing: 4px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
+        
+        #angle-widget { left: 5vw; align-items: flex-start; }
+        #speed-widget { right: 5vw; align-items: flex-end; }
+        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 2px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
+
+        /* HUD TURN-BY-TURN (NOUVEAU) */
+        #tbt-hud {
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); border: 2px solid var(--NAV_BLUE, #00D2FF);
+            padding: 5px 15px; border-radius: 6px; z-index: 1500; display: none;
+            color: white; font-size: 1.5rem; font-weight: 900; box-shadow: 0 0 15px rgba(0,210,255,0.5);
+            align-items: center; gap: 10px;
+        }
+
+        /* MOUCHARD ANCRÉ TOP-LEFT */
+        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.65rem; font-family: monospace; opacity: 0.8; text-transform: uppercase; text-shadow: 1px 1px 3px black; text-align: left; }
+
+        /* DÉCLENCHEUR STEALTH */
+        #ui-trigger { position: fixed; top: 15px; right: 15px; z-index: 2100; cursor: pointer; pointer-events: auto; display: flex; flex-direction: column; gap: 5px; }
+        .bar { width: 30px; height: 3px; background: var(--ktm); border-radius: 2px; box-shadow: 0 0 8px black; transition: 0.3s; }
+
+        /* TIROIR MISSION (ÉPURÉ) */
+        #mission-drawer { 
+            position: fixed; top: 0; right: 0; width: 300px; height: 100dvh; 
+            background: rgba(10,10,10,0.95); backdrop-filter: blur(15px); border-left: 2px solid var(--ktm); 
+            z-index: 2000; transition: transform 0.3s ease-in-out; transform: translateX(100%);
+        }
+        #mission-drawer.open { transform: translateX(0); }
+        
+        .tab-nav { display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid #333; margin-top: 40px; }
+        .tab-btn { background: transparent; border: none; fill: white; cursor: pointer; transition: 0.2s; padding: 5px; }
+        .tab-btn svg { width: 22px; height: 22px; }
+        .tab-btn.active { fill: var(--ktm); transform: scale(1.1); }
+        
+        /* PADDING BOTTOM POUR NE PAS CACHER LE TEXTE SOUS LE DASHBOARD */
+        .pane { display: none; padding: 15px; height: calc(100% - 140px); overflow-y: auto; padding-bottom: 90px; }
+        .pane.active { display: block; }
+        
+        .station-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--ktm); }
+        .sort-bar { display: flex; gap: 5px; margin-bottom: 10px; }
+        .sort-btn { flex: 1; padding: 8px; border: 1px solid #333; background: #111; color: #888; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.8rem; }
+        .sort-btn.active { background: var(--ktm); color: black; border-color: var(--ktm); }
+
+        /* DASHBOARD BAS (RÉDUIT EN HAUTEUR) */
+        #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 9dvh; min-height: 55px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: 0.8fr repeat(3, 1fr) 1.5fr; z-index: 800; }
+        .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+        .data { font-size: clamp(1rem, 3.5vmin, 1.6rem); font-weight: 800; display:flex; align-items:center; gap:5px; }
+        .sub-data { font-size: 0.55rem; color: var(--ktm); font-family: monospace; text-transform: uppercase; letter-spacing: 1px; margin-top: -2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        
+        .weather-btn, .rec-btn { cursor: pointer; pointer-events: auto; transition: background 0.2s; }
+        .weather-btn:hover { background: rgba(255,255,255,0.05); }
+        .rec-btn { color: #888; }
+        .rec-btn.active { color: var(--DANGER_RED, #FF0000); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 10px; margin-bottom: 10px; font-family: inherit; box-sizing: border-box; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <div id="header">
-        <div class="head-btn" style="color:var(--accent)" onclick="window.open(CONFIG.SITE_WEB, '_blank')">Energy Concept</div>
-        <div class="head-btn" onclick="CORE.toggleDrawer()">☰ Menu</div>
+    <div id="map"></div>
+
+    <div id="ui-trigger" onclick="APP.toggleDrawer()">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
     </div>
 
-    <div id="nav-banner">
-        <div id="nav-dist" style="font-size: 1.5rem; font-weight: 900;">0.0 KM</div>
-        <div id="nav-dest" style="font-size: 0.7rem; color: #888;">Dest</div>
-        <button onclick="CORE.stopNav()" style="background:red; color:white; border:none; padding:4px 12px; border-radius:3px; font-weight:bold; margin-top:5px; cursor:pointer;">STOP NAV</button>
+    <div id="tech-snitch">> SYS: STANDBY</div>
+
+    <div id="tbt-hud">
+        <span id="tbt-icon">⬆️</span> <span id="tbt-dist">-- m</span>
     </div>
 
-    <div id="drawer">
-        <h3 style="color:var(--accent)">COCKPIT REGLAGES</h3>
-        <button class="btn-go" style="background:#444" onclick="CORE.calibrateGyro()">📐 CALIBRER ANGLE (ZÉRO)</button>
-        <button class="btn-go" style="background:#222; margin-bottom:20px;" onclick="CORE.switchTheme()">JOUR / NUIT</button>
-
-        <label style="font-size:0.7rem;">📍 DESTINATION (VILLE / RUE)</label>
-        <input type="text" id="addr-in" placeholder="Ex: Le Sequestre Albi..." onkeydown="if(event.key === 'Enter') CORE.searchAddress()">
-        <button class="btn-go" onclick="CORE.searchAddress()">RECHERCHER & GUIDER</button>
-
-        <label style="font-size:0.7rem; margin-top:20px; display:block;">⛽ RADAR CARBURANT (100km / 100 stations)</label>
-        <select id="fuel-type">
-            <option value="Gazole">Gazole</option>
-            <option value="SP95">SP95</option>
-            <option value="E10">E10 / SP95-E10</option>
-            <option value="SP98">SP98</option>
-        </select>
-        <button class="btn-go" onclick="CORE.findFuel()">SCANNER LES PRIX</button>
-        <div id="fuel-list" style="margin-top:10px;"></div>
-        
-        <button class="btn-go" style="background:#333; margin-top:30px;" onclick="CORE.toggleDrawer()">FERMER LE MENU</button>
+    <div id="central-hud">
+        <div id="horizon-line"></div>
+        <svg id="compass-svg" viewBox="0 0 200 200">
+            <g id="ticks-layer"></g>
+        </svg>
     </div>
 
-    <div id="viewport"><div id="map-rotate"><div id="map"></div></div></div>
+    <div id="angle-widget" class="flight-widget">
+        <div class="val-big"><span id="angle-val">0</span>°</div>
+        <div class="sub-label">ANGLE</div>
+        <button class="btn-zero" onclick="APP.resetGyro()">ZÉRO</button>
+    </div>
 
-    <div id="hud-container">
-        <div class="pane">
-            <div class="pane-label">Tracking</div>
-            <div id="chrono" style="font-size: 1.5rem; font-family: monospace;">00:00.0</div>
-            <div id="dist" style="color:var(--accent); font-weight:bold;">0.0 km</div>
-            <button onclick="CORE.toggleRec()" id="btn-rec" style="background:var(--accent); border:none; color:white; padding:4px 10px; border-radius:3px; pointer-events:auto; font-weight:bold; cursor:pointer; margin-top:5px;">REC</button>
+    <div id="speed-widget" class="flight-widget">
+        <div id="speed-val" class="val-big">000</div>
+        <div class="sub-label">KM/H</div>
+    </div>
+
+    <div id="mission-drawer">
+        <div class="tab-nav">
+            <button class="tab-btn" onclick="APP.recenterMap()"><svg viewBox="0 0 24 24" fill="inherit"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v3h-2zm0 10h2v3h-2zm7-7v2h-3v-2zm-10 0v2h-3v-2z"/></svg></button>
+            <button class="tab-btn active" onclick="APP.showPane('p-radar', this)"><svg viewBox="0 0 24 24" fill="inherit"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 8 13 8 13s8-7.75 8-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
+            <button class="tab-btn" onclick="APP.showPane('p-search', this)"><svg viewBox="0 0 24 24" fill="inherit"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+            <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg viewBox="0 0 24 24" fill="inherit"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg></button>
         </div>
-        <div class="pane">
-            <div class="pane-label">Angle</div>
-            <div style="width:80%; height:40px; border-bottom:2px solid #333; position:relative;">
-                <div id="needle"></div>
+
+        <div id="p-radar" class="pane active">
+            <h3 style="color:var(--ktm); margin-top:0; font-size:1.2rem;">RADAR FUEL</h3>
+            <div class="sort-bar">
+                <button id="sort-price" class="sort-btn active" onclick="APP.setSort('price')">PRIX</button>
+                <button id="sort-dist" class="sort-btn" onclick="APP.setSort('dist')">KM</button>
             </div>
-            <div id="angle-val" style="font-size:1.8rem; font-weight:bold;">0°</div>
+            <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
+            <button class="sort-btn active" style="width:100%; margin-bottom:10px;" onclick="APP.scanFuel()">SCANNER MAX (100km)</button>
+            <div id="station-list"></div>
         </div>
-        <div class="pane">
-            <div class="pane-label">Velocity</div>
-            <div id="speed-val">0</div>
-            <div style="font-size:0.7rem; color:#666; font-weight:bold;">KM/H</div>
+        <div id="p-search" class="pane">
+            <h3 style="color:var(--ktm); margin-top:0; font-size:1.2rem;">GPS & TÉLÉMÉTRIE</h3>
+            <input type="text" id="city-in" placeholder="Ex: Albi, Corte...">
+            <button class="sort-btn active" style="width:100%" onclick="APP.searchCity()">TRACER ROUTE</button>
+            <button class="btn-zero" style="width:100%; border-color:#444; margin-top:10px;" onclick="APP.clearNav()">EFFACER ROUTE</button>
         </div>
-        <div class="pane" style="padding:0;">
-            <div id="recenter-overlay" onclick="CORE.recenter()">🎯 CENTER</div>
-            <div id="mini-map" style="width:100%; height:100%;"></div>
-            <div id="weather-bar">
-                <span id="w-temp">--°C</span>
-                <span id="w-icon">☀️</span>
-                <span id="w-wind">--km/h</span>
-            </div>
+        <div id="p-settings" class="pane">
+            <h3 style="color:var(--ktm); margin-top:0; font-size:1.2rem;">SYSTÈME</h3>
+            <button class="sort-btn active" style="width:100%; margin-bottom:15px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
+            <label style="display:block; margin-bottom:5px; color:#888; font-size:0.8rem;">ZOOM CARTE : <span id="zoom-val" style="color:white; font-weight:bold;">14</span></label>
+            <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
+        </div>
+    </div>
+
+    <div id="dash-bottom">
+        <div class="widget rec-btn" id="btn-rec" onclick="APP.toggleRec()">
+            <div class="label">GPX</div>
+            <div class="data">🔴 REC</div>
+        </div>
+        <div class="widget"><div class="label">Alt</div><div id="alt-val" class="data">---</div></div>
+        <div class="widget"><div class="label">Cap</div><div id="cap-val" class="data">--</div></div>
+        <div class="widget"><div class="label">Azimut</div><div id="azi-val" class="data">0°</div></div>
+        <div class="widget weather-btn" style="border:none;" onclick="APP.openWeather()">
+            <div class="label">Météo ↗</div>
+            <div id="weather-val" class="data">--°C</div>
+            <div id="weather-loc" class="sub-data">...</div>
         </div>
     </div>
 
     <script>
-        const CORE = {
-            map: null, mini: null, lastPos: null, isRec: false, startT: null, totalD: 0,
-            gyroOffset: 0, rawGyro: 0, routeLayer: null, userMarker: null, fuelLayer: L.layerGroup(),
+        const APP = {
+            map: null, userMarker: null, fuelLayer: null, navLine: null,
+            isNight: false, sortMode: 'price', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
+            stationsData: [], lastLat: 43.76, lastLng: 1.99,
+            routeSteps: [], currentStepIdx: 0,
+            isRecording: false, trackData: [], currentSpeed: 0, currentLean: 0,
 
-            init() {
-                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 2.1], 17);
-                this.tiles = L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.map);
-                this.fuelLayer.addTo(this.map);
+            init: function() {
+                this.map = L.map('map', { 
+                    zoomControl: false, attributionControl: false, 
+                    dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
+                }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM); 
                 
-                const arrowIcon = L.divIcon({ className: 'u-pos', html: '<div id="user-arrow"></div>', iconSize: [40, 40], iconAnchor: [20, 20] });
-                this.userMarker = L.marker([43.6, 2.1], {icon: arrowIcon, zIndexOffset: 1000}).addTo(this.map);
-
-                this.mini = L.map('mini-map', { zoomControl: false, attributionControl: false, dragging: false }).setView([43.6, 2.1], 14);
-                L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.mini);
-                this.trace = L.polyline([], {color: CONFIG.KTM_ORANGE, weight:3}).addTo(this.mini);
-
-                this.bind();
-                this.getWeather();
+                L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
+                this.fuelLayer = L.layerGroup().addTo(this.map);
+                this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
+                
+                this.drawCompass();
+                this.startSensors();
+                this.updateSnitch('> SYS: ONLINE | AERO HUD');
             },
 
-            recenter() { if(this.lastPos) this.map.setView(this.lastPos, 17); },
-            toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); },
-            switchTheme() { this.tiles.setUrl(this.tiles._url === CONFIG.MAP_NIGHT ? CONFIG.MAP_DAY : CONFIG.MAP_NIGHT); },
-            calibrateGyro() { this.gyroOffset = this.rawGyro; this.toggleDrawer(); },
-
-            bind() {
-                navigator.geolocation.watchPosition(p => {
-                    const { latitude, longitude, speed, heading } = p.coords;
-                    this.lastPos = [latitude, longitude];
-                    
-                    document.getElementById('speed-val').innerText = Math.round((speed || 0) * 3.6);
-                    this.userMarker.setLatLng(this.lastPos);
-                    this.map.panTo(this.lastPos, {animate: false});
-                    
-                    if (heading !== null) {
-                        const arrow = document.getElementById('user-arrow');
-                        if(arrow) arrow.style.transform = `rotate(${heading}deg)`;
-                    }
-
-                    if(this.isRec && this.pathPrev) {
-                        this.totalD += this.map.distance(this.pathPrev, this.lastPos);
-                        document.getElementById('dist').innerText = (this.totalD/1000).toFixed(1) + " km";
-                        this.trace.addLatLng(this.lastPos);
-                        this.mini.setView(this.lastPos, 14);
-                    }
-                    this.pathPrev = this.lastPos;
-                }, null, { enableHighAccuracy: true });
-
-                window.addEventListener('deviceorientation', e => {
-                    this.rawGyro = CONFIG.HAUT_TELEPHONE_A_DROITE ? (e.beta || 0) : (e.gamma || 0);
-                    let val = Math.round(this.rawGyro - this.gyroOffset);
-                    document.getElementById('angle-val').innerText = Math.abs(val) + "°";
-                    document.getElementById('needle').style.transform = `rotate(${Math.max(-45, Math.min(45, val))}deg)`;
-                });
-
-                setInterval(() => {
-                    if(this.isRec && this.startT) {
-                        let d = new Date(Date.now() - this.startT);
-                        document.getElementById('chrono').innerText = `${String(d.getUTCMinutes()).padStart(2,'0')}:${String(d.getUTCSeconds()).padStart(2,'0')}.${Math.floor(d.getUTCMilliseconds()/100)}`;
-                    }
-                }, 100);
+            updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
+            
+            updateZoom: function(val) {
+                if(this.map) { this.map.setZoom(val); this.updateSnitch('> SYS.MAP : ZOOM ' + val); }
             },
 
-            async searchAddress() {
-                const q = document.getElementById('addr-in').value;
-                if(q.length < 3) return;
+            openWeather: function() {
+                // Lien direct vers les prévisions locales Meteoblue basées sur les coordonnées GPS
+                const url = `https://www.meteoblue.com/fr/meteo/semaine/index?lat=${this.lastLat}&lon=${this.lastLng}`;
+                window.open(url, '_blank');
+            },
+
+            drawCompass: function() {
+                const g = document.getElementById('ticks-layer');
+                const pts = { 0:'N', 90:'E', 180:'S', 270:'W' };
+                for(let i=0; i<360; i+=10) {
+                    let a = (i * Math.PI) / 180;
+                    let x1 = 100 + 92 * Math.sin(a), y1 = 100 - 92 * Math.cos(a);
+                    let x2 = 100 + 84 * Math.sin(a), y2 = 100 - 84 * Math.cos(a);
+                    let l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+                    l.setAttribute("class", "tick-line"); g.appendChild(l);
+                    if (pts[i] || i % 30 === 0) {
+                        let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        t.setAttribute("x", 100 + 74 * Math.sin(a)); t.setAttribute("y", 100 - 74 * Math.cos(a));
+                        t.setAttribute("class", "azimut-text");
+                        t.setAttribute("fill", i % 90 === 0 ? CONFIG.KTM_ORANGE : "white");
+                        t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "middle");
+                        t.textContent = pts[i] || (i/10); g.appendChild(t);
+                    }
+                }
+            },
+
+            getWeatherEmoji: function(code) {
+                if(code === 0) return '☀️'; if(code > 0 && code <= 3) return '⛅';
+                if(code >= 45 && code <= 48) return '🌫️'; if(code >= 51 && code <= 67) return '🌧️';
+                if(code >= 71 && code <= 77) return '❄️'; if(code >= 95) return '⛈️'; return '🌡️';
+            },
+
+            fetchWeatherAndStation: async function(lat, lng) {
+                const now = Date.now();
+                if(now - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return; 
+                this.lastWeatherUpdate = now;
                 try {
-                    const res = await fetch(CONFIG.SEARCH_API + encodeURIComponent(q));
-                    const data = await res.json();
-                    if(data[0]) this.startNav(data[0].lat, data[0].lon, data[0].display_name.split(',')[0]);
-                } catch(e) { alert("Erreur recherche."); }
+                    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
+                    const weatherData = await weatherRes.json();
+                    const locRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const locData = await locRes.json();
+
+                    const temp = Math.round(weatherData.current_weather.temperature);
+                    const icon = this.getWeatherEmoji(weatherData.current_weather.weathercode);
+                    const stationName = locData.address.city || locData.address.town || locData.address.village || "LOCALE";
+
+                    document.getElementById('weather-val').innerText = `${temp}°C ${icon}`;
+                    document.getElementById('weather-loc').innerText = `${stationName}`;
+                } catch(e) {}
             },
 
-            async startNav(lat, lng, name) {
-                if(!this.lastPos) return;
-                const url = `${CONFIG.ROUTING_API}${this.lastPos[1]},${this.lastPos[0]};${lng},${lat}?overview=full&geometries=geojson`;
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                if(this.routeLayer) this.map.removeLayer(this.routeLayer);
-                this.routeLayer = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.KTM_ORANGE, weight: 8, opacity: 0.8 } }).addTo(this.map);
-                
-                document.getElementById('nav-dist').innerText = (data.routes[0].distance/1000).toFixed(1) + " KM";
-                document.getElementById('nav-dest').innerText = name;
-                document.getElementById('nav-banner').style.display = 'block';
-                document.getElementById('drawer').classList.remove('open');
-            },
+            startSensors: function() {
+                if(navigator.geolocation) {
+                    navigator.geolocation.watchPosition(u => {
+                        this.lastLat = u.coords.latitude; this.lastLng = u.coords.longitude;
+                        const p = [this.lastLat, this.lastLng]; 
+                        this.userMarker.setLatLng(p);
+                        if(!this.navLine) this.map.setView(p, this.map.getZoom()); 
+                        this.fetchWeatherAndStation(p[0], p[1]);
+                        
+                        this.currentSpeed = u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0;
+                        document.getElementById('speed-val').innerText = this.currentSpeed.toString().padStart(3, '0');
+                        document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
+                        if(u.coords.heading) document.getElementById('azi-val').innerText = Math.round(u.coords.heading) + '°';
 
-            stopNav() {
-                if(this.routeLayer) this.map.removeLayer(this.routeLayer);
-                document.getElementById('nav-banner').style.display = 'none';
-            },
-
-            async findFuel() {
-                if(!this.lastPos) { alert("Attente GPS..."); return; }
-                const list = document.getElementById('fuel-list');
-                const fuel = document.getElementById('fuel-type').value;
-                list.innerHTML = "Scanner en cours (Rayon 100km)...";
-                this.fuelLayer.clearLayers();
-
-                try {
-                    // Rayon forcé à 100km et limite à 100 stations pour être le moins restrictif possible
-                    const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${this.lastPos[1]} ${this.lastPos[0]})', 100km)&limit=100`);
-                    const data = await res.json();
-                    list.innerHTML = "";
-                    let count = 0;
-
-                    data.results.forEach(s => {
-                        const p = JSON.parse(s.prix || "[]").find(x => x['@nom'] === fuel);
-                        if(p) {
-                            count++;
-                            const d = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
-                            const item = document.createElement('div');
-                            item.style = "background:#222; padding:10px; border-radius:4px; margin-bottom:5px; border-left:3px solid var(--accent); display:flex; justify-content:space-between; align-items:center;";
-                            item.innerHTML = `
-                                <div><b>${(s.ville || s.adresse).toUpperCase()}</b> (${d} km)<br><span style="color:var(--accent); font-size:1.1rem; font-weight:bold;">${p['@valeur']}€</span></div>
-                                <button onclick="CORE.startNav(${s.geom.lat}, ${s.geom.lon}, '${s.ville}')" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:3px; font-weight:bold; cursor:pointer;">GO</button>
-                            `;
-                            list.appendChild(item);
-                            L.circleMarker([s.geom.lat, s.geom.lon], {color:CONFIG.KTM_ORANGE, radius:6}).addTo(this.fuelLayer);
+                        // GPX Record
+                        if(this.isRecording) {
+                            this.trackData.push({ lat: p[0], lng: p[1], alt: u.coords.altitude || 0, speed: this.currentSpeed, lean: this.currentLean, time: Date.now() });
                         }
-                    });
-                    if(count === 0) list.innerHTML = "Aucune station trouvée.";
-                } catch(e) { list.innerHTML = "Erreur serveur carburant."; }
+
+                        // Turn-by-Turn Logic simple
+                        if(this.routeSteps.length > 0 && this.currentStepIdx < this.routeSteps.length) {
+                            const step = this.routeSteps[this.currentStepIdx];
+                            const distToStep = this.map.distance(p, [step.maneuver.location[1], step.maneuver.location[0]]);
+                            if(distToStep < 30) { this.currentStepIdx++; } // Prochaine étape si on est proche
+                            else {
+                                document.getElementById('tbt-hud').style.display = 'flex';
+                                let icon = '⬆️';
+                                if(step.maneuver.modifier && step.maneuver.modifier.includes('right')) icon = '↱';
+                                else if(step.maneuver.modifier && step.maneuver.modifier.includes('left')) icon = '↰';
+                                document.getElementById('tbt-icon').innerText = icon;
+                                document.getElementById('tbt-dist').innerText = Math.round(distToStep) + 'm';
+                            }
+                        } else { document.getElementById('tbt-hud').style.display = 'none'; }
+
+                    }, null, { enableHighAccuracy: true });
+                }
+                
+                window.addEventListener('deviceorientation', e => {
+                    let screenAngle = window.orientation || 0;
+                    let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
+                    if (screenAngle === -90) raw = -raw;
+                    this.lastRaw = raw;
+                    let lean = Math.round(raw - this.offset);
+                    this.currentLean = Math.abs(lean);
+                    
+                    document.getElementById('angle-val').innerText = this.currentLean;
+                    document.getElementById('horizon-line').style.transform = `rotate(${lean}deg)`;
+                    
+                    let col = this.currentLean > 42 ? CONFIG.DANGER_RED : (this.currentLean > 25 ? CONFIG.KTM_ORANGE : CONFIG.SAFE_WHITE);
+                    document.documentElement.style.setProperty('--dynamic-hud', col);
+                    document.querySelectorAll('.tick-line').forEach(l => l.style.stroke = col);
+                });
             },
 
-            async getWeather() {
-                if(!this.lastPos) { setTimeout(() => this.getWeather(), 3000); return; }
-                const res = await fetch(`${CONFIG.WEATHER_API}?latitude=${this.lastPos[0]}&longitude=${this.lastPos[1]}&current_weather=true`);
-                const data = await res.json();
-                const w = data.current_weather;
-                document.getElementById('w-temp').innerText = Math.round(w.temperature) + "°C";
-                document.getElementById('w-wind').innerText = Math.round(w.windspeed) + "km/h";
-                document.getElementById('w-icon').innerText = w.weathercode < 3 ? "☀️" : (w.weathercode < 50 ? "☁️" : "🌧️");
+            toggleRec: function() {
+                this.isRecording = !this.isRecording;
+                const btn = document.getElementById('btn-rec');
+                if(this.isRecording) {
+                    this.trackData = [];
+                    btn.classList.add('active');
+                    this.updateSnitch('> SYS.GPX : ACQUISITION...');
+                } else {
+                    btn.classList.remove('active');
+                    this.exportGPX();
+                }
             },
 
-            toggleRec() {
-                this.isRec = !this.isRec;
-                if(this.isRec) { this.startT = Date.now(); this.totalD = 0; this.trace.setLatLngs([]); }
-                document.getElementById('btn-rec').innerText = this.isRec ? "STOP" : "REC";
-                document.getElementById('btn-rec').style.background = this.isRec ? "red" : CONFIG.KTM_ORANGE;
-            }
+            exportGPX: function() {
+                if(this.trackData.length === 0) { this.updateSnitch('> SYS.GPX : TRACE VIDE'); return; }
+                let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><name>Corse_RoadTrip</name><trkseg>\n`;
+                this.trackData.forEach(pt => {
+                    gpx += `<trkpt lat="${pt.lat}" lon="${pt.lng}"><ele>${pt.alt}</ele><time>${new Date(pt.time).toISOString()}</time><extensions><speed>${pt.speed}</speed><lean>${pt.lean}</lean></extensions></trkpt>\n`;
+                });
+                gpx += `</trkseg></trk></gpx>`;
+                const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `KTM_Trace_${Date.now()}.gpx`; a.click();
+                this.updateSnitch('> SYS.GPX : FICHIER TÉLÉCHARGÉ');
+            },
+
+            startNav: async function(lat, lng) {
+                const start = this.userMarker.getLatLng();
+                const url = `${CONFIG.ROUTING_API}${start.lng},${start.lat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
+                this.updateSnitch('> GPS: CALCUL ROUTE...');
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    if (data.routes && data.routes.length > 0) {
+                        if(this.navLine) this.map.removeLayer(this.navLine);
+                        this.navLine = L.geoJSON(data.routes[0].geometry, {
+                            style: { color: CONFIG.NAV_BLUE, weight: 6, opacity: 0.8, dashArray: '1, 10' }
+                        }).addTo(this.map);
+                        this.map.fitBounds(this.navLine.getBounds(), {padding: [50, 50]});
+                        document.getElementById('mission-drawer').classList.remove('open');
+                        
+                        // Setup Turn-by-Turn
+                        this.routeSteps = data.routes[0].legs[0].steps;
+                        this.currentStepIdx = 0;
+                        
+                        this.updateSnitch('> GPS: GUIDAGE ACTIF');
+                    }
+                } catch(e) { console.error(e); this.updateSnitch('> GPS: ERR ROUTAGE'); }
+            },
+
+            clearNav: function() {
+                if(this.navLine) { this.map.removeLayer(this.navLine); this.navLine = null; }
+                this.routeSteps = [];
+                document.getElementById('tbt-hud').style.display = 'none';
+                this.recenterMap();
+                this.updateSnitch('> GPS: ROUTE EFFACÉE');
+            },
+
+            searchCity: async function() {
+                const city = document.getElementById('city-in').value;
+                if(!city) return;
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`);
+                    const data = await res.json();
+                    if(data && data.length > 0) this.startNav(data[0].lat, data[0].lon);
+                    else { alert("Lieu introuvable."); this.updateSnitch('> SYS: ERR LIEU'); }
+                } catch(e) { console.error(e); }
+            },
+
+            scanFuel: async function() {
+                const center = this.map.getCenter();
+                const type = document.getElementById('fuel-type').value;
+                this.updateSnitch('> RADAR: SCAN LARGE EN COURS...');
+                
+                // DEBRIDAGE COMPLET : Recherche très large sans limite restrictive pour forcer les remontées (100km max limit 200)
+                const api = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', 100000m)&limit=200`;
+                
+                try {
+                    const res = await fetch(api); const data = await res.json();
+                    this.fuelLayer.clearLayers(); document.getElementById('station-list').innerHTML = "";
+                    this.stationsData = data.results.map(st => {
+                        const price = st[type] || null;
+                        const d = (this.map.distance([center.lat, center.lng], [st.geom.lat, st.geom.lon]) / 1000);
+                        return { ...st, price, distance: d };
+                    }).filter(s => s.price !== null && s.price > 0); // On filtre proprement en JS
+                    
+                    this.renderStations();
+                    this.updateSnitch('> RADAR: ' + this.stationsData.length + ' STATIONS');
+                } catch(e) { console.error(e); this.updateSnitch('> SYS: ERR RADAR'); }
+            },
+
+            renderStations: function() {
+                this.fuelLayer.clearLayers(); 
+                const list = document.getElementById('station-list');
+                list.innerHTML = "";
+                this.stationsData.sort((a,b) => this.sortMode === 'price' ? a.price - b.price : a.distance - b.distance);
+                
+                this.stationsData.forEach(st => {
+                    const card = document.createElement('div'); card.className = "station-card";
+                    card.innerHTML = `
+                    <button class="sort-btn active" style="float:right; padding:6px 12px; border-radius:3px;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
+                    <div style="font-size:0.7rem; color:#ccc; text-transform:uppercase; font-weight:bold;">${st.ville || "INCONNU"}</div>
+                    <div style="font-size:0.7rem; color:#888;">${(st.nom || st.adresse).substring(0,30)}</div>
+                    <div style="font-size:1.6rem; font-weight:900; color:white; margin-top:5px;">
+                        ${st.price.toFixed(2)}€ <span style="color:var(--ktm); font-size:1rem;">| ${st.distance.toFixed(1)} KM</span>
+                    </div>`;
+                    list.appendChild(card);
+
+                    L.marker([st.geom.lat, st.geom.lon], {
+                        icon: L.divIcon({ className: '', html: `<div style="background:var(--ktm); color:black; padding:2px 5px; border-radius:3px; font-weight:900; border:1px solid white; font-size:0.8rem; box-shadow:0 0 5px black;">${st.price.toFixed(2)}</div>` })
+                    }).addTo(this.fuelLayer);
+                });
+            },
+
+            setSort: function(m) { 
+                this.sortMode = m; 
+                document.getElementById('sort-price').className = m=='price'?'sort-btn active':'sort-btn'; 
+                document.getElementById('sort-dist').className = m=='dist'?'sort-btn active':'sort-btn'; 
+                if(this.stationsData.length > 0) this.renderStations();
+            },
+
+            toggleTheme: function() {
+                this.isNight = !this.isNight;
+                this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); });
+                L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map);
+                document.getElementById('map').style.filter = this.isNight ? "brightness(0.5) contrast(1.2)" : "brightness(0.9) contrast(1.1)";
+            },
+            toggleDrawer: function() { document.getElementById('mission-drawer').classList.toggle('open'); },
+            showPane: function(id, btn) {
+                document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById(id).classList.add('active'); btn.classList.add('active');
+            },
+            recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); document.getElementById('mission-drawer').classList.remove('open'); },
+            resetGyro: function() { this.offset = this.lastRaw; this.updateSnitch('> SYS: GYRO CALIBRÉ'); }
         };
-        window.onload = () => CORE.init();
+
+        window.onload = () => APP.init();
     </script>
 </body>
 </html>
