@@ -3,227 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept - KTM HUD V71</title>
+    <title>KTM HUD V81 - STABLE FINAL</title>
     
     <script>
-        /* --- PANNEAU DE CONTRÔLE (MODIFIABLE) --- */
+        /* --- PANNEAU DE CONTRÔLE (BRICE CARDONA - ENERGY CONCEPT) --- */
         const CONFIG = {
-            VERSION: "V71-2026",
-            PILOTE: "Brice CARDONA",
-            COULEUR_KTM: "#FF6600",
-            COULEUR_ALERTE: "#FF0000",
-            COULEUR_OK: "#00FF41",
-            LISSAGE_INCLINAISON: 0.15, // Plus bas = plus fluide, plus haut = plus réactif
-            Z_MAP: 16,
-            STYLE_CARTE: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-            REFRESH_RATE: 100 //ms
+            KTM_ORANGE: '#FF6600',
+            SAFE_GREEN: '#2ecc71',
+            DANGER_RED: '#ff4757',
+            OPACITY_PANELS: 0.6,     // Transparence des widgets (0 à 1)
+            MAP_BRIGHTNESS: 0.8,     // Visibilité du fond de carte
+            SCAN_RADIUS: 25000,      // Rayon de recherche (mètres)
+            USER_NAME: "Brice CARDONA"
         };
     </script>
 
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Barlow+Condensed:wght@900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 
     <style>
-        /* --- VISUEL (DESIGN ÉTANCHE) --- */
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
+        /* BASE & TRANSPARENCE */
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: #fff; overflow: hidden; font-family: 'Orbitron', sans-serif; }
         
-        #landscape-lock { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        @media (orientation: portrait) { #landscape-lock { display: flex; } }
+        /* LA CARTE (L'OCÉAN) */
+        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.8); }
 
-        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: grayscale(1) brightness(0.5); }
-
-        #hud-container {
-            position: absolute; inset: 0; z-index: 100; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
+        /* LE CADRE "LUNETTE DE PLONGÉE" (FIXE) */
+        #cockpit-overlay {
+            position: absolute; inset: 0; z-index: 100;
+            border: 20px solid rgba(0,0,0,0.4);
+            box-shadow: inset 0 0 100px #000;
+            pointer-events: none;
         }
 
-        /* COCKPIT RING */
-        #cockpit-ring {
-            width: 85vh; height: 85vh;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            position: relative;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-        }
-
-        #horizon-line {
-            position: absolute; top: 50%; width: 140%; left: -20%; height: 2px;
-            background: linear-gradient(90deg, transparent, #FFF, transparent);
-            box-shadow: 0 0 15px #FFF;
-            transition: transform 0.05s linear;
-        }
-
-        #speed-display {
+        /* WIDGET CENTRAL (VITESSE - STYLE KTM MY RIDE) */
+        #speed-gauge {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; z-index: 130;
+            text-align: center; z-index: 150;
         }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 11rem; font-weight: 900; line-height: 0.8; letter-spacing: -6px; }
-        .unit { font-size: 1.5rem; color: var(--ktm); font-weight: 900; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 10rem; font-weight: 900; line-height: 0.8; text-shadow: 0 0 20px #000; }
+        #speed-unit { font-size: 1.2rem; color: #FF6600; letter-spacing: 5px; }
 
-        /* DASHBOARD CLINIQUE */
-        #dashboard {
-            position: absolute; bottom: 0; width: 100%; height: 100px;
-            background: linear-gradient(to top, rgba(0,0,0,1), transparent);
-            display: grid; grid-template-columns: repeat(4, 1fr);
-            z-index: 200; border-top: 1px solid rgba(255,102,0,0.3);
+        /* WIDGETS LATÉRAUX (FIXES) */
+        .widget {
+            position: absolute; bottom: 40px; padding: 15px;
+            background: rgba(0,0,0,0.6); border: 1px solid #333;
+            z-index: 200; pointer-events: auto;
         }
-        .widget { text-align: center; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,0.05); }
-        .label { font-size: 0.7rem; color: #FF6600; letter-spacing: 2px; font-weight: 900; }
-        .value { font-family: 'Barlow Condensed'; font-size: 2.8rem; font-weight: 900; }
+        #left-widget { left: 40px; border-left: 5px solid #FF6600; }
+        #right-widget { right: 40px; border-right: 5px solid #FF6600; text-align: right; }
 
-        /* ALERT PANEL */
-        #alert-panel {
-            position: absolute; top: 20px; left: 20px; z-index: 300;
-            background: rgba(0,0,0,0.7); padding: 10px; border-left: 4px solid #FF6600;
-            font-size: 0.8rem; max-width: 250px;
+        .label { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .val { font-family: 'Barlow Condensed'; font-size: 4rem; font-weight: 900; line-height: 1; }
+
+        /* BARRE DE SCAN (DISCRÈTE - HAUT) */
+        #top-radar {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 300; display: flex; gap: 10px; background: rgba(0,0,0,0.8);
+            padding: 10px; border-radius: 4px; border: 1px solid #333;
         }
-        .alert-item { color: #FF6600; margin-bottom: 5px; display: none; }
+        .btn-action { background: #FF6600; color: #000; border: none; padding: 10px 20px; font-weight: 900; cursor: pointer; border-radius: 2px; }
 
-        #btn-recenter {
-            position: absolute; top: 20px; right: 20px;
-            width: 50px; height: 50px; background: rgba(255,102,0,0.8);
-            border: none; border-radius: 5px; color: #000; font-size: 1.5rem;
-            cursor: pointer; z-index: 300; pointer-events: auto;
+        /* LISTE RADAR (SCROLLABLE) */
+        #radar-results {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            width: 300px; max-height: 40%; background: rgba(0,0,0,0.9);
+            border: 1px solid #333; display: none; overflow-y: auto; z-index: 400;
         }
+        .station-card { padding: 10px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
 
-        :root { --ktm: #FF6600; }
+        /* LIGNE D'HORIZON (AVIONIQUE) */
+        #horizon { position: absolute; top: 50%; left: 50%; width: 40%; height: 1px; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); z-index: 50; }
     </style>
 </head>
 <body>
 
-    <div id="landscape-lock">
-        <h1 style="color:var(--ktm); font-size:3rem;">PAYSAGE REQUIS</h1>
-        <p>VERROUILLEZ LA ROTATION DU SMARTPHONE</p>
-    </div>
-
     <div id="map"></div>
+    <div id="cockpit-overlay"></div>
+    <div id="horizon"></div>
 
-    <div id="alert-panel">
-        <div style="font-weight: 900; margin-bottom: 8px; border-bottom: 1px solid #333;">SYSTÈME : OK</div>
-        <div id="alert-gps" class="alert-item">⚠️ SIGNAL GPS FAIBLE</div>
-        <div id="alert-sensor" class="alert-item">⚠️ CAPTEUR INCLINAISON BLOQUÉ</div>
+    <div id="top-radar">
+        <select id="fuel-choice" style="background:#000; color:#FF6600; border:none; font-weight:900;">
+            <option value="gazole_prix">GAZOLE</option>
+            <option value="sp95_prix">SP95</option>
+        </select>
+        <button class="btn-action" onclick="runRadar()">⛽ SCAN</button>
+        <button class="btn-action" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
     </div>
 
-    <button id="btn-recenter" onclick="recenter()">⊕</button>
+    <div id="radar-results"></div>
 
-    <div id="hud-container">
-        <div id="cockpit-ring">
-            <div id="horizon-line"></div>
-            <div id="speed-display">
-                <div id="speed-val">00</div>
-                <div class="unit">KM/H</div>
-            </div>
-        </div>
+    <div id="speed-gauge">
+        <div id="speed-val">000</div>
+        <div id="speed-unit">KM/H</div>
     </div>
 
-    <div id="dashboard">
-        <div class="widget"><div class="label">ALTITUDE</div><div id="alt" class="value">--</div></div>
-        <div class="widget"><div class="label">TRIP KM</div><div id="dist" class="value">0.0</div></div>
-        <div class="widget"><div class="label">CAP</div><div id="cap" class="value">---</div></div>
-        <div class="widget"><div class="label">ANGLE</div><div id="lean-val" class="value">0°</div></div>
+    <div id="left-widget" class="widget">
+        <div class="label">Altitude (M)</div>
+        <div id="alt-val" class="val">---</div>
+    </div>
+
+    <div id="right-widget" class="widget">
+        <div id="lean-val" class="val" style="color:#2ecc71;">0°</div>
+        <div class="label">Lean Angle</div>
     </div>
 
     <script>
-        /* --- LOGIQUE (CALCULS & GESTION) --- */
-        let map, userMarker, lastCoord = null, totalDist = 0, currentLean = 0;
+        let map, fuelLayer, offset = 0, lastRaw = 0, smoothedLean = 0;
 
         function init() {
-            // Initialisation Carte
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], CONFIG.Z_MAP);
-            L.tileLayer(CONFIG.STYLE_CARTE).addTo(map);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+            fuelLayer = L.layerGroup().addTo(map);
             
-            userMarker = L.circleMarker([0,0], { 
-                radius: 10, color: '#fff', fillColor: CONFIG.COULEUR_KTM, fillOpacity: 1, weight: 4 
-            }).addTo(map);
-
-            // Capteurs
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', updateInclinometer, true);
-            } else {
-                showError('sensor');
-            }
-
-            startGPS();
+            startSensors();
         }
 
-        function updateInclinometer(e) {
-            let tilt = 0;
-            const orientation = window.orientation || 0;
+        function startSensors() {
+            // GPS : Vitesse et Altitude
+            navigator.geolocation.watchPosition(u => {
+                const s = u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0;
+                document.getElementById('speed-val').innerText = s.toString().padStart(3, '0');
+                if (u.coords.altitude) document.getElementById('alt-val').innerText = Math.round(u.coords.altitude);
+                map.panTo([u.coords.latitude, u.coords.longitude]);
+            }, null, { enableHighAccuracy: true });
 
-            if (orientation === 90) tilt = e.beta;
-            else if (orientation === -90) tilt = -e.beta;
-            else tilt = e.gamma;
+            // GYRO : Inclinaison
+            window.addEventListener('deviceorientation', (e) => {
+                let screenAngle = window.orientation || 0;
+                let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
+                if (screenAngle === -90) raw = -raw;
+                lastRaw = raw;
+                smoothedLean = (smoothedLean * 0.8) + ((raw - offset) * 0.2);
+                let angle = Math.abs(Math.round(smoothedLean));
 
-            // Lissage (Interpolation linéaire)
-            currentLean = (currentLean * (1 - CONFIG.LISSAGE_INCLINAISON)) + (tilt * CONFIG.LISSAGE_INCLINAISON);
+                const lTxt = document.getElementById('lean-val');
+                lTxt.innerText = angle + "°";
+                document.getElementById('horizon').style.transform = `translate(-50%, -50%) rotate(${smoothedLean}deg)`;
+                
+                if (angle < 20) lTxt.style.color = CONFIG.SAFE_GREEN;
+                else if (angle < 42) lTxt.style.color = CONFIG.KTM_ORANGE;
+                else lTxt.style.color = CONFIG.DANGER_RED;
+            });
+        }
+
+        async function runRadar() {
+            const center = map.getCenter();
+            const fuel = document.getElementById('fuel-choice').value;
+            const resDiv = document.getElementById('radar-results');
+            const api = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=10`;
             
-            const horizon = document.getElementById('horizon-line');
-            const leanTxt = document.getElementById('lean-val');
-            const absLean = Math.abs(Math.round(currentLean));
-
-            horizon.style.transform = `rotate(${currentLean}deg)`;
-            leanTxt.innerText = absLean + "°";
-
-            // Dynamique visuelle selon l'angle
-            if (absLean > 35) {
-                horizon.style.background = CONFIG.COULEUR_ALERTE;
-                leanTxt.style.color = CONFIG.COULEUR_ALERTE;
-            } else {
-                horizon.style.background = "linear-gradient(90deg, transparent, #FFF, transparent)";
-                leanTxt.style.color = "#FFF";
-            }
+            try {
+                const r = await fetch(api);
+                const d = await r.json();
+                resDiv.innerHTML = "";
+                resDiv.style.display = "block";
+                
+                d.results.forEach(st => {
+                    const price = st[fuel];
+                    if (!price) return;
+                    const card = document.createElement('div');
+                    card.className = "station-card";
+                    card.innerHTML = `<span>${price.toFixed(2)}€</span><button class="btn-action" style="padding:5px 10px;" onclick="go('${st.geom.lat}','${st.geom.lon}')">GO</button>`;
+                    resDiv.appendChild(card);
+                });
+            } catch(e) { alert("Erreur Radar"); }
         }
 
-        function startGPS() {
-            if (!navigator.geolocation) {
-                showError('gps');
-                return;
-            }
-
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    hideError('gps');
-                    const { latitude, longitude, speed, altitude, heading } = pos.coords;
-                    const coords = [latitude, longitude];
-
-                    // Update UI
-                    userMarker.setLatLng(coords);
-                    map.panTo(coords);
-                    
-                    document.getElementById('speed-val').innerText = speed ? Math.round(speed * 3.6).toString().padStart(2, '0') : "00";
-                    document.getElementById('alt').innerText = altitude ? Math.round(altitude) + "m" : "--";
-                    document.getElementById('cap').innerText = heading ? Math.round(heading).toString().padStart(3, '0') + "°" : "---";
-
-                    // Calcul Distance
-                    if (lastCoord) {
-                        const d = map.distance(lastCoord, coords);
-                        if (d > 2) { // Ignorer le drift GPS < 2m
-                            totalDist += d / 1000;
-                            document.getElementById('dist').innerText = totalDist.toFixed(1);
-                        }
-                    }
-                    lastCoord = coords;
-                },
-                () => showError('gps'),
-                { enableHighAccuracy: true }
-            );
+        function go(lat, lon) {
+            // Lien stable vers application externe
+            window.location.href = `geo:${lat},${lon}?q=${lat},${lon}`;
         }
 
-        function showError(type) {
-            const el = document.getElementById(`alert-${type}`);
-            if (el) el.style.display = 'block';
-        }
-
-        function hideError(type) {
-            const el = document.getElementById(`alert-${type}`);
-            if (el) el.style.display = 'none';
-        }
-
-        function recenter() {
-            if (lastCoord) map.flyTo(lastCoord, CONFIG.Z_MAP);
-        }
-
+        function calibrate() { offset = lastRaw; }
         window.onload = init;
     </script>
 </body>
