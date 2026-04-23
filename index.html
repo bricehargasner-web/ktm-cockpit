@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - GPS COCKPIT V6</title>
+    <title>ENERGY CONCEPT - GPS COCKPIT V7</title>
     
     <script>
         /* ============================================================
-           PANNEAU DE CONTRÔLE
+           PANNEAU DE CONTRÔLE (MODIFIABLE)
            ============================================================ */
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            SITE_WEB: 'https://www.energy-concept.fr', // URL de ton site
+            SITE_WEB: 'https://www.energy-concept.fr',
             HAUT_TELEPHONE_A_DROITE: true, 
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             WEATHER_API: 'https://api.open-meteo.com/v1/forecast',
-            ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/'
+            ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
+            SEARCH_API: 'https://nominatim.openstreetmap.org/search?format=json&countrycodes=fr&limit=5&q='
         };
     </script>
 
@@ -24,72 +25,73 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        :root { --accent: #FF6600; --panel-bg: rgba(15, 15, 20, 0.98); }
+        :root { --accent: #FF6600; --panel-bg: rgba(15, 15, 20, 0.98); --border: rgba(255,255,255,0.1); }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
 
-        /* LOGO & BOUTONS */
-        #logo-header { position: fixed; top: 15px; left: 15px; z-index: 1000; height: 40px; cursor: pointer; pointer-events: auto; display: flex; align-items: center; background: var(--panel-bg); padding: 5px 15px; border-radius: 4px; border: 1px solid var(--accent); font-weight: 900; color: var(--accent); text-transform: uppercase; }
-        #btn-recenter { position: fixed; top: 15px; right: 15px; z-index: 1000; background: var(--panel-bg); border: 1px solid var(--accent); color: white; padding: 12px; border-radius: 4px; cursor: pointer; pointer-events: auto; }
-        #menu-trigger { position: fixed; top: 75px; left: 15px; z-index: 1000; background: var(--panel-bg); border: 1px solid white; color: white; padding: 10px; border-radius: 4px; cursor: pointer; pointer-events: auto; }
+        /* HEADER & LOGO */
+        #header { position: fixed; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; pointer-events: none; }
+        .head-btn { background: var(--panel-bg); border: 1px solid var(--accent); color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; pointer-events: auto; font-weight: bold; text-transform: uppercase; }
 
-        /* NAVIGATION & CARTE */
+        /* CARTE & NAV */
         #viewport { position: absolute; inset: 0; z-index: 1; perspective: 1000px; }
         #map-rotate { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; transform: rotateX(45deg); }
         #map { width: 100%; height: 100%; }
 
-        .user-arrow-container { display: flex; justify-content: center; align-items: center; }
-        #user-arrow { width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 28px solid var(--accent); filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.9)); transition: transform 0.2s linear; }
-
+        #user-arrow { width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 28px solid var(--accent); filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.9)); }
         #nav-banner { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: var(--panel-bg); border: 2px solid var(--accent); border-radius: 8px; padding: 10px; z-index: 1100; display: none; width: 60%; text-align: center; pointer-events: auto; }
 
-        /* HUD PAVÉS */
-        #hud-container { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 98%; height: 140px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; z-index: 100; pointer-events: none; }
-        .pane { background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        /* HUD 4 PAVÉS */
+        #hud-container { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 98%; height: 145px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; z-index: 100; pointer-events: none; }
+        .pane { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
         .pane-label { position: absolute; top: 5px; left: 8px; font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; z-index: 10; }
 
-        /* WEATHER MINI-UI (Pavé 4) */
-        #weather-box { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); font-size: 0.7rem; padding: 3px 0; display: flex; justify-content: space-around; align-items: center; z-index: 20; border-top: 1px solid #333; }
+        /* PAVÉ 4 : MINI-MAP + BOUTON RECENTER */
+        #recenter-overlay { position: absolute; top: 5px; right: 5px; background: var(--accent); color: black; padding: 5px; border-radius: 3px; font-size: 1rem; cursor: pointer; pointer-events: auto; z-index: 30; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        #weather-bar { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; padding: 4px 0; display: flex; justify-content: space-around; z-index: 20; border-top: 1px solid #333; }
 
-        /* MENU DRAWER */
-        #drawer { position: fixed; top: 0; left: -320px; width: 320px; height: 100%; background: #111; z-index: 2000; transition: 0.3s; padding: 20px; border-right: 2px solid var(--accent); pointer-events: auto; overflow-y: auto; box-sizing: border-box; }
+        /* MENU */
+        #drawer { position: fixed; top: 0; left: -350px; width: 340px; height: 100%; background: #111; z-index: 2000; transition: 0.3s; padding: 20px; border-right: 2px solid var(--accent); pointer-events: auto; overflow-y: auto; box-sizing: border-box; }
         #drawer.open { left: 0; }
         input, select { background: #000; border: 1px solid #333; color: white; padding: 12px; width: 100%; border-radius: 4px; margin-bottom: 10px; box-sizing: border-box; }
-        .btn-go { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-
+        .btn-go { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 5px; }
+        
         #speed-val { font-size: 3.5rem; font-weight: 900; line-height: 1; }
         #needle { position: absolute; bottom: 0; left: 50%; width: 4px; height: 40px; background: var(--accent); transform-origin: bottom center; }
     </style>
 </head>
 <body>
 
-    <div id="logo-header" onclick="window.open(CONFIG.SITE_WEB, '_blank')">ENERGY CONCEPT</div>
-    <div id="btn-recenter" onclick="CORE.recenter()">🎯</div>
-    <div id="menu-trigger" onclick="CORE.toggleDrawer()">☰</div>
+    <div id="header">
+        <div class="head-btn" style="color:var(--accent)" onclick="window.open(CONFIG.SITE_WEB, '_blank')">Energy Concept</div>
+        <div class="head-btn" onclick="CORE.toggleDrawer()">☰ Menu</div>
+    </div>
 
     <div id="nav-banner">
         <div id="nav-dist" style="font-size: 1.5rem; font-weight: 900;">0.0 KM</div>
         <div id="nav-dest" style="font-size: 0.7rem; color: #888;">Dest</div>
-        <button onclick="CORE.stopNav()" style="background:red; color:white; border:none; padding:4px 10px; border-radius:3px; font-weight:bold; margin-top:5px;">STOP</button>
+        <button onclick="CORE.stopNav()" style="background:red; color:white; border:none; padding:4px 12px; border-radius:3px; font-weight:bold; margin-top:5px; cursor:pointer;">STOP NAV</button>
     </div>
 
     <div id="drawer">
-        <h3 style="color:var(--accent)">REGLAGES</h3>
-        <button class="btn-go" style="background:#444; margin-bottom:10px;" onclick="CORE.calibrateGyro()">📐 CALIBRER ANGLE</button>
-        <button class="btn-go" style="background:#222; margin-bottom:20px;" onclick="CORE.switchTheme()">BASCULER JOUR/NUIT</button>
+        <h3 style="color:var(--accent)">COCKPIT REGLAGES</h3>
+        <button class="btn-go" style="background:#444" onclick="CORE.calibrateGyro()">📐 CALIBRER ANGLE (ZÉRO)</button>
+        <button class="btn-go" style="background:#222; margin-bottom:20px;" onclick="CORE.switchTheme()">JOUR / NUIT</button>
 
-        <label style="font-size:0.7rem;">📍 NAVIGATION (VILLE / ADRESSE)</label>
+        <label style="font-size:0.7rem;">📍 DESTINATION (VILLE / RUE)</label>
         <input type="text" id="addr-in" placeholder="Ex: Le Sequestre Albi..." onkeydown="if(event.key === 'Enter') CORE.searchAddress()">
-        <button class="btn-go" onclick="CORE.searchAddress()">GUIDER VERS</button>
+        <button class="btn-go" onclick="CORE.searchAddress()">RECHERCHER & GUIDER</button>
 
-        <label style="font-size:0.7rem; margin-top:20px; display:block;">⛽ RECHERCHE STATIONS</label>
+        <label style="font-size:0.7rem; margin-top:20px; display:block;">⛽ RADAR CARBURANT (100km / 100 stations)</label>
         <select id="fuel-type">
             <option value="Gazole">Gazole</option>
             <option value="SP95">SP95</option>
-            <option value="E10">E10</option>
+            <option value="E10">E10 / SP95-E10</option>
+            <option value="SP98">SP98</option>
         </select>
-        <button class="btn-go" onclick="CORE.findFuel()">SCANNER ZONE</button>
+        <button class="btn-go" onclick="CORE.findFuel()">SCANNER LES PRIX</button>
         <div id="fuel-list" style="margin-top:10px;"></div>
-        <button class="btn-go" style="background:#333; margin-top:30px;" onclick="CORE.toggleDrawer()">FERMER</button>
+        
+        <button class="btn-go" style="background:#333; margin-top:30px;" onclick="CORE.toggleDrawer()">FERMER LE MENU</button>
     </div>
 
     <div id="viewport"><div id="map-rotate"><div id="map"></div></div></div>
@@ -99,7 +101,7 @@
             <div class="pane-label">Tracking</div>
             <div id="chrono" style="font-size: 1.5rem; font-family: monospace;">00:00.0</div>
             <div id="dist" style="color:var(--accent); font-weight:bold;">0.0 km</div>
-            <button onclick="CORE.toggleRec()" id="btn-rec" style="background:var(--accent); border:none; color:white; padding:3px 8px; border-radius:3px; pointer-events:auto;">REC</button>
+            <button onclick="CORE.toggleRec()" id="btn-rec" style="background:var(--accent); border:none; color:white; padding:4px 10px; border-radius:3px; pointer-events:auto; font-weight:bold; cursor:pointer; margin-top:5px;">REC</button>
         </div>
         <div class="pane">
             <div class="pane-label">Angle</div>
@@ -111,11 +113,12 @@
         <div class="pane">
             <div class="pane-label">Velocity</div>
             <div id="speed-val">0</div>
-            <div style="font-size:0.7rem; color:#666;">KM/H</div>
+            <div style="font-size:0.7rem; color:#666; font-weight:bold;">KM/H</div>
         </div>
         <div class="pane" style="padding:0;">
+            <div id="recenter-overlay" onclick="CORE.recenter()">🎯 CENTER</div>
             <div id="mini-map" style="width:100%; height:100%;"></div>
-            <div id="weather-box">
+            <div id="weather-bar">
                 <span id="w-temp">--°C</span>
                 <span id="w-icon">☀️</span>
                 <span id="w-wind">--km/h</span>
@@ -126,14 +129,15 @@
     <script>
         const CORE = {
             map: null, mini: null, lastPos: null, isRec: false, startT: null, totalD: 0,
-            gyroOffset: 0, rawGyro: 0, routeLayer: null, userMarker: null,
+            gyroOffset: 0, rawGyro: 0, routeLayer: null, userMarker: null, fuelLayer: L.layerGroup(),
 
             init() {
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 2.1], 17);
                 this.tiles = L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.map);
+                this.fuelLayer.addTo(this.map);
                 
                 const arrowIcon = L.divIcon({ className: 'u-pos', html: '<div id="user-arrow"></div>', iconSize: [40, 40], iconAnchor: [20, 20] });
-                this.userMarker = L.marker([43.6, 2.1], {icon: arrowIcon}).addTo(this.map);
+                this.userMarker = L.marker([43.6, 2.1], {icon: arrowIcon, zIndexOffset: 1000}).addTo(this.map);
 
                 this.mini = L.map('mini-map', { zoomControl: false, attributionControl: false, dragging: false }).setView([43.6, 2.1], 14);
                 L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.mini);
@@ -189,9 +193,11 @@
             async searchAddress() {
                 const q = document.getElementById('addr-in').value;
                 if(q.length < 3) return;
-                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
-                const data = await r.json();
-                if(data[0]) this.startNav(data[0].lat, data[0].lon, data[0].display_name.split(',')[0]);
+                try {
+                    const res = await fetch(CONFIG.SEARCH_API + encodeURIComponent(q));
+                    const data = await res.json();
+                    if(data[0]) this.startNav(data[0].lat, data[0].lon, data[0].display_name.split(',')[0]);
+                } catch(e) { alert("Erreur recherche."); }
             },
 
             async startNav(lat, lng, name) {
@@ -201,7 +207,7 @@
                 const data = await res.json();
                 
                 if(this.routeLayer) this.map.removeLayer(this.routeLayer);
-                this.routeLayer = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.KTM_ORANGE, weight: 7 } }).addTo(this.map);
+                this.routeLayer = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.KTM_ORANGE, weight: 8, opacity: 0.8 } }).addTo(this.map);
                 
                 document.getElementById('nav-dist').innerText = (data.routes[0].distance/1000).toFixed(1) + " KM";
                 document.getElementById('nav-dest').innerText = name;
@@ -212,6 +218,39 @@
             stopNav() {
                 if(this.routeLayer) this.map.removeLayer(this.routeLayer);
                 document.getElementById('nav-banner').style.display = 'none';
+            },
+
+            async findFuel() {
+                if(!this.lastPos) { alert("Attente GPS..."); return; }
+                const list = document.getElementById('fuel-list');
+                const fuel = document.getElementById('fuel-type').value;
+                list.innerHTML = "Scanner en cours (Rayon 100km)...";
+                this.fuelLayer.clearLayers();
+
+                try {
+                    // Rayon forcé à 100km et limite à 100 stations pour être le moins restrictif possible
+                    const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${this.lastPos[1]} ${this.lastPos[0]})', 100km)&limit=100`);
+                    const data = await res.json();
+                    list.innerHTML = "";
+                    let count = 0;
+
+                    data.results.forEach(s => {
+                        const p = JSON.parse(s.prix || "[]").find(x => x['@nom'] === fuel);
+                        if(p) {
+                            count++;
+                            const d = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
+                            const item = document.createElement('div');
+                            item.style = "background:#222; padding:10px; border-radius:4px; margin-bottom:5px; border-left:3px solid var(--accent); display:flex; justify-content:space-between; align-items:center;";
+                            item.innerHTML = `
+                                <div><b>${(s.ville || s.adresse).toUpperCase()}</b> (${d} km)<br><span style="color:var(--accent); font-size:1.1rem; font-weight:bold;">${p['@valeur']}€</span></div>
+                                <button onclick="CORE.startNav(${s.geom.lat}, ${s.geom.lon}, '${s.ville}')" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:3px; font-weight:bold; cursor:pointer;">GO</button>
+                            `;
+                            list.appendChild(item);
+                            L.circleMarker([s.geom.lat, s.geom.lon], {color:CONFIG.KTM_ORANGE, radius:6}).addTo(this.fuelLayer);
+                        }
+                    });
+                    if(count === 0) list.innerHTML = "Aucune station trouvée.";
+                } catch(e) { list.innerHTML = "Erreur serveur carburant."; }
             },
 
             async getWeather() {
