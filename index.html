@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V77 - GHOST MASK</title>
+    <title>KTM HUD V78 - MASTER MASK</title>
     
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (BRICE CARDONA) --- */
@@ -11,110 +11,107 @@
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            TEXT_COLOR: '#FFFFFF'
+            REFRESH_RATE: 30 // Images par seconde du HUD
         };
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Barlow+Condensed:wght@900&display=swap" rel="stylesheet">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #111; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
         
-        /* CANVAS CACHÉ (C'est lui qui génère l'image du masque) */
-        #hudCanvas { display: none; background: #000; }
-
         /* INTERFACE DE PRÉPARATION */
-        #setup-ui { text-align: center; z-index: 100; padding: 20px; }
-        .btn-ghost { background: #FF6600; color: #000; border: none; padding: 20px 40px; font-weight: 900; font-size: 1.5rem; border-radius: 10px; cursor: pointer; box-shadow: 0 10px 30px rgba(255,102,0,0.4); text-transform: uppercase; }
+        #ui-layer { text-align: center; z-index: 10; padding: 20px; width: 100%; }
+        .btn-launch { background: #FF6600; color: #000; border: none; padding: 25px; font-weight: 900; font-size: 1.4rem; border-radius: 12px; cursor: pointer; width: 80%; max-width: 400px; text-transform: uppercase; margin-bottom: 20px; }
+        .btn-nav { background: #34a853; color: #fff; border: none; padding: 15px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 80%; max-width: 400px; text-transform: uppercase; }
+
+        /* PRÉVISUALISATION DU MASQUE */
+        #pipVideo { width: 90%; max-width: 600px; border: 2px solid #333; border-radius: 10px; background: #111; margin: 20px 0; }
         
-        /* VIDÉO DE SORTIE (C'est elle qu'on va faire flotter) */
-        #pipVideo { width: 320px; height: 180px; border: 2px solid #333; margin-top: 20px; border-radius: 8px; }
+        /* MOTEUR GRAPHIQUE CACHÉ */
+        #hudCanvas { display: none; }
         
-        .status { margin-top: 20px; font-size: 0.8rem; color: #666; }
+        .alert { color: #FF6600; font-size: 0.8rem; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="setup-ui">
-        <h1 style="color:#FF6600; margin-bottom:10px;">GHOST MASK</h1>
-        <p style="font-size:0.9rem; color:#aaa; margin-bottom:30px;">Préparez votre visière avant de lancer OsmAnd</p>
+    <div id="ui-layer">
+        <h1 style="color:#FF6600; font-size: 2rem; margin-bottom: 5px;">KTM MASTER MASK</h1>
+        <p style="color:#666; margin-bottom: 20px;">Visière de plongée pour Google Maps</p>
+
+        <button class="btn-launch" onclick="startVisiere()">1. Activer la Visière</button>
         
-        <button class="btn-ghost" onclick="togglePiP()">🚀 ACTIVER LA VISIÈRE</button>
-        
-        <div class="status" id="stat">Capteurs prêts : Inclinaison & GPS</div>
-        
+        <button class="btn-nav" onclick="launchGoogleMaps()">2. Ouvrir Google Maps</button>
+
         <video id="pipVideo" autoplay playsinline muted></video>
-        
-        <div style="margin-top:20px;">
-            <button onclick="calibrate()" style="background:#222; color:#fff; border:1px solid #444; padding:10px;">RESET ZERO</button>
+
+        <div style="display: flex; justify-content: center; gap: 10px;">
+            <button onclick="calibrate()" style="background:#222; color:#fff; border:1px solid #444; padding:10px; border-radius:5px;">ZERO ANGLE</button>
         </div>
+        
+        <div class="alert" id="status">En attente des capteurs...</div>
     </div>
 
-    <canvas id="hudCanvas" width="640" height="360"></canvas>
+    <canvas id="hudCanvas" width="600" height="300"></canvas>
 
     <script>
         const canvas = document.getElementById('hudCanvas');
         const ctx = canvas.getContext('2d');
         const video = document.getElementById('pipVideo');
-        let speed = "000", lean = 0, alt = "---", offset = 0, lastRaw = 0;
+        let speed = "000", lean = 0, offset = 0, lastRaw = 0;
 
-        // 1. DÉMARRAGE DU FLUX GRAPHIQUE
-        function startHudEngine() {
-            const stream = canvas.captureStream(30); // 30 FPS
+        // --- LOGIQUE CLINIQUE : GÉNÉRATION DU COCKPIT ---
+        function runHudEngine() {
+            const stream = canvas.captureStream(CONFIG.REFRESH_RATE);
             video.srcObject = stream;
-            
+
             function draw() {
-                // Fond noir pur
+                // Fond Noir
                 ctx.fillStyle = "black";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // --- DESSIN DU COCKPIT (L'image que tu verras flotter) ---
-                
-                // Vitesse (Gros centre)
-                ctx.fillStyle = CONFIG.TEXT_COLOR;
-                ctx.font = "900 150px 'Barlow Condensed'";
+                // --- VITESSE (CENTRE) ---
                 ctx.textAlign = "center";
-                ctx.fillText(speed, canvas.width/2, canvas.height/2 + 30);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "900 160px 'Barlow Condensed'";
+                ctx.fillText(speed, canvas.width/2, canvas.height/2 + 40);
                 
                 ctx.fillStyle = CONFIG.KTM_ORANGE;
                 ctx.font = "900 30px 'Orbitron'";
-                ctx.fillText("KM/H", canvas.width/2, canvas.height/2 + 80);
+                ctx.fillText("KM/H", canvas.width/2, canvas.height/2 + 90);
 
-                // Angle (Côté droit)
-                let angleColor = CONFIG.SAFE_GREEN;
-                if (Math.abs(lean) > 20) angleColor = CONFIG.KTM_ORANGE;
-                if (Math.abs(lean) > 42) angleColor = CONFIG.DANGER_RED;
-                
-                ctx.fillStyle = angleColor;
+                // --- INCLINAISON (DROITE) ---
+                let color = CONFIG.SAFE_GREEN;
+                let absLean = Math.abs(lean);
+                if(absLean > 20) color = CONFIG.KTM_ORANGE;
+                if(absLean > 42) color = CONFIG.DANGER_RED;
+
+                ctx.fillStyle = color;
                 ctx.font = "900 80px 'Barlow Condensed'";
                 ctx.textAlign = "right";
-                ctx.fillText(Math.abs(lean) + "°", canvas.width - 40, canvas.height - 40);
+                ctx.fillText(absLean + "°", canvas.width - 30, canvas.height/2 + 30);
 
-                // Altitude (Côté gauche)
-                ctx.fillStyle = "#888888";
-                ctx.font = "900 40px 'Barlow Condensed'";
-                ctx.textAlign = "left";
-                ctx.fillText(alt + " M", 40, canvas.height - 40);
-
-                // Lignes de visée (Effet masque)
-                ctx.strokeStyle = "rgba(255,102,0,0.3)";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(20, 20); ctx.lineTo(100, 20); ctx.moveTo(20, 20); ctx.lineTo(20, 100);
-                ctx.moveTo(canvas.width-20, 20); ctx.lineTo(canvas.width-100, 20); ctx.moveTo(canvas.width-20, 20); ctx.lineTo(canvas.width-20, 100);
-                ctx.stroke();
+                // --- CADRE MASQUE (Visière) ---
+                ctx.strokeStyle = CONFIG.KTM_ORANGE;
+                ctx.lineWidth = 4;
+                ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
                 requestAnimationFrame(draw);
             }
             draw();
         }
 
-        // 2. CAPTEURS (GPS & GYRO)
+        // --- GESTION DES CAPTEURS (GPS & GYRO) ---
         function initSensors() {
-            navigator.geolocation.watchPosition(u => {
-                speed = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
-                alt = u.coords.altitude ? Math.round(u.coords.altitude) : "---";
-            }, null, { enableHighAccuracy: true });
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(u => {
+                    speed = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
+                    document.getElementById('status').innerText = "GPS Fixé - Prêt pour le Tarn";
+                }, () => {
+                    document.getElementById('status').innerText = "Erreur GPS : Activez la localisation";
+                }, { enableHighAccuracy: true });
+            }
 
             window.addEventListener('deviceorientation', (e) => {
                 let screenAngle = window.orientation || 0;
@@ -125,8 +122,8 @@
             });
         }
 
-        // 3. LA MAGIE : PASSER EN MODE FLOTTANT (PiP)
-        async function togglePiP() {
+        // --- LA MAGIE : MODE FLOTTANT (Picture-in-Picture) ---
+        async function startVisiere() {
             try {
                 if (document.pictureInPictureElement) {
                     await document.exitPictureInPicture();
@@ -134,14 +131,19 @@
                     await video.requestPictureInPicture();
                 }
             } catch (error) {
-                alert("Le mode Visière n'est pas supporté par votre navigateur ou nécessite une interaction.");
+                alert("Mode Visière non supporté sur ce navigateur ou cette version d'Android.");
             }
+        }
+
+        function launchGoogleMaps() {
+            // Ouvre l'application Google Maps directement
+            window.location.href = "google.navigation:q=Graulhet";
         }
 
         function calibrate() { offset = lastRaw; }
 
         window.onload = () => {
-            startHudEngine();
+            runHudEngine();
             initSensors();
         };
     </script>
