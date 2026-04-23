@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KTM COCKPIT V14.7 - FINAL</title>
+    <title>KTM COCKPIT V15.0 - FINAL</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,101 +12,105 @@
         :root { --ktm: #FF6600; --bg: rgba(10, 10, 15, 0.98); --brd: rgba(255,255,255,0.1); }
         body, html { margin: 0; padding: 0; height: 100dvh; width: 100%; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
 
-        /* SÉCURITÉ PORTRAIT */
         @media screen and (orientation: portrait) { #lock-screen { display: flex !important; } }
         #lock-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
 
-        /* MOTEUR CARTE */
         #viewport { position: absolute; inset: 0; z-index: 1; height: 100dvh; }
         #map-rotate { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; transform: rotateX(45deg); }
         #map { width: 100%; height: 100%; filter: contrast(1.1) brightness(0.85); }
 
-        /* HUD SLIM (OPERA FULLSCREEN COMPATIBLE) */
+        /* BLOC GUIDAGE HAUT (DYNAMIQUE) */
+        #nav-info { 
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%); 
+            background: var(--bg); border: 2px solid var(--ktm); border-radius: 12px; 
+            padding: 12px 25px; z-index: 1100; display: none; width: 70%; text-align: center; pointer-events: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* HUD SLIM BAS */
         #hud { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
-            height: 72px; display: grid; grid-template-columns: repeat(4, 1fr); 
+            height: 75px; display: grid; grid-template-columns: repeat(4, 1fr); 
             z-index: 1000; pointer-events: none; background: var(--bg);
-            border-top: 1px solid var(--brd);
-            padding-bottom: env(safe-area-inset-bottom);
+            border-top: 1px solid var(--brd); padding-bottom: env(safe-area-inset-bottom);
         }
         .pane { border-right: 1px solid var(--brd); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
-        .pane-label { position: absolute; top: 2px; left: 5px; font-size: 0.5rem; color: #666; font-weight: bold; text-transform: uppercase; }
+        .pane-label { position: absolute; top: 4px; left: 6px; font-size: 0.55rem; color: #888; font-weight: bold; text-transform: uppercase; }
 
-        /* MÉTÉO ANCRÉE SUR MINI-MAP */
-        #weather-line { position: absolute; bottom: 2px; width: 100%; font-size: 0.65rem; display: flex; justify-content: space-around; z-index: 2000; color: var(--ktm); font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px 0; }
+        #weather-line { position: absolute; bottom: 2px; width: 100%; font-size: 0.7rem; display: flex; justify-content: space-around; z-index: 2000; color: var(--ktm); font-weight: bold; background: rgba(0,0,0,0.6); padding: 3px 0; }
 
-        /* MENU DRAWER */
-        #menu-btn { position: fixed; top: 12px; left: 12px; z-index: 1500; background: var(--bg); border: 1px solid var(--ktm); color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; pointer-events: auto; font-size: 0.8rem; }
-        #drawer { position: fixed; top: 0; left: -320px; width: 300px; height: 100dvh; background: #111; z-index: 3000; transition: 0.3s; padding: 15px; border-right: 2px solid var(--ktm); overflow-y: auto; pointer-events: auto; box-sizing: border-box; }
+        #menu-btn { position: fixed; top: 15px; left: 15px; z-index: 1500; background: var(--bg); border: 1.5px solid var(--ktm); color: white; padding: 10px 15px; border-radius: 6px; cursor: pointer; pointer-events: auto; font-size: 0.85rem; font-weight: bold; }
+        #drawer { position: fixed; top: 0; left: -330px; width: 310px; height: 100dvh; background: #0a0a0f; z-index: 3000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; border-right: 3px solid var(--ktm); overflow-y: auto; box-sizing: border-box; pointer-events: auto; }
         #drawer.open { left: 0; }
         
-        .btn-act { background: var(--ktm); color: white; border: none; padding: 12px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; font-size: 0.8rem; }
-        input, select { background: #000; border: 1px solid #333; color: white; padding: 12px; width: 100%; border-radius: 4px; margin-bottom: 8px; font-size: 0.9rem; display: block; }
+        .btn-act { background: var(--ktm); color: white; border: none; padding: 14px; border-radius: 6px; width: 100%; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; font-size: 0.85rem; letter-spacing: 1px; }
+        input, select { background: #15151a; border: 1px solid #333; color: white; padding: 14px; width: 100%; border-radius: 6px; margin-bottom: 10px; font-size: 1rem; display: block; box-sizing: border-box; }
 
-        /* INDICATEURS */
-        #speed-val { font-size: 2.2rem; font-weight: 900; line-height: 1; }
-        #needle { position: absolute; bottom: 5px; left: 50%; width: 3px; height: 32px; background: var(--ktm); transform-origin: bottom center; }
-        #user-arrow { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 18px solid var(--ktm); }
-        #recenter { position: absolute; top: 3px; right: 3px; background: var(--ktm); color: #000; padding: 2px 5px; border-radius: 2px; font-size: 0.6rem; cursor: pointer; pointer-events: auto; font-weight: 900; }
+        #speed-val { font-size: 2.5rem; font-weight: 900; line-height: 1; color: #fff; }
+        #needle { position: absolute; bottom: 5px; left: 50%; width: 4px; height: 35px; background: var(--ktm); transform-origin: bottom center; border-radius: 2px; }
+        #user-arrow { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 22px solid var(--ktm); filter: drop-shadow(0 0 5px var(--ktm)); }
+        #recenter { position: absolute; top: 4px; right: 4px; background: var(--ktm); color: #000; padding: 3px 6px; border-radius: 3px; font-size: 0.7rem; cursor: pointer; pointer-events: auto; font-weight: 900; }
     </style>
 </head>
 <body>
 
-    <div id="lock-screen"><h1>🔄</h1><p>PIVOTER EN PAYSAGE</p></div>
-    <div id="menu-btn" onclick="APP.toggleMenu()">☰ MENU</div>
+    <div id="lock-screen"><h1>🔄</h1><p>BASCULER EN PAYSAGE</p></div>
+    <div id="menu-btn" onclick="APP.toggleMenu()">MENU</div>
+
+    <div id="nav-info">
+        <div id="n-dist" style="font-size: 1.8rem; font-weight: 900; color: #fff;">0.0 KM</div>
+        <div id="n-dest" style="font-size: 0.8rem; color: var(--ktm); text-transform: uppercase; font-weight: bold;">Destination</div>
+        <button onclick="APP.stopNav()" style="background:#444; color:white; border:none; padding:6px 15px; border-radius:4px; font-weight:bold; margin-top:8px; cursor:pointer; font-size:0.7rem;">ANNULER</button>
+    </div>
 
     <div id="drawer">
-        <h3 style="color:var(--ktm); margin:0 0 15px 0; border-bottom:1px solid #333; padding-bottom:10px;">CONFIG COCKPIT</h3>
+        <h2 style="color:var(--ktm); margin:0 0 20px 0; font-style: italic;">KTM COCKPIT</h2>
+        <button class="btn-act" onclick="APP.toggleStyle()">NIGHT / DAY</button>
+        <button class="btn-act" onclick="APP.calibrate()">SET ANGLE ZERO</button>
+        <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
         
-        <button class="btn-act" onclick="APP.toggleStyle()">JOUR / NUIT</button>
-        <button class="btn-act" onclick="APP.calibrate()">📐 ZERO ANGLE</button>
-        
-        <label style="font-size:0.7rem; color:#888;">📍 DESTINATION</label>
-        <input type="text" id="target" placeholder="Ex: Le Sequestre Albi...">
-        <button class="btn-act" onclick="APP.findTarget()">LANCER GUIDAGE</button>
+        <input type="text" id="target" placeholder="Ville ou adresse...">
+        <button class="btn-act" onclick="APP.findTarget()">LANCER NAVIGATION</button>
 
-        <label style="font-size:0.7rem; color:#888; margin-top:10px; display:block;">⛽ RECHERCHE STATIONS</label>
         <select id="gas-type">
-            <option value="SP98">Sans Plomb 98</option>
-            <option value="SP95">Sans Plomb 95</option>
-            <option value="E10">E10 (SP95-E10)</option>
-            <option value="Gazole">Gazole / Diesel</option>
+            <option value="SP98">SP 98</option>
+            <option value="SP95">SP 95</option>
+            <option value="E10">E10</option>
+            <option value="Gazole">GAZOLE</option>
         </select>
-        
-        <div style="margin: 10px 0;">
-            <label style="font-size:0.8rem;">Rayon : <span id="rad-val" style="color:var(--ktm)">10</span> km</label>
-            <input type="range" id="radius-slider" min="1" max="25" value="10" oninput="document.getElementById('rad-val').innerText = this.value" style="width:100%; accent-color:var(--ktm);">
+        <div style="margin: 15px 0;">
+            <label style="font-size:0.8rem; color:#888;">Rayon de recherche : <span id="rad-val" style="color:var(--ktm)">10</span> km</label>
+            <input type="range" id="radius-slider" min="1" max="25" value="10" oninput="document.getElementById('rad-val').innerText = this.value" style="width:100%; accent-color:var(--ktm); margin-top:10px;">
         </div>
+        <button class="btn-act" onclick="APP.scanGas()">RADAR CARBURANT</button>
         
-        <button class="btn-act" onclick="APP.scanGas()">SCANNER LA ZONE</button>
         <div id="gas-list" style="margin-top:10px;"></div>
-        
-        <button class="btn-act" style="background:#333; margin-top:25px;" onclick="APP.toggleMenu()">RETOUR CARTE</button>
+        <button class="btn-act" style="background:#222; margin-top:30px;" onclick="APP.toggleMenu()">RETOUR CARTE</button>
     </div>
 
     <div id="viewport"><div id="map-rotate"><div id="map"></div></div></div>
 
     <div id="hud">
         <div class="pane">
-            <div class="pane-label">GPX</div>
-            <div id="chrono" style="font-size: 1rem; font-family: monospace;">00:00.0</div>
-            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:2px 6px; border-radius:2px; font-weight:bold; font-size:0.6rem; margin-top:2px; cursor:pointer;">REC</button>
+            <div class="pane-label">Track</div>
+            <div id="chrono" style="font-size: 1.1rem; font-family: monospace; font-weight: bold;">00:00.0</div>
+            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:3px 8px; border-radius:3px; font-weight:bold; font-size:0.65rem; margin-top:4px; cursor:pointer;">REC</button>
         </div>
         <div class="pane">
-            <div class="pane-label">Angle</div>
-            <div style="width:60%; height:25px; border-bottom:1px solid #444; position:relative;"><div id="needle"></div></div>
-            <div id="angle-ui" style="font-size:1.1rem; font-weight:bold;">0°</div>
+            <div class="pane-label">Inclinaison</div>
+            <div style="width:70%; height:30px; border-bottom:2px solid #333; position:relative;"><div id="needle"></div></div>
+            <div id="angle-ui" style="font-size:1.2rem; font-weight:900;">0°</div>
         </div>
         <div class="pane">
             <div class="pane-label">Vitesse</div>
             <div id="speed-val">0</div>
-            <div style="font-size:0.5rem; color:#666;">KM/H</div>
+            <div style="font-size:0.6rem; color:#888; font-weight: bold;">KM/H</div>
         </div>
         <div class="pane" style="padding:0;">
             <div id="recenter" onclick="APP.recenter()">🎯</div>
             <div id="mini" style="width:100%; height:100%;"></div>
             <div id="weather-line">
-                <span id="w-t">--°C</span>
+                <span id="w-t">--°</span>
                 <span id="w-i">☀️</span>
                 <span id="w-w">--km/h</span>
             </div>
@@ -131,7 +135,11 @@
 
             toggleMenu() { document.getElementById('drawer').classList.toggle('open'); },
             recenter() { if(this.lastPos) this.map.setView(this.lastPos, 17, {animate: true}); },
-            toggleStyle() { this.tiles.setUrl(this.tiles._url === this.styles.night ? this.styles.day : this.styles.night); },
+            toggleStyle() { 
+                const newS = this.tiles._url === this.styles.night ? this.styles.day : this.styles.night;
+                this.tiles.setUrl(newS);
+                L.tileLayer(newS).addTo(this.mini);
+            },
             calibrate() { this.gOffset = this.rawG; this.toggleMenu(); },
 
             bind() {
@@ -143,6 +151,7 @@
                     this.userM.setLatLng(this.lastPos);
                     this.map.panTo(this.lastPos, {animate: false});
                     if (heading !== null) document.getElementById('user-arrow').style.transform = `rotate(${heading}deg)`;
+                    
                     if(this.isRec) {
                         if(v > this.maxV) this.maxV = v;
                         let a = Math.abs(Math.round(this.rawG - this.gOffset));
@@ -170,7 +179,7 @@
                         const c = d.features[0].geometry.coordinates;
                         this.startNav(c[1], c[0], d.features[0].properties.name);
                     }
-                } catch(e) { alert("Recherche indisponible."); }
+                } catch(e) {}
             },
 
             async startNav(lat, lng, name) {
@@ -179,18 +188,25 @@
                     const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${this.lastPos[1]},${this.lastPos[0]};${lng},${lat}?overview=full&geometries=geojson`);
                     const d = await r.json();
                     if(this.route) this.map.removeLayer(this.route);
-                    this.route = L.geoJSON(d.routes[0].geometry, { style: { color: '#FF6600', weight: 8, opacity: 0.8 } }).addTo(this.map);
+                    this.route = L.geoJSON(d.routes[0].geometry, { style: { color: '#FF6600', weight: 10, opacity: 0.8 } }).addTo(this.map);
+                    
+                    document.getElementById('n-dist').innerText = (d.routes[0].distance/1000).toFixed(1) + " KM";
+                    document.getElementById('n-dest').innerText = name;
+                    document.getElementById('nav-info').style.display = 'block';
+                    
                     this.recenter(); 
                     if(document.getElementById('drawer').classList.contains('open')) this.toggleMenu();
-                } catch(e) { console.error("Erreur Nav"); }
+                } catch(e) {}
             },
+
+            stopNav() { if(this.route) this.map.removeLayer(this.route); document.getElementById('nav-info').style.display = 'none'; },
 
             async scanGas() {
                 if(!this.lastPos) return;
                 const list = document.getElementById('gas-list');
                 const fuelType = document.getElementById('gas-type').value;
                 const rad = document.getElementById('radius-slider').value;
-                list.innerHTML = "<div style='color:var(--ktm)'>Recherche " + fuelType + "...</div>";
+                list.innerHTML = "<div style='color:var(--ktm); font-weight:bold;'>SCAN EN COURS...</div>";
                 try {
                     const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${this.lastPos[1]}%20${this.lastPos[0]})'%2C%20${rad}km)&limit=15`);
                     const d = await res.json();
@@ -201,29 +217,26 @@
                         if(pInfo) {
                             const dist = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
                             list.innerHTML += `
-                            <div style="background:#222; padding:8px; margin-top:5px; border-left:3px solid #FF6600; display:flex; justify-content:space-between; align-items:center;">
-                                <div style="font-size:0.75rem; line-height:1.2">
-                                    <b>${s.ville.toUpperCase()}</b><br>
-                                    Dist: ${dist} km | <span style="color:#FF6600; font-weight:bold;">${pInfo['@valeur']}€</span>
+                            <div style="background:#1a1a20; padding:12px; margin-top:8px; border-left:4px solid #FF6600; display:flex; justify-content:space-between; align-items:center; border-radius:4px;">
+                                <div style="font-size:0.8rem; line-height:1.4">
+                                    <span style="font-size:1rem; font-weight:900; color:#fff;">${s.ville.toUpperCase()}</span><br>
+                                    ${dist} km | <span style="color:#FF6600; font-weight:bold;">${pInfo['@valeur']}€</span>
                                 </div>
-                                <button onclick="APP.startNav(${s.geom.lat},${s.geom.lon},'${s.ville}')" style="background:#FF6600; border:none; padding:6px 12px; color:white; border-radius:3px; font-weight:bold; cursor:pointer; font-size:0.7rem;">GO</button>
+                                <button onclick="APP.startNav(${s.geom.lat},${s.geom.lon},'${s.ville}')" style="background:#FF6600; border:none; padding:10px 15px; color:white; border-radius:4px; font-weight:900; cursor:pointer; font-size:0.8rem;">GO</button>
                             </div>`;
                         }
                     });
-                    if(list.innerHTML === "") list.innerHTML = "<div style='font-size:0.7rem'>Aucune station trouvée.</div>";
-                } catch(e) { list.innerHTML = "<div style='color:red'>Erreur Radar.</div>"; }
+                } catch(e) { list.innerHTML = "Erreur Radar"; }
             },
 
             async getWeather() {
                 if(!this.lastPos) { setTimeout(() => this.getWeather(), 3000); return; }
-                try {
-                    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.lastPos[0]}&longitude=${this.lastPos[1]}&current_weather=true`);
-                    const d = await r.json();
-                    const w = d.current_weather;
-                    document.getElementById('w-t').innerText = Math.round(w.temperature) + "°C";
-                    document.getElementById('w-w').innerText = Math.round(w.windspeed) + "km/h";
-                    document.getElementById('w-i').innerText = w.weathercode < 3 ? "☀️" : "☁️";
-                } catch(e) {}
+                const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.lastPos[0]}&longitude=${this.lastPos[1]}&current_weather=true`);
+                const d = await r.json();
+                const w = d.current_weather;
+                document.getElementById('w-t').innerText = Math.round(w.temperature) + "°C";
+                document.getElementById('w-w').innerText = Math.round(w.windspeed) + "km/h";
+                document.getElementById('w-i').innerText = w.weathercode < 3 ? "☀️" : "☁️";
             },
 
             toggleRec() {
@@ -239,7 +252,7 @@
                 const ts = now.getHours() + "h" + now.getMinutes();
                 const fn = `KTM_${ts}_V${this.maxV}_A${this.maxA}.gpx`;
                 let g = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><trkseg>`;
-                this.track.forEach(p => g += `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time><extensions><speed>${p.spd}</speed><angle>${p.ang}</angle></extensions></trkpt>`);
+                this.track.forEach(p => g += `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.t}</time><extensions><speed>${p.spd}</speed><angle>${p.ang}</angle></extensions></trkpt>`);
                 g += `</trkseg></trk></gpx>`;
                 const b = new Blob([g], {type: 'application/gpx+xml'});
                 const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fn; a.click();
