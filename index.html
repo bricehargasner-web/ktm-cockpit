@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V111 HARDLOCK</title>
+    <title>ENERGY CONCEPT - KTM V113 CLEAN</title>
     
     <script>
         const CONFIG = {
@@ -62,14 +62,16 @@
         .sub-label { font-size: 1rem; font-weight: 800; letter-spacing: 3px; text-shadow: 2px 2px 5px black; }
         #angle-widget { left: 6vw; text-align: left; }
         #speed-widget { right: 6vw; text-align: right; }
-        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 3px 10px; font-size: 0.7rem; border-radius: 2px; margin-top: 5px; pointer-events: auto; }
+        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 3px 10px; font-size: 0.7rem; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900;}
 
         /* MOUCHARD TOP-LEFT */
         #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; text-transform: uppercase; text-shadow: 1px 1px 2px black; }
 
-        /* UI TRIGGER */
-        #ui-trigger { position: fixed; top: 15px; right: 15px; z-index: 2100; cursor: pointer; pointer-events: auto; }
-        .bar { width: 30px; height: 4px; background: var(--ktm); border-radius: 2px; margin-bottom: 5px; box-shadow: 0 0 5px black; }
+        /* UI TRIGGER & LOCK */
+        .side-btn { position: fixed; right: 15px; z-index: 2100; cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); border-radius: 4px; }
+        #ui-trigger { top: 15px; width: 45px; height: 40px; flex-direction: column; gap: 4px; }
+        .bar { width: 25px; height: 3px; background: var(--ktm); border-radius: 2px; }
+        #map-lock-btn { top: 65px; width: 45px; height: 40px; font-size: 1.2rem; color: white; }
 
         /* TIROIR MISSION */
         #mission-drawer { 
@@ -84,9 +86,20 @@
         .pane { display: none; padding: 20px; height: calc(100% - 160px); overflow-y: auto; padding-bottom: 100px; }
         .pane.active { display: block; }
 
-        /* CARDS */
-        .station-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--ktm); }
+        /* BOUTONS ET FORMULAIRES */
         .go-btn { background: var(--ktm); color: black; border: none; padding: 8px 15px; font-weight: 900; border-radius: 3px; cursor: pointer; font-family: inherit; width: 100%; margin-bottom: 10px; }
+        .sort-btn { flex: 1; background: #111; color: #888; margin: 0; border: none; padding: 8px 15px; font-weight: 900; border-radius: 3px; cursor: pointer; font-family: inherit; transition: 0.2s; }
+        .sort-btn.active { background: var(--ktm); color: black; }
+        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 10px; font-family: inherit; box-sizing: border-box; }
+
+        /* CARTES STATIONS (NOUVELLE ÉTANCHÉITÉ CSS) */
+        .station-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--ktm); position: relative; }
+        .st-go { float: right; width: auto; padding: 6px 12px; margin: 0; }
+        .st-city { font-weight: 900; font-size: 0.8rem; color: #ccc; text-transform: uppercase; }
+        .st-addr { font-size: 0.7rem; color: #888; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+        .st-price { font-size: 1.4rem; font-weight: 900; color: white; margin-top: 5px; }
+        .st-dist { color: var(--ktm); font-size: 0.9rem; }
+        .map-marker-ktm { background: var(--ktm); color: black; padding: 2px 5px; border-radius: 3px; font-weight: 900; font-size: 0.7rem; border: 1px solid white; box-shadow: 0 0 5px black; text-align: center; }
 
         /* DASHBOARD BAS */
         #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 60px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: repeat(4, 1fr) 1.2fr; z-index: 800; }
@@ -94,8 +107,6 @@
         .label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
         .data { font-size: 1.1rem; font-weight: 800; white-space: nowrap; }
         .sub-data { font-size: 0.55rem; color: var(--ktm); text-transform: uppercase; }
-
-        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 10px; font-family: inherit; }
     </style>
 </head>
 <body>
@@ -111,9 +122,10 @@
 
         <div id="tech-snitch">> SYS: STANDBY</div>
 
-        <div id="ui-trigger" onclick="APP.toggleDrawer()">
+        <div id="ui-trigger" class="side-btn" onclick="APP.toggleDrawer()">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div>
         </div>
+        <div id="map-lock-btn" class="side-btn" onclick="APP.toggleMapLock()">🔒</div>
 
         <div id="central-hud">
             <div id="horizon-line"></div>
@@ -144,13 +156,13 @@
             <div id="p-radar" class="pane active">
                 <h3 style="color:var(--ktm); margin-top:0;">RADAR FUEL</h3>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <button id="sort-price" class="go-btn" style="flex:1; background:#111; color:#888;" onclick="APP.setSort('price')">PRIX</button>
-                    <button id="sort-dist" class="go-btn" style="flex:1; background:var(--ktm); color:black;" onclick="APP.setSort('dist')">KM</button>
+                    <button id="sort-price" class="sort-btn active" onclick="APP.setSort('price')">PRIX</button>
+                    <button id="sort-dist" class="sort-btn" onclick="APP.setSort('dist')">KM</button>
                 </div>
                 <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
                 
-                <label style="color:#888; font-size:0.8rem;">DISTANCE SCAN : <span id="rad-val" style="color:white;">30</span> KM</label>
-                <input type="range" id="rad-input" min="5" max="50" value="30" oninput="document.getElementById('rad-val').innerText=this.value">
+                <label style="color:#888; font-size:0.8rem;">DISTANCE SCAN : <span id="rad-val" style="color:white;">15</span> KM</label>
+                <input type="range" id="rad-input" min="5" max="50" value="15" oninput="document.getElementById('rad-val').innerText=this.value">
                 
                 <button class="go-btn" onclick="APP.scanFuel()">LANCER LE SCAN</button>
                 <div id="station-list"></div>
@@ -163,7 +175,7 @@
             </div>
             <div id="p-settings" class="pane">
                 <h3 style="color:var(--ktm); margin-top:0;">RÉGLAGES</h3>
-                <button class="go-btn" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
+                <button class="go-btn" style="margin-bottom:20px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
                 <label style="color:#888;">ZOOM CARTE : <span id="zoom-val">14</span></label>
                 <input type="range" min="8" max="18" value="14" oninput="APP.updateZoom(this.value)">
             </div>
@@ -188,30 +200,54 @@
     <script>
         const APP = {
             map: null, userMarker: null, fuelLayer: null, navLine: null,
-            isNight: false, sortMode: 'dist', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
+            isNight: false, sortMode: 'price', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
             stationsData: [], lastLat: 43.76, lastLng: 1.99,
-            isRecording: false, trackData: [],
+            isRecording: false, trackData: [], mapLocked: true,
 
             init: function() {
-                this.map = L.map('map', { zoomControl: false, attributionControl: false, dragging: false, touchZoom: false }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM); 
+                this.map = L.map('map', { 
+                    zoomControl: false, attributionControl: false, 
+                    dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false 
+                }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM); 
+                
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
                 
                 this.drawCompass();
                 this.startSensors();
-                this.updateSnitch('> SYS: ONLINE | TRANCHE DROITE = AVANT');
+                this.updateSnitch('> SYS: ONLINE | ARCHITECTURE CLEAN');
             },
 
             updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
             updateZoom: function(v) { this.map.setZoom(v); document.getElementById('zoom-val').innerText = v; },
             toggleDrawer: function() { document.getElementById('mission-drawer').classList.toggle('open'); },
+            
+            toggleMapLock: function() {
+                this.mapLocked = !this.mapLocked;
+                const btn = document.getElementById('map-lock-btn');
+                if(this.mapLocked) {
+                    this.map.dragging.disable(); this.map.touchZoom.disable(); this.map.doubleClickZoom.disable(); this.map.scrollWheelZoom.disable();
+                    btn.innerText = '🔒';
+                    this.recenterMap();
+                    this.updateSnitch('> MAP: VERROUILLÉE');
+                } else {
+                    this.map.dragging.enable(); this.map.touchZoom.enable(); this.map.doubleClickZoom.enable(); this.map.scrollWheelZoom.enable();
+                    btn.innerText = '🔓';
+                    this.updateSnitch('> MAP: LIBRE');
+                }
+            },
+
             showPane: function(id, btn) {
                 document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById(id).classList.add('active'); btn.classList.add('active');
             },
-            recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); this.toggleDrawer(); },
+            recenterMap: function() { 
+                this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); 
+                document.getElementById('mission-drawer').classList.remove('open');
+                if(!this.mapLocked) this.toggleMapLock(); 
+            },
             
             resetGyro: function() { 
                 this.offset = this.lastRaw; 
@@ -250,12 +286,11 @@
                         this.lastLat = u.coords.latitude; this.lastLng = u.coords.longitude;
                         const p = [this.lastLat, this.lastLng]; 
                         this.userMarker.setLatLng(p);
-                        if(!this.navLine) this.map.setView(p, this.map.getZoom());
+                        
+                        if(!this.navLine && this.mapLocked) this.map.setView(p, this.map.getZoom());
                         
                         document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
-                        
-                        // GPS Heading = Direction of physical movement (Corrected by satellites, not phone body)
                         if(u.coords.heading) document.getElementById('azi-val').innerText = Math.round(u.coords.heading) + '°';
 
                         this.fetchWeather(p[0], p[1]);
@@ -263,11 +298,7 @@
                     }, null, { enableHighAccuracy: true });
                 }
 
-                // GYROSCOPE (Verrouillé Tranche Droite = Avant)
                 window.addEventListener('deviceorientation', e => {
-                    // Si le bord droit pointe vers l'avant, le haut du téléphone pointe vers la gauche.
-                    // L'inclinaison gauche/droite de la moto correspond donc à l'axe 'beta' (avant/arrière du téléphone).
-                    // On utilise e.beta pur pour l'angle d'inclinaison de la moto.
                     this.lastRaw = e.beta; 
                     let lean = Math.round(this.lastRaw - this.offset);
                     let absLean = Math.abs(lean);
@@ -300,8 +331,7 @@
                 const type = document.getElementById('fuel-type').value;
                 this.updateSnitch('> SCANNING RADAR...');
                 
-                // REQUÊTE SÉCURISÉE : on demande uniquement les stations qui ONT le carburant pour ne pas gâcher la limite de 100
-                const query = `within_distance(geom, geom'POINT(${this.lastLng} ${this.lastLat})', ${radius}m) AND ${type} > 0`;
+                const query = `within_distance(geom, geom'POINT(${this.lastLng} ${this.lastLat})', ${radius}m)`;
                 const api = `${CONFIG.FUEL_API}?where=${encodeURIComponent(query)}&limit=100`;
                 
                 try {
@@ -310,7 +340,7 @@
                         const price = st[type] || null;
                         const d = (this.map.distance([this.lastLat, this.lastLng], [st.geom.lat, st.geom.lon]) / 1000);
                         return { ...st, price, distance: d };
-                    }).filter(s => s.price !== null);
+                    }).filter(s => s.price !== null && s.price > 0);
                     
                     this.renderStations();
                     this.updateSnitch(`> TROUVÉ ${this.stationsData.length} STATIONS`);
@@ -324,13 +354,18 @@
                 this.stationsData.sort((a,b) => this.sortMode === 'price' ? a.price - b.price : a.distance - b.distance);
                 
                 this.stationsData.forEach(st => {
-                    const card = document.createElement('div'); card.className = "station-card";
-                    card.innerHTML = `<button class="go-btn" style="float:right; width:auto; padding:6px 12px; margin:0;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
-                        <div style="font-weight:900; font-size:0.8rem; color:#ccc;">${st.ville || "VILLE"}</div>
-                        <div style="font-size:0.7rem; color:#888;">${(st.nom || st.adresse).substring(0,25)}</div>
-                        <div style="font-size:1.4rem; font-weight:900;">${st.price.toFixed(2)}€ <span style="color:var(--ktm); font-size:0.9rem;">| ${st.distance.toFixed(1)}KM</span></div>`;
+                    const card = document.createElement('div'); 
+                    card.className = "station-card";
+                    card.innerHTML = `
+                        <button class="go-btn st-go" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
+                        <div class="st-city">${st.ville || "VILLE"}</div>
+                        <div class="st-addr">${(st.nom || st.adresse)}</div>
+                        <div class="st-price">${st.price.toFixed(2)}€ <span class="st-dist">| ${st.distance.toFixed(1)}KM</span></div>`;
                     list.appendChild(card);
-                    L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ className:'', html:`<div style="background:var(--ktm); color:black; padding:2px 5px; border-radius:3px; font-weight:900; font-size:0.7rem; border:1px solid white;">${st.price.toFixed(2)}</div>`}) }).addTo(this.fuelLayer);
+                    
+                    L.marker([st.geom.lat, st.geom.lon], { 
+                        icon: L.divIcon({ className:'', html:`<div class="map-marker-ktm">${st.price.toFixed(2)}</div>`}) 
+                    }).addTo(this.fuelLayer);
                 });
             },
 
@@ -373,11 +408,9 @@
             
             setSort: function(m) { 
                 this.sortMode = m; 
-                document.getElementById('sort-price').style.background = m=='price'?'var(--ktm)':'#111';
-                document.getElementById('sort-price').style.color = m=='price'?'black':'#888';
-                document.getElementById('sort-dist').style.background = m=='dist'?'var(--ktm)':'#111';
-                document.getElementById('sort-dist').style.color = m=='dist'?'black':'#888';
-                this.renderStations(); 
+                document.getElementById('sort-price').classList.toggle('active', m === 'price');
+                document.getElementById('sort-dist').classList.toggle('active', m === 'dist');
+                if(this.stationsData.length > 0) this.renderStations();
             },
             
             toggleTheme: function() { this.isNight = !this.isNight; this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); }); L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map); }
