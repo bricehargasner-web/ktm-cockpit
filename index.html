@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - KTM V102</title>
+    <title>ENERGY CONCEPT - KTM V103</title>
     
     <script>
         const CONFIG = {
@@ -265,21 +265,24 @@
                 const typeLabel = type.replace('_prix', '').toUpperCase();
                 this.updateSnitch('> SCAN.RADAR [ACTIF] : ' + typeLabel);
                 const radius = document.getElementById('rad-val').innerText * 1000;
-                const api = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radius}m)&limit=20`;
+                
+                // REQUÊTE API OPTIMISÉE (Filtre directement les stations valides et prend les 100 premières)
+                const query = `within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radius}m) AND ${type} > 0`;
+                const api = `${CONFIG.FUEL_API}?where=${encodeURIComponent(query)}&limit=100`;
                 
                 try {
                     const res = await fetch(api); const data = await res.json();
                     this.fuelLayer.clearLayers(); document.getElementById('station-list').innerHTML = "";
+                    
                     let stations = data.results.map(st => {
                         const price = st[type] || 9.99;
                         const d = (this.map.distance([center.lat, center.lng], [st.geom.lat, st.geom.lon]) / 1000);
                         return { ...st, price, distance: d };
-                    }).filter(s => s.price < 4);
+                    });
                     
                     stations.sort((a,b) => this.sortMode === 'price' ? a.price - b.price : a.distance - b.distance);
                     
                     stations.forEach(st => {
-                        // 1. Ajouter à la liste du tiroir
                         const card = document.createElement('div'); card.className = "station-card";
                         card.innerHTML = `
                         <button class="sort-btn active" style="float:right; padding:8px; border-radius:3px;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
@@ -290,7 +293,6 @@
                         </div>`;
                         document.getElementById('station-list').appendChild(card);
 
-                        // 2. CORRECTION: Ajouter le marqueur visuel sur la carte
                         L.marker([st.geom.lat, st.geom.lon], {
                             icon: L.divIcon({
                                 className: '',
@@ -305,7 +307,6 @@
                 }
             },
 
-            // Utilitaires
             toggleTheme: function() {
                 this.isNight = !this.isNight;
                 this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); });
