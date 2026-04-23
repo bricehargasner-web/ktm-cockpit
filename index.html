@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - KTM COCKPIT V2.0</title>
+    <title>KTM COCKPIT V2.1 - MISSION CONTROL</title>
     <script>
-    /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (MODIFIABLE) --- */
+    /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
     const CONFIG = {
         USER: "Brice CARDONA",
         COLORS: {
-            KTM: '#FF6600',        // Orange KTM
-            DANGER: '#8B0000',     // Rouge Sang Vif
-            SAFE: '#2ecc71',       // Vert Sécurité
-            BG: '#0a0a0a'          // Noir profond
+            KTM: '#FF6600',
+            DANGER: '#FF0000',
+            BG: '#0a0a0a'
         },
-        SCAN_RADIUS: 30000,        // Rayon de recherche stations (30km)
-        ZOOM_OFFSET: 2,            // Différence de zoom pour l'effet "loupe" central
+        SCAN_RADIUS: 30000,
+        ZOOM_OFFSET: 2, // La loupe centrale est toujours +2 de zoom
         FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
         MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
     };
@@ -26,83 +25,97 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 
     <style>
-        :root { --ktm: #FF6600; --danger: #8B0000; }
+        :root { --ktm: #FF6600; --danger: #FF0000; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* BLOQUEUR PAYSAGE STRICT */
         #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--ktm); text-align: center; }
         @media (orientation: portrait) { #portrait-blocker { display: flex; } }
 
-        /* CARTOGRAPHIE */
-        #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; }
+        #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; filter: saturate(1.2); }
         
-        /* HUD CENTRAL & EFFET LOUPE */
+        /* HUD CENTRAL AFFINÉ */
         #hud-overlay { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 350px; height: 350px; z-index: 100; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
+            width: 220px; height: 220px; z-index: 100; pointer-events: none;
         }
         #zoom-circle-container {
-            width: 280px; height: 280px; border-radius: 50%; border: 4px solid var(--ktm);
-            overflow: hidden; position: relative; box-shadow: 0 0 30px rgba(255, 102, 0, 0.4);
-            background: #000;
+            width: 100%; height: 100%; border-radius: 50%; 
+            overflow: hidden; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background: #000; border: 2px solid rgba(255,102,0,0.5);
         }
-        #map-zoom { width: 100%; height: 100%; }
+        #map-zoom { width: 100%; height: 100%; transform: scale(1.1); }
         
-        /* COMPAS DYNAMIQUE */
         #compass-ring {
-            position: absolute; width: 100%; height: 100%;
-            border: 8px solid var(--ktm); border-radius: 50%;
-            transition: border-width 0.1s ease, border-color 0.1s ease;
-            box-sizing: border-box;
+            position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px;
+            border: 4px solid var(--ktm); border-radius: 50%;
+            transition: all 0.1s ease; opacity: 0.8;
         }
 
-        /* UI CONTROLS */
-        #top-bar { position: absolute; top: 10px; width: 95%; left: 2.5%; z-index: 500; display: flex; gap: 10px; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.85); border: 2px solid #333; color: #fff; padding: 12px; border-radius: 5px; font-family: 'Barlow Condensed'; font-size: 1.2rem; }
-        .btn-action { background: var(--ktm); color: #000; border: none; padding: 0 20px; border-radius: 5px; font-weight: 900; cursor: pointer; height: 50px; }
+        /* UI DROITE - CARBURANT */
+        #right-controls { 
+            position: absolute; right: 20px; top: 50%; transform: translateY(-50%); 
+            z-index: 500; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+        #fuel-type {
+            background: rgba(0,0,0,0.7); color: var(--ktm); border: 1px solid var(--ktm);
+            padding: 10px; border-radius: 4px; font-family: 'Barlow Condensed'; font-weight: 900;
+            outline: none; cursor: pointer; text-transform: uppercase;
+        }
+
+        /* UI HAUT - RECHERCHE */
+        #top-bar { position: absolute; top: 15px; width: 40%; left: 30%; z-index: 500; display: flex; gap: 5px; }
+        #search-input { 
+            flex-grow: 1; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); 
+            color: #fff; padding: 10px; border-radius: 20px; text-align: center; font-size: 0.9rem;
+        }
         
-        /* LISTE STATIONS ESCAMOTABLE */
+        .btn-ktm { background: var(--ktm); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+
+        /* LISTE STATIONS */
         #station-panel {
-            position: absolute; right: 10px; top: 70px; width: 300px; max-height: 60vh;
-            background: rgba(0,0,0,0.9); border-left: 4px solid var(--ktm);
-            z-index: 600; display: none; overflow-y: auto; border-radius: 0 0 0 10px;
+            position: absolute; right: 100px; top: 70px; width: 250px; max-height: 50vh;
+            background: rgba(0,0,0,0.85); border-radius: 8px; backdrop-filter: blur(5px);
+            z-index: 600; display: none; overflow-y: auto; border: 1px solid #333;
         }
-        .close-panel { background: #222; color: #fff; text-align: center; padding: 5px; font-size: 0.7rem; cursor: pointer; text-transform: uppercase; }
-        .station-card { padding: 10px; border-bottom: 1px solid #222; }
-        .station-price { font-family: 'Barlow Condensed'; font-size: 1.8rem; color: var(--ktm); }
 
-        /* DASHBOARD */
+        /* DASHBOARD BAS */
         #dash-bottom {
-            position: absolute; bottom: 0; width: 100%; height: 90px;
-            background: linear-gradient(to top, #000, transparent);
-            z-index: 500; display: grid; grid-template-columns: 1fr 1fr 2fr 1fr 1fr;
-            align-items: center; border-top: 1px solid rgba(255,255,255,0.1);
+            position: absolute; bottom: 0; width: 100%; height: 70px;
+            background: rgba(0,0,0,0.8); z-index: 500; display: flex;
+            justify-content: space-around; align-items: center; border-top: 2px solid var(--ktm);
         }
-        .stat-box { text-align: center; }
-        .stat-label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
-        .stat-value { font-size: 2rem; font-family: 'Barlow Condensed'; font-weight: 900; }
-        #speed-main { font-size: 4rem; color: #fff; }
+        .stat-box { text-align: center; min-width: 80px; }
+        .stat-label { font-size: 0.5rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 1.6rem; font-family: 'Barlow Condensed'; font-weight: 900; }
+        #speed-main { font-size: 3rem; color: #fff; line-height: 1; }
 
-        .fuel-marker { background: var(--ktm); color: #000; font-weight: 900; padding: 2px 5px; border-radius: 3px; border: 1px solid #fff; font-size: 12px; }
+        .fuel-marker { background: var(--ktm); color: #000; font-weight: 900; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
     </style>
 </head>
 <body>
 
 <div id="portrait-blocker">
-    <h1 style="font-size: 5rem; margin: 0;">KTM</h1>
-    <p>LOCK LANDSCAPE MODE REQUIRED</p>
-    <p style="font-size: 0.8rem; opacity: 0.6;">Activez la rotation automatique sur votre téléphone</p>
+    <h1 style="font-size: 4rem; margin: 0;">KTM</h1>
+    <p>ORIENTATION PAYSAGE REQUISE</p>
 </div>
 
 <div id="top-bar">
-    <input type="text" id="search-input" placeholder="CHERCHER UNE DESTINATION (CORSE)...">
-    <button class="btn-action" onclick="searchLocation()">OK</button>
-    <button class="btn-action" onclick="findGas()">⛽ SCAN</button>
+    <input type="text" id="search-input" placeholder="DESTINATION CORSE...">
+    <button class="btn-ktm" style="border-radius: 20px;" onclick="searchLocation()">GO</button>
+</div>
+
+<div id="right-controls">
+    <select id="fuel-type">
+        <option value="gazole_prix">GAZOLE</option>
+        <option value="sp95_prix">SP95</option>
+        <option value="sp98_prix">SP98</option>
+        <option value="e10_prix">E10</option>
+    </select>
+    <button class="btn-ktm" onclick="findGas()">⛽ SCAN</button>
 </div>
 
 <div id="station-panel">
-    <div class="close-panel" onclick="document.getElementById('station-panel').style.display='none'">Fermer la liste [X]</div>
+    <div style="background:#222; padding:5px; font-size:0.6rem; text-align:center;" onclick="this.parentElement.style.display='none'">FERMER [X]</div>
     <div id="station-list"></div>
 </div>
 
@@ -117,32 +130,36 @@
 
 <div id="dash-bottom">
     <div class="stat-box"><div class="stat-label">Altitude</div><div id="val-alt" class="stat-value">--</div></div>
-    <div class="stat-box"><div class="stat-label">Angle</div><div id="val-lean" class="stat-value">0°</div></div>
-    <div class="stat-box"><div id="speed-main" class="stat-value">00</div><div class="stat-label">KM/H</div></div>
+    <div class="stat-box"><div class="stat-label">Inclinaison</div><div id="val-lean" class="stat-value">0°</div></div>
+    <div class="stat-box" style="min-width: 120px;"><div id="speed-main" class="stat-value">00</div><div class="stat-label">KM/H</div></div>
     <div class="stat-box"><div class="stat-label">Cap</div><div id="val-cap" class="stat-value">--</div></div>
     <div class="stat-box"><div class="stat-label">Trip</div><div id="val-trip" class="stat-value">0.0</div></div>
 </div>
 
 <script>
 let mainMap, zoomMap, userMarkerMain, userMarkerZoom, fuelLayer;
-let lastCoord = null, totalDist = 0, offset = 0;
+let lastCoord = null, totalDist = 0;
 
 function init() {
-    // Initialisation Carte Principale
-    mainMap = L.map('map-main', { zoomControl: false, attributionControl: false }).setView([41.92, 8.73], 12);
+    // Carte Principale
+    mainMap = L.map('map-main', { zoomControl: false, attributionControl: false }).setView([41.92, 8.73], 13);
     L.tileLayer(CONFIG.MAP_STYLE).addTo(mainMap);
 
-    // Initialisation Carte Loupe (Zoom)
+    // Carte Loupe
     zoomMap = L.map('map-zoom', { 
         zoomControl: false, attributionControl: false, 
         dragging: false, scrollWheelZoom: false, touchZoom: false, doubleClickZoom: false 
-    }).setView([41.92, 8.73], 14);
+    }).setView([41.92, 8.73], 15);
     L.tileLayer(CONFIG.MAP_STYLE).addTo(zoomMap);
 
-    fuelLayer = L.layerGroup().addTo(mainMap);
+    // SYNCHRONISATION : La carte zoomée suit la carte principale
+    mainMap.on('move', () => {
+        zoomMap.setView(mainMap.getCenter(), mainMap.getZoom() + CONFIG.ZOOM_OFFSET, { animate: false });
+    });
 
-    userMarkerMain = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.COLORS.KTM, fillOpacity: 1, weight: 2 }).addTo(mainMap);
-    userMarkerZoom = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: CONFIG.COLORS.KTM, fillOpacity: 1, weight: 3 }).addTo(zoomMap);
+    fuelLayer = L.layerGroup().addTo(mainMap);
+    userMarkerMain = L.circleMarker([0,0], { radius: 6, color: '#fff', fillColor: CONFIG.COLORS.KTM, fillOpacity: 1, weight: 2 }).addTo(mainMap);
+    userMarkerZoom = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.COLORS.KTM, fillOpacity: 1, weight: 2 }).addTo(zoomMap);
 
     setupTracking();
     window.addEventListener('deviceorientation', handleInclinaison);
@@ -154,7 +171,6 @@ function setupTracking() {
         const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
         
         mainMap.panTo(coords);
-        zoomMap.setView(coords, mainMap.getZoom() + CONFIG.ZOOM_OFFSET);
         userMarkerMain.setLatLng(coords);
         userMarkerZoom.setLatLng(coords);
 
@@ -168,56 +184,54 @@ function setupTracking() {
         lastCoord = coords;
 
         if (pos.coords.heading) {
-            document.getElementById('val-cap').innerText = Math.round(pos.coords.heading) + "°";
+            const h = Math.round(pos.coords.heading);
+            document.getElementById('val-cap').innerText = h + "°";
         }
-    }, err => console.error("GPS Error"), { enableHighAccuracy: true });
+    }, null, { enableHighAccuracy: true });
 }
 
 function handleInclinaison(e) {
-    let angle = Math.round(e.gamma); // Utilise gamma pour le mode paysage
+    let angle = Math.round(e.gamma);
     if (window.orientation === -90) angle = -angle;
-    
     const absAngle = Math.abs(angle);
+    
     const ring = document.getElementById('compass-ring');
-    const leanDisplay = document.getElementById('val-lean');
+    const leanVal = document.getElementById('val-lean');
     
-    // Logique de couleur et épaisseur
     let color = CONFIG.COLORS.KTM;
-    let weight = 8;
-    
-    if (absAngle > 25) {
-        // Transition vers le rouge sang
-        const ratio = Math.min((absAngle - 25) / 25, 1);
-        color = interpolateColor(CONFIG.COLORS.KTM, CONFIG.COLORS.DANGER, ratio);
-        weight = 8 + (ratio * 12); // S'épaissit jusqu'à 20px
+    let thickness = 4;
+
+    if (absAngle > 20) {
+        const ratio = Math.min((absAngle - 20) / 30, 1);
+        color = interpolateKTM(ratio);
+        thickness = 4 + (ratio * 10);
     }
 
     ring.style.borderColor = color;
-    ring.style.borderWidth = weight + "px";
-    leanDisplay.innerText = absAngle + "°";
-    leanDisplay.style.color = color;
+    ring.style.borderWidth = thickness + "px";
+    leanVal.innerText = absAngle + "°";
+    leanVal.style.color = color;
 }
 
-// Utilitaire de transition de couleur
-function interpolateColor(color1, color2, factor) {
-    const r1 = 255, g1 = 102, b1 = 0; // KTM Orange
-    const r2 = 139, g2 = 0, b2 = 0;   // Dark Red
-    const r = Math.round(r1 + factor * (r2 - r1));
-    const g = Math.round(g1 + factor * (g2 - g1));
-    const b = Math.round(b1 + factor * (b2 - b1));
+function interpolateKTM(factor) {
+    // Orange KTM (255, 102, 0) vers Rouge Vif (255, 0, 0)
+    const r = 255;
+    const g = Math.round(102 * (1 - factor));
+    const b = 0;
     return `rgb(${r}, ${g}, ${b})`;
 }
 
 async function findGas() {
     const center = mainMap.getCenter();
+    const type = document.getElementById('fuel-type').value;
     const panel = document.getElementById('station-panel');
     const list = document.getElementById('station-list');
     
     panel.style.display = 'block';
-    list.innerHTML = "<p style='padding:10px'>Recherche en cours...</p>";
+    list.innerHTML = "<p style='padding:10px; font-size:0.7rem;'>SCAN CORSE EN COURS...</p>";
 
     try {
-        const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=20`;
+        const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
         const res = await fetch(url);
         const data = await res.json();
         
@@ -226,54 +240,39 @@ async function findGas() {
 
         if (data.results && data.results.length > 0) {
             data.results.forEach(st => {
-                const price = st.gazole_prix || st.sp95_prix || "?";
+                const price = st[type] || "?";
+                if(price === "?") return;
+
                 L.marker([st.geom.lat, st.geom.lon], {
-                    icon: L.divIcon({ className: 'fuel-marker', html: price + "€" })
+                    icon: L.divIcon({ className: 'fuel-marker', html: price.toFixed(2) })
                 }).addTo(fuelLayer);
 
                 const div = document.createElement('div');
-                div.className = 'station-card';
+                div.style.padding = "8px";
+                div.style.borderBottom = "1px solid #333";
                 div.innerHTML = `
-                    <div style="font-size:0.7rem; color:#888">${st.nom || st.adresse}</div>
-                    <div class="station-price">${price}€ <small style="font-size:0.8rem">Gazole/SP</small></div>
-                    <button class="btn-action" style="height:30px; font-size:0.7rem" onclick="setRoute(${st.geom.lat}, ${st.geom.lon})">Y ALLER</button>
+                    <div style="font-size:0.6rem; color:#aaa">${st.nom || st.adresse}</div>
+                    <div style="font-family:'Barlow Condensed'; font-size:1.2rem; color:var(--ktm)">${price.toFixed(2)}€</div>
                 `;
                 list.appendChild(div);
             });
         } else {
-            list.innerHTML = "<p style='padding:10px'>Aucune station trouvée</p>";
+            list.innerHTML = "<p style='padding:10px'>AUCUNE STATION PROCHE</p>";
         }
-    } catch (e) {
-        alert("Erreur de connexion aux données carburant.");
-    }
+    } catch (e) { console.error(e); }
 }
 
 async function searchLocation() {
-    const query = document.getElementById('search-input').value;
-    if(!query) return;
-    
+    const q = document.getElementById('search-input').value;
+    if(!q) return;
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
         const data = await res.json();
-        if(data.length > 0) {
-            const target = [data[0].lat, data[0].lon];
-            mainMap.setView(target, 14);
-            L.marker(target, {title: "Destination"}).addTo(mainMap);
-        }
-    } catch(e) {
-        alert("Erreur lors de la recherche du lieu.");
-    }
-}
-
-function setRoute(lat, lon) {
-    // Dans une version cockpit, on trace un trait simple vers la cible
-    const line = L.polyline([userMarkerMain.getLatLng(), [lat, lon]], {color: CONFIG.COLORS.KTM, weight: 5, dashArray: '10, 10'}).addTo(mainMap);
-    mainMap.fitBounds(line.getBounds());
-    document.getElementById('station-panel').style.display = 'none';
+        if(data[0]) mainMap.setView([data[0].lat, data[0].lon], 14);
+    } catch(e) {}
 }
 
 window.onload = init;
 </script>
-
 </body>
 </html>
