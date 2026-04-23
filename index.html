@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V114 PRECISION</title>
+    <title>ENERGY CONCEPT - KTM V116 BLACKBOX</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            SAFE_WHITE: '#FFFFFF',
-            DANGER_RED: '#FF0000',
             NAV_BLUE: '#00D2FF',
+            DANGER_RED: '#FF0000',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
-            DEFAULT_ZOOM: 14
+            TBT_RADIUS: 40,
+            DEFAULT_ZOOM: 14,
+            MAX_SAVED_TRACKS: 5 // Sécurité mémoire du téléphone
         };
     </script>
 
@@ -24,7 +25,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        :root { --ktm: #FF6600; --dynamic-hud: #FFFFFF; }
+        :root { --ktm: #FF6600; --dynamic-hud: #FFFFFF; --nav: #00D2FF; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; overflow: hidden; font-family: 'Saira Condensed', sans-serif; touch-action: none; }
         #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); }
 
@@ -35,6 +36,19 @@
             #app-core { display: none; }
         }
 
+        /* BLOC NAVIGATION TBT */
+        #tbt-hud {
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); border: 2px solid var(--nav);
+            padding: 8px 20px; border-radius: 6px; z-index: 1500;
+            display: none; align-items: center; gap: 15px;
+            box-shadow: 0 0 20px rgba(0,210,255,0.4);
+        }
+        #tbt-icon { font-size: 2rem; }
+        #tbt-text { display: flex; flex-direction: column; }
+        #tbt-dist { font-size: 1.5rem; font-weight: 900; color: var(--nav); line-height: 1; }
+        #tbt-label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; }
+
         /* HUD CENTRAL */
         #central-hud { position: fixed; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 85vmin; height: 85vmin; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: center; }
         #compass-svg { width: 100%; height: 100%; filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.9)); }
@@ -42,59 +56,76 @@
         .azimut-text { fill: var(--dynamic-hud); font-weight: 900; font-size: 11px; stroke: rgba(0,0,0,0.8); stroke-width: 1px; paint-order: stroke; }
         #horizon-line { position: absolute; width: calc(100% + 50px); height: 4px; background: linear-gradient(90deg, transparent 0%, var(--dynamic-hud) 15%, #fff 50%, var(--dynamic-hud) 85%, transparent 100%); border-top: 1.5px solid rgba(255, 102, 0, 0.7); box-shadow: 0 0 15px var(--dynamic-hud); z-index: 110; }
 
-        /* COMPTEURS */
-        .flight-widget { position: fixed; bottom: 16%; z-index: 700; color: var(--ktm); }
+        /* WIDGETS */
+        .flight-widget { position: fixed; bottom: 18%; z-index: 700; color: var(--ktm); }
         .val-big { font-size: clamp(3rem, 12vmin, 7rem); font-weight: 900; line-height: 0.8; text-shadow: 3px 3px 10px black; }
         .sub-label { font-size: 1rem; font-weight: 800; letter-spacing: 3px; text-shadow: 2px 2px 5px black; }
         #angle-widget { left: 6vw; text-align: left; }
         #speed-widget { right: 6vw; text-align: right; }
-        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 3px 10px; font-size: 0.7rem; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
+        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 4px 12px; font-size: 0.75rem; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
 
-        /* UI CONTROLS */
-        .side-btn { position: fixed; right: 15px; z-index: 2100; cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); border-radius: 4px; width: 45px; height: 40px; }
+        /* COMMANDES LATÉRALES */
+        .side-btn { position: fixed; right: 15px; z-index: 2100; cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); border: 1px solid var(--ktm); border-radius: 4px; width: 45px; height: 40px; }
         #ui-trigger { top: 15px; flex-direction: column; gap: 4px; }
         .bar { width: 25px; height: 3px; background: var(--ktm); border-radius: 2px; }
         #map-lock-btn { top: 65px; font-size: 1.2rem; color: white; }
-        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; text-transform: uppercase; }
+        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; text-transform: uppercase; text-shadow: 1px 1px 2px black; }
 
-        /* TIROIR ET RECHERCHE */
-        #mission-drawer { position: fixed; top: 0; right: 0; width: 320px; height: 100dvh; background: rgba(10,10,10,0.98); border-left: 2px solid var(--ktm); z-index: 2000; transition: 0.3s; transform: translateX(100%); }
+        /* TIROIR MISSION */
+        #mission-drawer { position: fixed; top: 0; right: 0; width: 330px; height: 100dvh; background: rgba(10,10,10,0.98); border-left: 2px solid var(--ktm); z-index: 2000; transition: 0.3s; transform: translateX(100%); }
         #mission-drawer.open { transform: translateX(0); }
-        .tab-nav { display: flex; justify-content: space-around; padding: 15px; border-bottom: 1px solid #333; margin-top: 40px; }
-        .tab-btn { background: transparent; border: none; fill: white; padding: 10px; cursor: pointer; }
+        .tab-nav { display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid #333; margin-top: 40px; }
+        .tab-btn { background: transparent; border: none; fill: white; padding: 8px; cursor: pointer; }
         .tab-btn.active { fill: var(--ktm); transform: scale(1.1); }
         .pane { display: none; padding: 20px; height: calc(100% - 160px); overflow-y: auto; padding-bottom: 100px; }
         .pane.active { display: block; }
 
-        /* PROPOSITIONS D'ADRESSES */
-        .search-results-list { margin-top: 10px; border-top: 1px solid #333; }
-        .addr-suggestion { background: rgba(255,255,255,0.05); padding: 10px; border-bottom: 1px solid #222; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
-        .addr-suggestion:hover { background: rgba(255, 102, 0, 0.2); }
+        /* CARTES ET COMPOSANTS LISTE */
+        .search-results { margin-top: 10px; border-top: 1px solid #333; }
+        .addr-item { background: rgba(255,255,255,0.05); padding: 12px; border-bottom: 1px solid #222; cursor: pointer; }
+        .addr-item:hover { background: rgba(255,102,0,0.2); }
         .addr-main { font-weight: 900; color: white; display: block; }
         .addr-sub { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        .go-btn { background: var(--ktm); color: black; border: none; padding: 12px; font-weight: 900; border-radius: 3px; cursor: pointer; font-family: inherit; width: 100%; margin-bottom: 10px; text-transform: uppercase; }
+        .sm-btn { background: #333; color: white; border: none; padding: 6px 10px; font-weight: bold; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 0.75rem; }
+        .sm-btn.active-btn { background: var(--ktm); color: black; }
+        
+        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 10px; font-family: inherit; box-sizing: border-box; }
+        
+        .station-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--ktm); position: relative; }
+        .track-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 10px; border-left: 3px solid var(--nav); font-size: 0.85rem; }
+        .track-title { font-weight: 900; color: white; font-size: 1.1rem; margin-bottom: 5px; }
+        .track-stats { display: flex; justify-content: space-between; color: #aaa; margin-bottom: 8px; }
+        .track-actions { display: flex; gap: 5px; }
 
         /* DASHBOARD BAS */
         #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 60px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: repeat(4, 1fr) 1.2fr; z-index: 800; }
         .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
         .label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
-        .data { font-size: 1.1rem; font-weight: 800; white-space: nowrap; }
-        .sub-data { font-size: 0.55rem; color: var(--ktm); text-transform: uppercase; }
-
-        .go-btn { background: var(--ktm); color: black; border: none; padding: 12px; font-weight: 900; border-radius: 3px; cursor: pointer; font-family: inherit; width: 100%; margin-bottom: 10px; }
-        input { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 15px; margin-bottom: 10px; font-family: inherit; box-sizing: border-box; border-radius: 4px; }
-        .station-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--ktm); }
+        .data { font-size: 1.1rem; font-weight: 800; }
+        .rec-active { color: var(--DANGER_RED); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div id="portrait-lock">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="var(--ktm)"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-4 21c-.83 0-1.5-.67-1.5-1.5S11.17 19 12 19s1.5.67 1.5 1.5S12.83 22 12 22zm3.25-4H8.75V4h6.5v14z"/></svg>
-        <p>BASCULER LE TÉLÉPHONE<br>MODE PAYSAGE</p>
+        <p>MODE PAYSAGE REQUIS</p>
     </div>
 
     <div id="app-core">
         <div id="map"></div>
         <div id="tech-snitch">> SYS: STANDBY</div>
+
+        <div id="tbt-hud">
+            <span id="tbt-icon">⬆️</span>
+            <div id="tbt-text">
+                <span id="tbt-dist">0 m</span>
+                <span id="tbt-label">EN ATTENTE</span>
+            </div>
+        </div>
 
         <div id="ui-trigger" class="side-btn" onclick="APP.toggleDrawer()">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div>
@@ -122,27 +153,37 @@
                 <button class="tab-btn" onclick="APP.recenterMap()"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v3h-2zm0 10h2v3h-2zm7-7v2h-3v-2zm-10 0v2h-3v-2z"/></svg></button>
                 <button class="tab-btn active" onclick="APP.showPane('p-radar', this)"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 8 13 8 13s8-7.75 8-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
                 <button class="tab-btn" onclick="APP.showPane('p-search', this)"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
-                <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38-2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg></button>
+                <button class="tab-btn" onclick="APP.showPane('p-history', this); APP.renderHistory();"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
+                <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg width="24" height="24" viewBox="0 0 24 24" fill="inherit"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg></button>
             </div>
 
             <div id="p-radar" class="pane active">
                 <h3 style="color:var(--ktm); margin-top:0;">RADAR FUEL</h3>
                 <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option></select>
-                <button class="go-btn" onclick="APP.scanFuel()">SCANNER STATIONS</button>
+                <label style="color:#888; font-size:0.8rem;">RAYON : <span id="rad-val" style="color:white;">15</span> KM</label>
+                <input type="range" id="rad-input" min="5" max="50" value="15" oninput="document.getElementById('rad-val').innerText=this.value">
+                <button class="go-btn" onclick="APP.scanFuel()">SCANNER GRAULHET +</button>
                 <div id="station-list"></div>
             </div>
             
             <div id="p-search" class="pane">
-                <h3 style="color:var(--ktm); margin-top:0;">ADRESSE PRECISE</h3>
-                <input type="text" id="addr-in" placeholder="Ex: Chemin des clergues orban..." onkeyup="if(event.key==='Enter') APP.searchAddress()">
-                <button class="go-btn" onclick="APP.searchAddress()">CHERCHER ADRESSE</button>
-                <div id="search-proposals" class="search-results-list"></div>
+                <h3 style="color:var(--ktm); margin-top:0;">ADRESSE & GPS</h3>
+                <input type="text" id="addr-in" placeholder="Rue, Chemin, Numéro..." onkeyup="if(event.key==='Enter') APP.searchAddress()">
+                <button class="go-btn" onclick="APP.searchAddress()">RECHERCHER</button>
+                <button class="go-btn" style="background:transparent; border:1px solid #444; color:white;" onclick="APP.clearNavAndTrack()">EFFACER CARTE</button>
+                <div id="search-proposals" class="search-results"></div>
+            </div>
+
+            <div id="p-history" class="pane">
+                <h3 style="color:var(--ktm); margin-top:0;">BOÎTE NOIRE GPX</h3>
+                <p style="font-size:0.7rem; color:#888; margin-top:-10px;">Enregistrements locaux (Max ${CONFIG.MAX_SAVED_TRACKS})</p>
+                <div id="history-list"></div>
             </div>
 
             <div id="p-settings" class="pane">
-                <h3 style="color:var(--ktm); margin-top:0;">SYSTEME</h3>
-                <button class="go-btn" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
-                <label>ZOOM : <input type="range" min="8" max="18" value="14" oninput="APP.updateZoom(this.value)"></label>
+                <h3 style="color:var(--ktm); margin-top:0;">SYSTÈME</h3>
+                <button class="go-btn" onclick="APP.toggleTheme()">NUIT / JOUR</button>
+                <label style="color:#888;">ZOOM : <input type="range" min="8" max="18" value="14" oninput="APP.updateZoom(this.value)"></label>
             </div>
         </div>
 
@@ -157,73 +198,220 @@
 
     <script>
         const APP = {
-            map: null, userMarker: null, fuelLayer: null, navLine: null,
-            sortMode: 'price', offset: 0, lastRaw: 0,
-            lastLat: 43.76, lastLng: 1.99, mapLocked: true,
+            map: null, userMarker: null, fuelLayer: null, navLine: null, viewTrackLine: null,
+            offset: 0, lastRaw: 0, lastLat: 43.76, lastLng: 1.99, mapLocked: true,
+            isRecording: false, trackData: [], currentSpeed: 0, currentLean: 0,
+            navSteps: [], currentStepIdx: 0, savedTracks: [],
 
             init: function() {
                 this.map = L.map('map', { zoomControl: false, attributionControl: false, dragging: false, touchZoom: false }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM); 
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
+                
+                this.loadHistory();
                 this.drawCompass();
                 this.startSensors();
-                this.updateSnitch('> SYS: ONLINE | ADRESS ENGINE ACTIVE');
+                this.updateSnitch('> SYS: ONLINE | BLACKBOX READY');
             },
 
             updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
             
             toggleMapLock: function() {
                 this.mapLocked = !this.mapLocked;
-                const btn = document.getElementById('map-lock-btn');
-                if(this.mapLocked) {
-                    this.map.dragging.disable(); this.map.touchZoom.disable();
-                    btn.innerText = '🔒'; this.recenterMap();
+                document.getElementById('map-lock-btn').innerText = this.mapLocked ? '🔒' : '🔓';
+                if(this.mapLocked) { this.map.dragging.disable(); this.map.touchZoom.disable(); this.recenterMap(); }
+                else { this.map.dragging.enable(); this.map.touchZoom.enable(); }
+            },
+
+            /* --- MOTEUR GPX ET BOÎTE NOIRE --- */
+            loadHistory: function() {
+                try {
+                    this.savedTracks = JSON.parse(localStorage.getItem('KTM_GPX_HISTORY')) || [];
+                } catch(e) { this.savedTracks = []; }
+            },
+
+            saveHistory: function() {
+                localStorage.setItem('KTM_GPX_HISTORY', JSON.stringify(this.savedTracks));
+            },
+
+            toggleRec: function() {
+                this.isRecording = !this.isRecording;
+                const recLabel = document.getElementById('rec-label');
+                
+                if(this.isRecording) {
+                    this.trackData = [];
+                    recLabel.innerText = '🟠 REC...';
+                    recLabel.classList.add('rec-active');
+                    this.updateSnitch('> SYS: DÉBUT ACQUISITION');
                 } else {
-                    this.map.dragging.enable(); this.map.touchZoom.enable();
-                    btn.innerText = '🔓';
+                    recLabel.innerText = '🔴 REC';
+                    recLabel.classList.remove('rec-active');
+                    if(this.trackData.length > 1) this.processAndSaveTrack();
+                    else this.updateSnitch('> SYS: TRACE TROP COURTE');
                 }
             },
+
+            processAndSaveTrack: function() {
+                let maxSpeed = 0; let maxLean = 0; let dist = 0;
+                for(let i=1; i<this.trackData.length; i++) {
+                    let p1 = this.trackData[i-1], p2 = this.trackData[i];
+                    dist += this.map.distance([p1.lat, p1.lng], [p2.lat, p2.lng]);
+                    if(p2.speed > maxSpeed) maxSpeed = p2.speed;
+                    if(p2.lean > maxLean) maxLean = p2.lean;
+                }
+
+                const d = new Date();
+                const name = `Trace_${d.getDate()}/${d.getMonth()+1}_${d.getHours()}h${d.getMinutes()}`;
+
+                const newTrack = {
+                    id: Date.now(),
+                    name: name,
+                    distance: (dist/1000).toFixed(1),
+                    maxSpeed: maxSpeed,
+                    maxLean: maxLean,
+                    points: this.trackData
+                };
+
+                this.savedTracks.unshift(newTrack);
+                if(this.savedTracks.length > CONFIG.MAX_SAVED_TRACKS) this.savedTracks.pop();
+                this.saveHistory();
+                this.updateSnitch('> SYS: TRACE SAUVEGARDÉE');
+                this.renderHistory();
+            },
+
+            renderHistory: function() {
+                const list = document.getElementById('history-list');
+                list.innerHTML = "";
+                if(this.savedTracks.length === 0) {
+                    list.innerHTML = "<div style='color:#666; text-align:center; padding:20px;'>Aucune trace enregistrée</div>";
+                    return;
+                }
+
+                this.savedTracks.forEach((track, index) => {
+                    const card = document.createElement('div');
+                    card.className = "track-card";
+                    card.innerHTML = `
+                        <div class="track-title">${track.name}</div>
+                        <div class="track-stats">
+                            <span>Dist: <b>${track.distance} km</b></span>
+                            <span>V.Max: <b>${track.maxSpeed} km/h</b></span>
+                            <span>A.Max: <b style="color:var(--ktm)">${track.maxLean}°</b></span>
+                        </div>
+                        <div class="track-actions">
+                            <button class="sm-btn active-btn" onclick="APP.viewTrack(${index})">VOIR</button>
+                            <button class="sm-btn" onclick="APP.exportTrack(${index})">GPX</button>
+                            <button class="sm-btn" style="background:#400" onclick="APP.deleteTrack(${index})">X</button>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+            },
+
+            viewTrack: function(index) {
+                const track = this.savedTracks[index];
+                if(!track || !track.points) return;
+                
+                if(this.viewTrackLine) this.map.removeLayer(this.viewTrackLine);
+                
+                const latlngs = track.points.map(p => [p.lat, p.lng]);
+                this.viewTrackLine = L.polyline(latlngs, {color: CONFIG.DANGER_RED, weight: 5, opacity: 0.8}).addTo(this.map);
+                
+                this.map.fitBounds(this.viewTrackLine.getBounds(), {padding: [50, 50]});
+                this.toggleDrawer();
+                this.updateSnitch(`> AFFICHAGE : ${track.name}`);
+                if(this.mapLocked) this.toggleMapLock(); // Déverrouille pour laisser regarder la trace
+            },
+
+            exportTrack: function(index) {
+                const track = this.savedTracks[index];
+                if(!track || !track.points) return;
+                
+                let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><name>'+track.name+'</name><trkseg>\n';
+                track.points.forEach(p => {
+                    gpx += `<trkpt lat="${p.lat}" lon="${p.lng}"><time>${new Date(p.time).toISOString()}</time><extensions><speed>${p.speed}</speed><lean>${p.lean}</lean></extensions></trkpt>\n`;
+                });
+                gpx += '</trkseg></trk></gpx>';
+                
+                const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${track.name}.gpx`; a.click();
+            },
+
+            deleteTrack: function(index) {
+                if(confirm("Supprimer cette trace définitivement ?")) {
+                    this.savedTracks.splice(index, 1);
+                    this.saveHistory();
+                    this.renderHistory();
+                }
+            },
+            /* -------------------------------- */
 
             searchAddress: async function() {
                 const query = document.getElementById('addr-in').value;
                 if(query.length < 3) return;
-                this.updateSnitch('> RECHERCHE ADRESSE...');
-                
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=fr`);
                     const data = await res.json();
                     const container = document.getElementById('search-proposals');
                     container.innerHTML = "";
-
-                    if(data.length === 0) {
-                        this.updateSnitch('> AUCUN RÉSULTAT');
-                        return;
-                    }
-
                     data.forEach(item => {
                         const div = document.createElement('div');
-                        div.className = "addr-suggestion";
-                        const parts = item.display_name.split(',');
-                        div.innerHTML = `<span class="addr-main">${parts[0]}</span><span class="addr-sub">${parts.slice(1,3).join(',')}</span>`;
-                        div.onclick = () => this.startNav(item.lat, item.lon, parts[0]);
+                        div.className = "addr-item";
+                        const p = item.display_name.split(',');
+                        div.innerHTML = `<span class="addr-main">${p[0]}</span><span class="addr-sub">${p.slice(1,3).join(',')}</span>`;
+                        div.onclick = () => this.startNav(item.lat, item.lon, p[0]);
                         container.appendChild(div);
                     });
-                } catch(e) { this.updateSnitch('> ERREUR MOTEUR RECHERCHE'); }
+                } catch(e) { this.updateSnitch('> ERR RECHERCHE'); }
             },
 
             startNav: async function(lat, lng, name) {
-                const start = this.userMarker.getLatLng();
-                const url = `${CONFIG.ROUTING_API}${start.lng},${start.lat};${lng},${lat}?overview=full&geometries=geojson`;
+                const url = `${CONFIG.ROUTING_API}${this.lastLng},${this.lastLat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
                     if(this.navLine) this.map.removeLayer(this.navLine);
                     this.navLine = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.NAV_BLUE, weight: 6, dashArray: '1, 10' } }).addTo(this.map);
                     this.map.fitBounds(this.navLine.getBounds(), {padding: [50, 50]});
-                    this.updateSnitch(`> ROUTE : ${name.toUpperCase()}`);
+                    
+                    this.navSteps = data.routes[0].legs[0].steps;
+                    this.currentStepIdx = 0;
+                    this.updateHUDInstructions();
+                    document.getElementById('tbt-hud').style.display = 'flex';
+                    
+                    this.updateSnitch(`> CAP : ${name.toUpperCase()}`);
                     document.getElementById('mission-drawer').classList.remove('open');
-                } catch(e) { this.updateSnitch('> ERR ROUTAGE'); }
+                } catch(e) { this.updateSnitch('> ERR ROUTE'); }
+            },
+
+            clearNavAndTrack: function() { 
+                if(this.navLine) this.map.removeLayer(this.navLine); this.navLine = null;
+                if(this.viewTrackLine) this.map.removeLayer(this.viewTrackLine); this.viewTrackLine = null;
+                document.getElementById('tbt-hud').style.display = 'none';
+                this.recenterMap();
+                this.updateSnitch('> CARTE EFFACÉE'); 
+            },
+
+            updateHUDInstructions: function() {
+                if (this.navSteps.length > 0 && this.currentStepIdx < this.navSteps.length) {
+                    const step = this.navSteps[this.currentStepIdx];
+                    const p = [this.lastLat, this.lastLng];
+                    const stepPos = [step.maneuver.location[1], step.maneuver.location[0]];
+                    const dist = Math.round(this.map.distance(p, stepPos));
+                    
+                    document.getElementById('tbt-dist').innerText = dist + ' m';
+                    document.getElementById('tbt-label').innerText = step.name || "CONTINUER";
+                    
+                    let icon = '⬆️';
+                    const type = step.maneuver.type;
+                    const mod = step.maneuver.modifier;
+                    if(mod && mod.includes('right')) icon = '↱';
+                    if(mod && mod.includes('left')) icon = '↰';
+                    if(type === 'roundabout') icon = '🔄';
+                    document.getElementById('tbt-icon').innerText = icon;
+
+                    if (dist < CONFIG.TBT_RADIUS) this.currentStepIdx++;
+                }
             },
 
             scanFuel: async function() {
@@ -234,8 +422,7 @@
                     const res = await fetch(api); const data = await res.json();
                     const list = document.getElementById('station-list');
                     list.innerHTML = ""; this.fuelLayer.clearLayers();
-                    
-                    data.results.map(st => {
+                    data.results.forEach(st => {
                         const price = st[type];
                         if(!price) return;
                         const card = document.createElement('div');
@@ -245,7 +432,8 @@
                         list.appendChild(card);
                         L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ className:'map-marker-ktm', html:price.toFixed(2) }) }).addTo(this.fuelLayer);
                     });
-                } catch(e) { this.updateSnitch('> ERR API RADAR'); }
+                    this.updateSnitch(`> ${data.results.length} STATIONS`);
+                } catch(e) { this.updateSnitch('> ERR RADAR'); }
             },
 
             drawCompass: function() {
@@ -265,14 +453,20 @@
                     navigator.geolocation.watchPosition(u => {
                         this.lastLat = u.coords.latitude; this.lastLng = u.coords.longitude;
                         this.userMarker.setLatLng([this.lastLat, this.lastLng]);
-                        if(this.mapLocked) this.map.setView([this.lastLat, this.lastLng]);
-                        document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
+                        if(this.mapLocked && !this.viewTrackLine) this.map.setView([this.lastLat, this.lastLng]);
+                        
+                        this.currentSpeed = u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0;
+                        document.getElementById('speed-val').innerText = this.currentSpeed.toString().padStart(3, '0');
+                        
+                        this.updateHUDInstructions();
+                        if(this.isRecording) this.trackData.push({lat: this.lastLat, lng: this.lastLng, speed: this.currentSpeed, lean: this.currentLean, time: Date.now()});
                     }, null, { enableHighAccuracy: true });
                 }
                 window.addEventListener('deviceorientation', e => {
                     this.lastRaw = e.beta; 
                     let lean = Math.round(this.lastRaw - this.offset);
-                    document.getElementById('angle-val').innerText = Math.abs(lean);
+                    this.currentLean = Math.abs(lean);
+                    document.getElementById('angle-val').innerText = this.currentLean;
                     document.getElementById('horizon-line').style.transform = `rotate(${lean}deg)`;
                 });
             },
