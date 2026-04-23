@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V109 EXPLORATION</title>
+    <title>ENERGY CONCEPT - KTM V110 AERO</title>
     
     <script>
         const CONFIG = {
@@ -15,7 +15,8 @@
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
-            WEATHER_UPDATE_MS: 900000 
+            WEATHER_UPDATE_MS: 900000,
+            DEFAULT_ZOOM: 14
         };
     </script>
 
@@ -25,7 +26,27 @@
 
     <style>
         :root { --ktm: #FF6600; --dynamic-hud: #FFFFFF; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; touch-action: none; font-family: 'Saira Condensed', sans-serif; }
+        
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100%; 
+            background: #000; color: white; font-family: 'Saira Condensed', sans-serif; 
+            overflow: hidden; touch-action: none; overscroll-behavior: none; 
+            user-select: none; -webkit-user-select: none;
+        }
+
+        /* --- ÉCRAN DE VERROUILLAGE PORTRAIT --- */
+        #portrait-lock { display: none; }
+        @media screen and (orientation: portrait) {
+            #app-core { display: none !important; }
+            #portrait-lock { 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                position: fixed; inset: 0; background: #050505; z-index: 9999; 
+                color: var(--ktm); text-align: center; border: 4px solid var(--ktm);
+            }
+        }
+        
+        /* --- COCKPIT CORE --- */
+        #app-core { width: 100%; height: 100%; position: relative; }
         #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); transition: 0.5s; cursor: crosshair; }
 
         /* COMPAS CENTRAL */
@@ -43,17 +64,16 @@
         .sub-label { font-size: clamp(1rem, 3vmin, 1.4rem); font-weight: 800; letter-spacing: 4px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
         #angle-widget { left: 5vw; align-items: flex-start; }
         #speed-widget { right: 5vw; align-items: flex-end; }
-        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 2px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
+        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 2px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; text-transform: uppercase; }
 
-        /* MOUCHARD */
-        #tech-snitch { position: fixed; top: 20px; left: 20px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.8; text-transform: uppercase; text-shadow: 1px 1px 3px black; text-align: left; }
+        /* MOUCHARD TOP-LEFT */
+        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.8; text-transform: uppercase; text-shadow: 1px 1px 3px black; text-align: left; }
 
         /* COMMANDES DROITE */
-        #controls-right { position: fixed; top: 20px; right: 20px; z-index: 2100; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        #controls-right { position: fixed; top: 15px; right: 15px; z-index: 2100; display: flex; flex-direction: column; gap: 15px; align-items: center; }
         #ui-trigger { cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
         .bar { width: 35px; height: 4px; background: var(--ktm); border-radius: 2px; box-shadow: 0 0 10px black; }
         
-        /* BOUTON GEOLOCK */
         #lock-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.8); border: 2px solid white; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: 0.3s; }
         #lock-btn.active { border-color: var(--ktm); color: var(--ktm); box-shadow: 0 0 10px var(--ktm); }
         #lock-btn svg { width: 20px; height: 20px; fill: currentColor; }
@@ -68,119 +88,154 @@
         .pane.active { display: block; }
         .station-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid var(--ktm); }
 
-        /* DASHBOARD BAS */
-        #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 8vh; min-height: 60px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: repeat(4, 1fr) 1.5fr; z-index: 800; }
-        .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* --- DASHBOARD BAS : INTÉGRATION NAV-TAPE --- */
+        #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 8vh; min-height: 60px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: 1fr 3fr 1.5fr; z-index: 800; }
+        .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
         .data { font-size: clamp(1.2rem, 4vmin, 2rem); font-weight: 800; display:flex; align-items:center; gap:5px; }
         .sub-data { font-size: 0.6rem; color: var(--ktm); font-family: monospace; letter-spacing: 1px; margin-top: -3px; }
-        .weather-btn { cursor: pointer; pointer-events: auto; }
+        .weather-btn { cursor: pointer; pointer-events: auto; transition: 0.2s; }
+        .weather-btn:hover { background: rgba(255,102,0,0.1); }
+
+        /* TAPE AZIMUT */
+        .azi-container { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; }
+        #azi-tape { position: absolute; left: 50%; top: 50%; transform: translate(-1080px, -50%); /* 1080 est le 0° (Nord) */ }
+        .azi-cursor { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: var(--ktm); transform: translateX(-50%); box-shadow: 0 0 8px black; z-index: 10; }
+        .azi-cursor::after { content:''; position:absolute; top:0; left:-4px; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--ktm); }
 
         input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-
-    <div id="controls-right">
-        <div id="ui-trigger" onclick="APP.toggleDrawer()">
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-        </div>
-        <div id="lock-btn" class="active" onclick="APP.toggleLock()" title="Geolock (ON/OFF)">
-            <svg id="lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-        </div>
+    <div id="portrait-lock">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="var(--ktm)" style="margin-bottom: 20px;">
+            <path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3-3H7V4h10v14z"/>
+            <path d="M13 14.5l2.5-2.5-2.5-2.5v1.5c-2.8 0-5 2.2-5 5h1.5c0-1.9 1.6-3.5 3.5-3.5v2z"/>
+        </svg>
+        <h2 style="letter-spacing:3px; margin:0 0 10px 0;">> AVERTISSEMENT SYSTÈME</h2>
+        <p style="color:#aaa; font-size:1.1rem; max-width:80%; line-height:1.4;">ROTATION REQUISE.<br>BASCULEZ EN MODE PAYSAGE POUR ENGAGER LE COCKPIT.</p>
     </div>
 
-    <div id="tech-snitch">> SYS: STANDBY</div>
+    <div id="app-core">
+        <div id="map"></div>
 
-    <div id="central-hud">
-        <div id="horizon-line"></div>
-        <svg id="compass-svg" viewBox="0 0 200 200"><g id="ticks-layer"></g></svg>
-    </div>
+        <div id="tech-snitch">> SYS: STANDBY</div>
 
-    <div id="angle-widget" class="flight-widget">
-        <div class="val-big"><span id="angle-val">0</span>°</div>
-        <div class="sub-label">ANGLE</div>
-        <button class="btn-zero" onclick="APP.resetGyro()">ZÉRO</button>
-    </div>
-
-    <div id="speed-widget" class="flight-widget">
-        <div id="speed-val" class="val-big">000</div>
-        <div class="sub-label">KM/H</div>
-    </div>
-
-    <div id="mission-drawer">
-        <div class="tab-nav">
-            <button class="tab-btn" onclick="APP.recenterMap()"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v3h-2zm0 10h2v3h-2zm7-7v2h-3v-2zm-10 0v2h-3v-2z"/></svg></button>
-            <button class="tab-btn active" onclick="APP.showPane('p-radar', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 8 13 8 13s8-7.75 8-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
-            <button class="tab-btn" onclick="APP.showPane('p-search', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
-            <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg></button>
-        </div>
-
-        <div id="p-radar" class="pane active">
-            <h3 style="color:var(--ktm); margin-top:0;">RADAR FUEL</h3>
-            <div style="display:flex; gap:5px; margin-bottom:15px;">
-                <button id="sort-price" class="sort-btn active" style="flex:1" onclick="APP.setSort('price')">PRIX</button>
-                <button id="sort-dist" class="sort-btn" style="flex:1" onclick="APP.setSort('dist')">KM</button>
+        <div id="controls-right">
+            <div id="ui-trigger" onclick="APP.toggleDrawer()">
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
             </div>
-            <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
-            <button class="btn-zero" style="width:100%; font-size:1rem; margin-bottom:10px;" onclick="APP.scanFuel()">LANCER LE SCAN</button>
-            <button class="btn-zero" style="width:100%; font-size:0.8rem; border-color:#444;" onclick="APP.clearFuel()">EFFACER LES STATIONS</button>
-            <div id="station-list" style="margin-top:15px;"></div>
+            <div id="lock-btn" class="active" onclick="APP.toggleLock()" title="Geolock (ON/OFF)">
+                <svg id="lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            </div>
         </div>
 
-        <div id="p-search" class="pane">
-            <h3 style="color:var(--ktm); margin-top:0;">GUIDAGE GPS</h3>
-            <input type="text" id="city-in" placeholder="Ex: Albi, Gaillac, Bonifacio...">
-            <button class="btn-zero" style="width:100%; font-size:1rem;" onclick="APP.searchCity()">NAVIGUER VERS</button>
-            <button class="btn-zero" style="width:100%; border-color:#444; margin-top:10px;" onclick="APP.clearNav()">EFFACER LA ROUTE</button>
+        <div id="central-hud">
+            <div id="horizon-line"></div>
+            <svg id="compass-svg" viewBox="0 0 200 200"><g id="ticks-layer"></g></svg>
         </div>
 
-        <div id="p-settings" class="pane">
-            <h3 style="color:var(--ktm); margin-top:0;">SYSTÈME</h3>
-            <button class="btn-zero" style="width:100%; font-size:1rem;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
-            <label style="display:block; margin-top:20px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white;">30</span> KM</label>
-            <input type="range" min="5" max="100" value="30" oninput="document.getElementById('rad-val').innerText=this.value">
-            <label style="display:block; margin-top:20px; color:#888;">ZOOM CARTE : <span id="zoom-val" style="color:white;">14</span></label>
-            <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
+        <div id="angle-widget" class="flight-widget">
+            <div class="val-big"><span id="angle-val">0</span>°</div>
+            <div class="sub-label">ANGLE</div>
+            <button class="btn-zero" onclick="APP.resetGyro()">ZÉRO</button>
         </div>
-    </div>
 
-    <div id="dash-bottom">
-        <div class="widget"><div class="label">Altitude</div><div id="alt-val" class="data">---</div></div>
-        <div class="widget"><div class="label">Cap</div><div id="cap-val" class="data">--</div></div>
-        <div class="widget"><div class="label">Azimut</div><div id="azi-val" class="data">0°</div></div>
-        <div class="widget weather-btn" style="border:none; grid-column: span 2;" onclick="window.open('https://open-meteo.com', '_blank')">
-            <div class="label">Météo LIVE ↗</div>
-            <div id="weather-val" class="data">--°C</div>
-            <div id="weather-loc" class="sub-data">RECHERCHE...</div>
+        <div id="speed-widget" class="flight-widget">
+            <div id="speed-val" class="val-big">000</div>
+            <div class="sub-label">KM/H</div>
+        </div>
+
+        <div id="mission-drawer">
+            <div class="tab-nav">
+                <button class="tab-btn" onclick="APP.recenterMap()"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v3h-2zm0 10h2v3h-2zm7-7v2h-3v-2zm-10 0v2h-3v-2z"/></svg></button>
+                <button class="tab-btn active" onclick="APP.showPane('p-radar', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 8 13 8 13s8-7.75 8-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></button>
+                <button class="tab-btn" onclick="APP.showPane('p-search', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+                <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg width="32" height="32" viewBox="0 0 24 24" fill="inherit"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg></button>
+            </div>
+
+            <div id="p-radar" class="pane active">
+                <h3 style="color:var(--ktm); margin-top:0;">RADAR FUEL</h3>
+                <div style="display:flex; gap:5px; margin-bottom:15px;">
+                    <button id="sort-price" class="sort-btn active" style="flex:1" onclick="APP.setSort('price')">PRIX</button>
+                    <button id="sort-dist" class="sort-btn" style="flex:1" onclick="APP.setSort('dist')">KM</button>
+                </div>
+                <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
+                <button class="btn-zero" style="width:100%; font-size:1rem; margin-bottom:10px; border-color:var(--ktm);" onclick="APP.scanFuel()">LANCER LE SCAN</button>
+                <button class="btn-zero" style="width:100%; font-size:0.8rem; border-color:#444;" onclick="APP.clearFuel()">EFFACER LES STATIONS</button>
+                <div id="station-list" style="margin-top:15px;"></div>
+            </div>
+
+            <div id="p-search" class="pane">
+                <h3 style="color:var(--ktm); margin-top:0;">GUIDAGE GPS</h3>
+                <input type="text" id="city-in" placeholder="Ex: Albi, Gaillac, Corte...">
+                <button class="btn-zero" style="width:100%; font-size:1rem; border-color:var(--ktm);" onclick="APP.searchCity()">NAVIGUER VERS</button>
+                <button class="btn-zero" style="width:100%; border-color:#444; margin-top:10px;" onclick="APP.clearNav()">EFFACER LA ROUTE</button>
+            </div>
+
+            <div id="p-settings" class="pane">
+                <h3 style="color:var(--ktm); margin-top:0;">SYSTÈME</h3>
+                <button class="btn-zero" style="width:100%; font-size:1rem; border-color:var(--ktm);" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
+                <button class="btn-zero" style="width:100%; font-size:1rem; border-color:var(--ktm); margin-top:15px;" onclick="APP.goFullscreen()">ACTIVER PLEIN ÉCRAN</button>
+                
+                <label style="display:block; margin-top:25px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white;">30</span> KM</label>
+                <input type="range" min="5" max="100" value="30" oninput="document.getElementById('rad-val').innerText=this.value">
+                <label style="display:block; margin-top:20px; color:#888;">ZOOM CARTE : <span id="zoom-val" style="color:white;">14</span></label>
+                <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
+            </div>
+        </div>
+
+        <div id="dash-bottom">
+            <div class="widget"><div class="label">Altitude</div><div id="alt-val" class="data">---</div></div>
+            
+            <div class="widget" style="overflow:hidden;">
+                <div class="label" style="position:absolute; top:2px; left:10px; z-index:20;">CAP</div>
+                <div class="azi-container">
+                    <div id="azi-tape"></div>
+                    <div class="azi-cursor"></div>
+                </div>
+            </div>
+
+            <div class="widget weather-btn" id="weather-widget-btn" onclick="window.open('https://open-meteo.com', '_blank')">
+                <div class="label">Météo LIVE ↗</div>
+                <div id="weather-val" class="data">--°C</div>
+                <div id="weather-loc" class="sub-data">RECHERCHE...</div>
+            </div>
         </div>
     </div>
 
     <script>
         const APP = {
             map: null, userMarker: null, fuelLayer: null, navLine: null,
-            isNight: false, isLocked: true, sortMode: 'price', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
+            isNight: false, isLocked: true, sortMode: 'price', offset: 0, lastRaw: 0, lastH: 0, lastWeatherUpdate: 0,
             stationsData: [],
 
             init: function() {
-                // CARTE DÉVERROUILLÉE AU DOIGT
                 this.map = L.map('map', { 
                     zoomControl: false, attributionControl: false, 
                     dragging: true, touchZoom: true, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
-                }).setView([43.76, 1.99], 14); 
+                }).setView([43.76, 1.99], CONFIG.DEFAULT_ZOOM); 
                 
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
                 
+                this.buildAziTape();
                 this.drawCompass();
                 this.startSensors();
-                this.updateSnitch('> SYS: ONLINE | GEOLOCK ACTIVE');
+                this.updateSnitch('> SYS: ONLINE | AERO-LOCK ACTIF');
             },
 
             updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
+
+            goFullscreen: function() {
+                let doc = document.documentElement;
+                if (doc.requestFullscreen) doc.requestFullscreen();
+                else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+                this.updateSnitch('> SYS.VIS : PLEIN ECRAN FORCE');
+                this.toggleDrawer();
+            },
 
             toggleLock: function() {
                 this.isLocked = !this.isLocked;
@@ -196,6 +251,29 @@
                     icon.innerHTML = '<path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10z"/>';
                     this.updateSnitch('> SYS.NAV : EXPLORATION LIBRE');
                 }
+            },
+
+            /* CRÉATION DE LA BANDE AZIMUT */
+            buildAziTape: function() {
+                const tape = document.getElementById('azi-tape');
+                let html = `<svg width="3240" height="40" viewBox="0 0 3240 40">`;
+                for(let i = -360; i <= 720; i += 5) {
+                    let x = (i + 360) * 3;
+                    let isMajor = i % 30 === 0;
+                    let isMedium = i % 10 === 0;
+                    let h = isMajor ? 18 : (isMedium ? 10 : 5);
+                    html += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="white" stroke-opacity="${isMajor ? 1 : 0.5}" stroke-width="${isMajor ? 2 : 1}"/>`;
+                    
+                    if (isMajor) {
+                        let val = i < 0 ? i + 360 : (i >= 360 ? i - 360 : i);
+                        let text = val === 0 ? 'N' : (val === 90 ? 'E' : (val === 180 ? 'S' : (val === 270 ? 'W' : val)));
+                        let color = (val % 90 === 0) ? CONFIG.KTM_ORANGE : "white";
+                        let fontSize = (val % 90 === 0) ? 14 : 11;
+                        html += `<text x="${x}" y="35" fill="${color}" font-size="${fontSize}" font-weight="900" text-anchor="middle" font-family="'Saira Condensed', sans-serif">${text}</text>`;
+                    }
+                }
+                html += `</svg>`;
+                tape.innerHTML = html;
             },
 
             drawCompass: function() {
@@ -217,6 +295,34 @@
                 }
             },
 
+            getWeatherEmoji: function(code) {
+                if(code === 0) return '☀️';
+                if(code > 0 && code <= 3) return '⛅';
+                if(code >= 45 && code <= 48) return '🌫️';
+                if(code >= 51 && code <= 67) return '🌧️';
+                if(code >= 71 && code <= 77) return '❄️';
+                if(code >= 95) return '⛈️';
+                return '🌡️';
+            },
+
+            fetchWeather: async function(lat, lng) {
+                // MISE A JOUR URL OPEN METEO PROFONDE
+                const meteoUrl = `https://open-meteo.com/en/forecast?latitude=${lat}&longitude=${lng}`;
+                document.getElementById('weather-widget-btn').onclick = () => window.open(meteoUrl, '_blank');
+
+                if(Date.now() - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return;
+                this.lastWeatherUpdate = Date.now();
+                try {
+                    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
+                    const wData = await wRes.json();
+                    const lRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const lData = await lRes.json();
+                    
+                    document.getElementById('weather-val').innerText = `${Math.round(wData.current_weather.temperature)}°C ${this.getWeatherEmoji(wData.current_weather.weathercode)}`;
+                    document.getElementById('weather-loc').innerText = `STA: ${lData.address.city || lData.address.town || lData.address.village || "LOCALE"}`;
+                } catch(e) {}
+            },
+
             startSensors: function() {
                 if(navigator.geolocation) {
                     navigator.geolocation.watchPosition(u => {
@@ -224,9 +330,20 @@
                         this.userMarker.setLatLng(p);
                         if(this.isLocked && !this.navLine) this.map.setView(p, this.map.getZoom()); 
                         this.fetchWeather(p[0], p[1]);
+                        
                         document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
-                        if(u.coords.heading) document.getElementById('azi-val').innerText = Math.round(u.coords.heading) + '°';
+                        
+                        // ANIMATION DU BANDEAU AZIMUT
+                        if(u.coords.heading !== null && !isNaN(u.coords.heading)) {
+                            let h = Math.round(u.coords.heading);
+                            const tape = document.getElementById('azi-tape');
+                            if (Math.abs(h - this.lastH) > 180) tape.style.transition = 'none'; // Évite le glitch du 360
+                            else tape.style.transition = 'transform 0.5s linear';
+                            tape.style.transform = `translate(${-1080 - (h * 3)}px, -50%)`;
+                            void tape.offsetWidth; // Force CSS apply
+                            this.lastH = h;
+                        }
                     }, null, { enableHighAccuracy: true });
                 }
                 window.addEventListener('deviceorientation', e => {
@@ -242,28 +359,12 @@
                 });
             },
 
-            fetchWeather: async function(lat, lng) {
-                if(Date.now() - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return;
-                this.lastWeatherUpdate = Date.now();
-                try {
-                    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
-                    const wData = await wRes.json();
-                    const lRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                    const lData = await lRes.json();
-                    document.getElementById('weather-val').innerText = `${Math.round(wData.current_weather.temperature)}°C`;
-                    document.getElementById('weather-loc').innerText = `STA: ${lData.address.city || lData.address.town || "LOCALE"}`;
-                } catch(e) {}
-            },
-
             scanFuel: async function() {
                 const center = this.map.getCenter();
                 const type = document.getElementById('fuel-type').value;
                 const radius = document.getElementById('rad-val').innerText * 1000;
                 this.updateSnitch('> RADAR: SCAN ' + radius/1000 + 'KM');
-                
-                // REQUÊTE DÉBRIDÉE POUR TOUT GRAULHET
                 const api = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radius}m)&limit=100`;
-                
                 try {
                     const res = await fetch(api); const data = await res.json();
                     this.stationsData = data.results.map(st => {
@@ -304,7 +405,7 @@
                 } catch(e) {}
             },
 
-            clearFuel: function() { this.fuelLayer.clearLayers(); this.stationsData = []; document.getElementById('station-list').innerHTML = ""; this.updateSnitch('> RADAR: STATIONS EFFACÉES'); },
+            clearFuel: function() { this.fuelLayer.clearLayers(); this.stationsData = []; document.getElementById('station-list').innerHTML = ""; this.updateSnitch('> RADAR: PURGE STATIONS'); },
             clearNav: function() { if(this.navLine) { this.map.removeLayer(this.navLine); this.navLine = null; } this.recenterMap(); },
             toggleTheme: function() { this.isNight = !this.isNight; this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); }); L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map); },
             toggleDrawer: function() { document.getElementById('mission-drawer').classList.toggle('open'); },
