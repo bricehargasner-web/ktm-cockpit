@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V73 - OSMAND COMMANDER</title>
+    <title>KTM HUD V74 - OSMAND GOGGLE</title>
     
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (BRICE CARDONA) --- */
@@ -11,89 +11,81 @@
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            SCAN_RADIUS: 30000, 
+            SCAN_RADIUS: 25000, 
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
-            // Style de carte OSM (identique à OsmAnd pour la cohérence visuelle)
-            MAP_STYLE: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            MAP_STYLE: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
         };
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Barlow+Condensed:wght@900&display=swap" rel="stylesheet">
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* LA CARTE (LE FOND DE L'OCÉAN) */
-        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.4) contrast(1.2); }
+        /* FOND DE L'OCÉAN (LA CARTE) */
+        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.3) saturate(1.2); }
 
-        /* EFFET MASQUE DE PLONGÉE (VIGNETTAGE) */
+        /* CADRE DU MASQUE DE PLONGÉE */
         #goggle-vision {
             position: absolute; inset: 0; z-index: 100;
-            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.8) 100%);
-            border: 20px solid rgba(0,0,0,0.9);
+            border: 25px solid rgba(0,0,0,0.9);
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            box-shadow: inset 0 0 150px #000;
             pointer-events: none;
         }
 
-        /* HUD VITESSE (BAS GAUCHE) */
-        #speed-block { position: absolute; bottom: 50px; left: 50px; z-index: 200; }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 8.5rem; font-weight: 900; line-height: 0.7; }
+        /* HUD VITESSE (DANS LE CADRE) */
+        #speed-block { position: absolute; bottom: 60px; left: 60px; z-index: 200; pointer-events: auto; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 9rem; font-weight: 900; line-height: 0.7; }
 
-        /* HUD ANGLE (BAS DROITE) */
-        #lean-block { position: absolute; bottom: 50px; right: 50px; z-index: 200; text-align: right; }
-        #lean-val { font-family: 'Barlow Condensed'; font-size: 5rem; font-weight: 900; color: #2ecc71; transition: color 0.2s; }
+        /* HUD ANGLE (DANS LE CADRE) */
+        #lean-block { position: absolute; bottom: 60px; right: 60px; z-index: 200; text-align: right; pointer-events: auto; }
+        #lean-val { font-family: 'Barlow Condensed'; font-size: 5rem; font-weight: 900; color: #2ecc71; }
 
-        /* COMMANDES HAUTES */
-        #top-interface { position: absolute; top: 20px; width: 94%; left: 3%; z-index: 300; display: flex; justify-content: space-between; align-items: flex-start; }
-        
-        .scan-box { display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid #333; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; border-radius: 4px; }
+        /* SCAN & INTERFACE */
+        #top-ui { position: absolute; top: 30px; width: 90%; left: 5%; z-index: 300; display: flex; gap: 15px; }
+        .btn-scan { background: #FF6600; color: #000; border: none; padding: 15px 30px; font-weight: 900; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
 
-        /* LISTE DES STATIONS (SCAN) */
+        /* LISTE STATIONS SÉLECTEUR */
         #station-list {
-            position: absolute; top: 85px; left: 3%; width: 300px; max-height: 60%;
-            background: rgba(0,0,0,0.9); border-left: 5px solid #FF6600;
+            position: absolute; top: 100px; left: 5%; width: 320px; max-height: 55%;
+            background: rgba(0,0,0,0.95); border-left: 6px solid #FF6600;
             overflow-y: auto; display: none; z-index: 250;
         }
-        .st-card { padding: 15px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
-        .btn-osmand { background: #FFF; color: #000; border: none; padding: 10px; border-radius: 4px; font-weight: 900; text-decoration: none; font-size: 0.8rem; }
+        .st-item { padding: 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .btn-go { background: #FFF; color: #000; border: none; padding: 12px 18px; border-radius: 4px; font-weight: 900; text-decoration: none; font-size: 0.9rem; }
 
-        /* CALIBRAGE */
-        #btn-zero { background: #222; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 10px; margin-top: 10px; cursor: pointer; }
+        #horizon { position: absolute; top: 50%; left: 50%; width: 30%; height: 2px; background: rgba(255,255,255,0.2); transform: translate(-50%, -50%); z-index: 50; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
     <div id="goggle-vision"></div>
+    <div id="horizon"></div>
 
-    <div id="top-interface">
-        <div class="scan-box">
-            <select id="fuel-type" style="background:#000; color:#FF6600; border:1px solid #FF6600; font-weight:900;">
-                <option value="gazole_prix">GAZOLE</option>
-                <option value="sp95_prix">SP95</option>
-                <option value="e10_prix">E10</option>
-            </select>
-            <button class="btn-ktm" onclick="findFuel()">⛽ SCAN</button>
-        </div>
-        
-        <div style="text-align: right;">
-            <div id="alt-val" style="font-size: 1.5rem; font-weight: 900;">--- M</div>
-            <div style="color:#FF6600; font-size:0.7rem;">ALTITUDE</div>
-        </div>
+    <div id="top-ui">
+        <select id="fuel-type" style="background:#000; color:#FF6600; border:2px solid #FF6600; padding:10px; font-weight:900; font-size: 1rem;">
+            <option value="gazole_prix">GAZOLE</option>
+            <option value="sp95_prix">SP95</option>
+            <option value="e10_prix">E10</option>
+        </select>
+        <button class="btn-scan" onclick="findFuel()">⛽ SCAN RADAR</button>
     </div>
 
     <div id="station-list"></div>
 
     <div id="speed-block">
         <div id="speed-val">000</div>
-        <div style="color:#FF6600; font-weight:900; letter-spacing: 2px;">KM/H</div>
+        <div style="color:#FF6600; font-weight:900; letter-spacing: 3px;">KM/H</div>
     </div>
 
     <div id="lean-block">
         <div id="lean-val">0°</div>
-        <button id="btn-zero" onclick="calibrate()">RESET ZERO</button>
+        <div id="alt-val" style="color:#888; font-size: 1.2rem;">--- M</div>
+        <button onclick="calibrate()" style="background:#222; color:#555; border:none; padding:5px 10px; margin-top:10px; font-size:10px;">RESET ZERO</button>
     </div>
 
     <script>
@@ -104,7 +96,6 @@
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             fuelLayer = L.layerGroup().addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 3 }).addTo(map);
-
             window.addEventListener('deviceorientation', handleOrientation);
             startTracking();
         }
@@ -117,12 +108,9 @@
             let currentLean = raw - offset;
             smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
             let angle = Math.abs(Math.round(smoothedLean));
-
-            const val = document.getElementById('lean-val');
-            val.innerText = angle + "°";
-            if (angle < 20) val.style.color = CONFIG.SAFE_GREEN;
-            else if (angle < 42) val.style.color = CONFIG.KTM_ORANGE;
-            else val.style.color = CONFIG.DANGER_RED;
+            document.getElementById('lean-val').innerText = angle + "°";
+            document.getElementById('horizon').style.transform = `translate(-50%, -50%) rotate(${smoothedLean}deg)`;
+            document.getElementById('lean-val').style.color = angle < 20 ? CONFIG.SAFE_GREEN : (angle < 42 ? CONFIG.KTM_ORANGE : CONFIG.DANGER_RED);
         }
 
         function startTracking() {
@@ -139,7 +127,7 @@
             const center = map.getCenter();
             const fuelType = document.getElementById('fuel-type').value;
             const list = document.getElementById('station-list');
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=12`;
             
             try {
                 const res = await fetch(url);
@@ -152,23 +140,26 @@
                     data.results.forEach(st => {
                         const price = st[fuelType];
                         if (!price) return;
-                        const lat = st.geom.lat; const lon = st.geom.lon;
+                        const lat = st.geom.lat.toFixed(6); 
+                        const lon = st.geom.lon.toFixed(6);
 
                         L.marker([lat, lon], {
-                            icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border-radius:3px; font-weight:bold; border:1px solid white; font-size:11px;">${price.toFixed(2)}</div>`, iconSize: [45, 20] })
+                            icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:3px; border-radius:3px; font-weight:bold; border:1px solid white; font-size:11px;">${price.toFixed(2)}</div>`, iconSize: [45, 20] })
                         }).addTo(fuelLayer);
 
                         const card = document.createElement('div');
-                        card.className = 'st-card';
-                        // LIEN DIRECT OSMAND (Format de recherche géo)
-                        const osmandLink = `geo:${lat},${lon}?z=16&q=${lat},${lon}(Station)`;
+                        card.className = 'st-item';
+                        
+                        // --- LIEN SPÉCIFIQUE OSMAND ---
+                        // On utilise le lien HTTP osmand.net qui force l'ouverture de l'app si les réglages par défaut sont effacés
+                        const navUrl = `https://osmand.net/go?lat=${lat}&lon=${lon}&z=16`;
                         
                         card.innerHTML = `
                             <div>
-                                <div style="font-size:0.6rem; color:#888;">${(st.nom || st.adresse).substring(0,20)}</div>
-                                <div style="font-size:1.4rem; font-weight:900;">${price.toFixed(2)}€</div>
+                                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">${(st.nom || st.adresse).substring(0,18)}</div>
+                                <div style="font-size:1.8rem; font-weight:900;">${price.toFixed(2)}€</div>
                             </div>
-                            <a href="${osmandLink}" class="btn-osmand">OSMAND</a>
+                            <a href="${navUrl}" target="_blank" class="btn-go">OSMAND</a>
                         `;
                         list.appendChild(card);
                     });
