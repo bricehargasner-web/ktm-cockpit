@@ -1,136 +1,130 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - KTM APEX V6.5</title>
-    <script>
-    /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
-    const CONFIG = {
-        USER: "Brice CARDONA",
-        KTM_ORANGE: '#FF6600',
-        DANGER_RED: '#FF0000',
-        NEUTRAL_WHITE: '#FFFFFF',
-        SCAN_RADIUS: 25000, 
-        MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
-        FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
-        OSRM_API: 'https://router.project-osrm.org/route/v1/driving/'
-    };
-    </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ENERGY CONCEPT - KTM HUD V6.6</title>
+<script>
+/* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (MODIFIABLE) --- */
+const CONFIG = {
+    USER: "Brice CARDONA",
+    KTM_ORANGE: '#FF6600',
+    DANGER_RED: '#FF4500',
+    DAMPING: 0.03, // Plus bas = plus lent/fluide pour la boussole
+    SCAN_RADIUS: 25000,
+    MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
+};
+</script>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Barlow+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Barlow+Condensed:wght@400;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root { --ktm: #FF6600; --glass: rgba(0, 0, 0, 0.3); } /* Transparence accrue */
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Barlow Condensed', sans-serif; background: #000; overflow: hidden; color: white; }
-        
-        #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--ktm); font-family: 'Orbitron'; }
-        @media (orientation: portrait) { #portrait-blocker { display: flex; } }
+<style>
+    :root { --ktm: #FF6600; --glass: rgba(0, 0, 0, 0.4); }
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Barlow Condensed', sans-serif; background: #000; overflow: hidden; color: white; }
+    
+    #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--ktm); font-family: 'Orbitron'; }
+    @media (orientation: portrait) { #portrait-blocker { display: flex; } }
 
-        #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.4) saturate(1.3); }
-        
-        /* HUD CENTRAL */
-        #hud-container { 
-            position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 100; pointer-events: none;
-        }
-        #compass-frame {
-            width: 100%; height: 100%; border-radius: 50%; border: 1px solid rgba(255,102,0,0.1);
-            position: relative; background: rgba(0,0,0,0.2); overflow: hidden;
-        }
-        #cardinal-ring {
-            position: absolute; width: 380px; height: 380px; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); z-index: 110;
-        }
-        .cardinal {
-            position: absolute; font-family: 'Orbitron'; font-weight: 900; 
-            font-size: 20px; color: var(--ktm); opacity: 0.8;
-        }
-        #n { top: 0; left: 50%; transform: translateX(-50%); }
-        #e { right: 0; top: 50%; transform: translateY(-50%); }
-        #s { bottom: 0; left: 50%; transform: translateX(-50%); }
-        #w { left: 0; top: 50%; transform: translateY(-50%); }
+    #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.5) saturate(1.2); }
+    
+    /* HUD CENTRAL & MIRE */
+    #hud-container { 
+        position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
+        width: 340px; height: 340px; z-index: 100; pointer-events: none;
+    }
+    #compass-frame {
+        width: 100%; height: 100%; border-radius: 50%; border: 1px solid rgba(255,102,0,0.15);
+        position: relative; background: rgba(0,0,0,0.1); overflow: hidden;
+    }
+    #cardinal-ring {
+        position: absolute; width: 420px; height: 420px; top: 50%; left: 50%;
+        transform: translate(-50%, -50%); z-index: 110;
+    }
+    .cardinal { position: absolute; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; color: var(--ktm); opacity: 0.8; }
+    #n { top: 0; left: 50%; transform: translateX(-50%); }
+    #e { right: 0; top: 50%; transform: translateY(-50%); }
+    #s { bottom: 0; left: 50%; transform: translateX(-50%); }
+    #w { left: 0; top: 50%; transform: translateY(-50%); }
 
-        #azimuth-bar {
-            position: absolute; top: 50%; left: 10%; right: 10%; height: 2px;
-            background: #fff; z-index: 120; transform-origin: center center;
-        }
+    /* MIRE DE POSITION CENTRALE */
+    #center-mire {
+        position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
+        transform: translate(-50%, -50%); z-index: 150;
+    }
+    #center-mire::before, #center-mire::after {
+        content: ''; position: absolute; background: var(--ktm);
+    }
+    #center-mire::before { width: 100%; height: 1px; top: 50%; left: 0; box-shadow: 0 0 5px var(--ktm); }
+    #center-mire::after { height: 100%; width: 1px; left: 50%; top: 0; box-shadow: 0 0 5px var(--ktm); }
 
-        #map-zoom { width: 100%; height: 100%; }
-        
-        /* MARQUEUR MOTO ORIENTÉ VERS LA DROITE DU TÉLÉPHONE */
-        #moto-marker {
-            position: absolute; top: 50%; left: 50%; width: 22px; height: 22px;
-            transform: translate(-50%, -50%); z-index: 130;
-            border-left: 12px solid var(--ktm); border-top: 8px solid transparent; border-bottom: 8px solid transparent;
-        }
+    #horizon-bar {
+        position: absolute; top: 50%; left: 5%; right: 5%; height: 2px;
+        background: linear-gradient(90deg, transparent, #fff, var(--ktm), #fff, transparent);
+        z-index: 140; transform-origin: center center; box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
 
-        /* UI ELEMENTS - TRANSPARENCE HUD */
-        .btn-stealth {
-            background: var(--glass); color: #fff; border: 1px solid rgba(255,102,0,0.2);
-            font-family: 'Orbitron'; font-weight: 900; font-size: 0.7rem; cursor: pointer;
-            backdrop-filter: blur(4px);
-            clip-path: polygon(0 0, 85% 0, 100% 30%, 100% 100%, 0 100%);
-        }
-        
-        .input-stealth {
-            background: var(--glass); border: 1px solid rgba(255,255,255,0.05); border-left: 2px solid var(--ktm);
-            color: #fff; padding: 10px; font-family: 'Barlow Condensed'; font-size: 0.9rem; outline: none;
-            backdrop-filter: blur(4px);
-        }
+    #map-zoom { width: 100%; height: 100%; }
 
-        #search-area { position: absolute; top: 15px; left: 15px; z-index: 700; width: 220px; display: flex; gap: 8px; }
-        #right-ui { position: absolute; top: 15px; right: 15px; z-index: 700; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-        
-        /* OUTILS CARTE KTM STYLE */
-        #map-tools { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); z-index: 800; display: flex; flex-direction: column; gap: 8px; }
-        .btn-map-tool {
-            width: 40px; height: 40px; background: var(--glass); border: 1px solid rgba(255,102,0,0.4);
-            color: var(--ktm); border-radius: 2px; font-weight: 900; cursor: pointer;
-        }
-        .btn-recenter {
-            background: var(--ktm); color: #000; border: none; padding: 5px; font-size: 10px; font-family: 'Orbitron'; 
-            clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%); margin-top: 5px;
-        }
+    /* UI ELEMENTS - STEALTH DESIGN */
+    .ui-group { position: absolute; z-index: 700; display: flex; gap: 0; }
+    #left-ui { top: 15px; left: 15px; }
+    #right-ui { top: 15px; right: 15px; flex-direction: column; align-items: flex-end; gap: 5px; }
 
-        /* DASHBOARD - STYLE ONGLETS DOSSIER */
-        #dash-bottom {
-            position: absolute; bottom: 0; width: 100%; height: 75px;
-            z-index: 500; display: flex; justify-content: center; gap: 4px; padding: 0 5px 5px 5px; box-sizing: border-box;
-        }
-        .widget {
-            background: var(--glass); border-top: 2px solid var(--ktm);
-            flex: 1; text-align: center; padding: 8px; position: relative;
-            clip-path: polygon(0 0, 85% 0, 100% 25%, 100% 100%, 0 100%);
-            backdrop-filter: blur(10px);
-        }
-        .stat-label { font-size: 0.6rem; color: #aaa; font-family: 'Orbitron'; letter-spacing: 1px; }
-        .stat-value { font-size: 1.6rem; font-weight: 700; transition: color 0.3s; }
-    </style>
+    .stealth-box {
+        background: var(--glass); border: 1px solid rgba(255,102,0,0.2);
+        color: #fff; font-family: 'Orbitron'; font-weight: 900; font-size: 0.7rem;
+        backdrop-filter: blur(8px); outline: none; padding: 10px;
+    }
+    .btn-nav { clip-path: polygon(0 0, 85% 0, 100% 30%, 100% 100%, 0 100%); cursor: pointer; }
+    .btn-nav:active { background: var(--ktm); color: #000; }
+
+    /* DASHBOARD SANS ESPACE (GRID) */
+    #dash-bottom {
+        position: absolute; bottom: 0; width: 100%; height: 80px;
+        z-index: 500; display: grid; grid-template-columns: repeat(5, 1fr);
+        background: var(--glass); backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255,102,0,0.3);
+    }
+    .widget {
+        text-align: center; padding: 10px 5px; position: relative;
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    /* Liseré dossier KTM */
+    .widget::before {
+        content: ''; position: absolute; top: -1px; left: 0; width: 40px; height: 3px;
+        background: var(--ktm); clip-path: polygon(0 0, 100% 0, 80% 100%, 0 100%);
+    }
+    .stat-label { font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; display: block; margin-top: 5px; }
+    #v-speed { font-size: 3rem; color: #fff; line-height: 0.8; }
+
+    #map-tools { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); z-index: 800; display: flex; flex-direction: column; gap: 5px; }
+    .btn-tool { width: 45px; height: 45px; background: var(--glass); border: 1px solid var(--ktm); color: var(--ktm); font-family: 'Orbitron'; font-weight: 900; cursor: pointer; backdrop-filter: blur(5px); }
+</style>
 </head>
 <body>
 
-<div id="portrait-blocker"><h1>READY TO RACE</h1><p>ORIENTATION PAYSAGE</p></div>
+<div id="portrait-blocker"><h1>READY TO RACE</h1><p>PAYSAGE REQUIS</p></div>
 
-<div id="search-area">
-    <input type="text" id="dest-input" class="input-stealth" style="flex:1" placeholder="DESTINATION...">
-    <button class="btn-stealth" style="padding: 10px 15px;" onclick="runSearch()">NAV</button>
+<div id="left-ui" class="ui-group">
+    <input type="text" id="dest-input" class="stealth-box" style="width:180px; border-radius: 0;" placeholder="DESTINATION...">
+    <button class="stealth-box btn-nav" onclick="runSearch()">NAV</button>
 </div>
 
-<div id="map-tools">
-    <button class="btn-map-tool" onclick="mapZoom(1)">+</button>
-    <button class="btn-map-tool" onclick="mapZoom(-1)">-</button>
-    <button class="btn-recenter" onclick="recenterMap()">RTR</button>
-</div>
-
-<div id="right-ui">
-    <select id="fuel-select" class="input-stealth" style="background:#000; width:120px; font-weight:bold; border-left:none; border-right:2px solid var(--ktm);">
+<div id="right-ui" class="ui-group">
+    <select id="fuel-select" class="stealth-box" style="width:130px; background: #000;">
         <option value="gazole_prix">GAZOLE</option>
         <option value="sp95_prix">SP95</option>
     </select>
-    <button class="btn-stealth" style="padding: 10px 20px; width: 100%;" onclick="scanFuel()">⛽ SCAN</button>
+    <button class="stealth-box btn-nav" style="width:130px;" onclick="scanFuel()">⛽ SCAN</button>
+</div>
+
+<div id="map-tools">
+    <button class="btn-tool" onclick="mapZoom(1)">+</button>
+    <button class="btn-tool" onclick="mapZoom(-1)">-</button>
+    <button class="btn-tool" style="font-size: 10px;" onclick="recenterMap()">RTR</button>
 </div>
 
 <div id="hud-container">
@@ -139,20 +133,20 @@
         <div class="cardinal" id="s">S</div><div class="cardinal" id="w">W</div>
     </div>
     <div id="compass-frame">
-        <div id="azimuth-bar"></div>
+        <div id="horizon-bar"></div>
+        <div id="center-mire"></div>
         <div id="map-zoom"></div>
-        <div id="moto-marker"></div>
     </div>
 </div>
 
 <div id="map-main"></div>
 
 <div id="dash-bottom">
-    <div class="widget"><div class="stat-label">Altitude</div><div id="v-alt" class="stat-value">---</div></div>
-    <div class="widget"><div class="stat-label">Inclinaison</div><div id="v-lean" class="stat-value">0°</div></div>
-    <div class="widget" style="flex:1.5"><div id="v-speed" class="stat-value" style="font-size:2.8rem; line-height:1">00</div><div class="stat-label">KM/H</div></div>
-    <div class="widget"><div class="stat-label">Cap</div><div id="v-cap" class="stat-value">---</div></div>
-    <div class="widget"><div class="stat-label">Trip</div><div id="v-dist" class="stat-value">0.0</div></div>
+    <div class="widget"><span class="stat-label">Altitude</span><span id="v-alt" class="stat-value">---</span></div>
+    <div class="widget"><span class="stat-label">Inclinaison</span><span id="v-lean" class="stat-value">0°</span></div>
+    <div class="widget" style="background: rgba(255,102,0,0.05);"><span id="v-speed" class="stat-value">00</span><span class="stat-label">KM/H</span></div>
+    <div class="widget"><span class="stat-label">Cap</span><span id="v-cap" class="stat-value">---</span></div>
+    <div class="widget" style="border:none;"><span class="stat-label">Trip</span><span id="v-dist" class="stat-value">0.0</span></div>
 </div>
 
 <script>
@@ -175,7 +169,7 @@ function init() {
     mainMap.on('dragstart', () => { isFollowMode = false; });
 
     startGPS();
-    animateHUD(); // Lance l'animation de lissage
+    smoothHUD();
     window.addEventListener('deviceorientation', handleOrientation);
 }
 
@@ -187,8 +181,6 @@ function startGPS() {
         document.getElementById('v-speed').innerText = p.coords.speed ? Math.round(p.coords.speed * 3.6) : "00";
         if(p.coords.altitude) document.getElementById('v-alt').innerText = Math.round(p.coords.altitude) + "m";
         
-        // CORRECTION AXE : Le bord droit du téléphone est l'avant de la moto
-        // On ajoute un décalage de 90° si nécessaire selon le repère de l'API
         targetHeading = p.coords.heading || 0;
         document.getElementById('v-cap').innerText = Math.round(targetHeading) + "°";
 
@@ -198,39 +190,33 @@ function startGPS() {
     }, null, { enableHighAccuracy: true });
 }
 
-// LISSAGE BOUSSOLE (DAMPING)
-function animateHUD() {
-    // Calcul de la différence de cap la plus courte
+function smoothHUD() {
     let diff = targetHeading - currentHeading;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
-    
-    currentHeading += diff * 0.1; // Facteur de lissage (0.1 = fluide)
+    currentHeading += diff * CONFIG.DAMPING; 
     
     document.getElementById('cardinal-ring').style.transform = `translate(-50%, -50%) rotate(${-currentHeading}deg)`;
-    document.getElementById('moto-marker').style.transform = `translate(-50%, -50%) rotate(${currentHeading}deg)`;
-    
-    requestAnimationFrame(animateHUD);
+    requestAnimationFrame(smoothHUD);
 }
 
 function handleOrientation(e) {
-    // CORRECTION CAPTEUR PAYSAGE
+    // Mode Paysage : Bord droit = Avant. L'inclinaison moto est gérée par e.beta
     let lean = Math.round(e.beta); 
     if (window.orientation === -90) lean = -lean;
 
     const absLean = Math.abs(lean);
-    const bar = document.getElementById('azimuth-bar');
+    const bar = document.getElementById('horizon-bar');
     const display = document.getElementById('v-lean');
     
     bar.style.transform = `translateY(-50%) rotate(${-lean}deg)`;
     display.innerText = absLean + "°";
 
-    let color = CONFIG.NEUTRAL_WHITE;
+    let color = "#FFF";
     if(absLean > 15) color = CONFIG.KTM_ORANGE;
     if(absLean > 35) color = CONFIG.DANGER_RED;
     
     display.style.color = color;
-    bar.style.backgroundColor = color;
     bar.style.boxShadow = `0 0 15px ${color}`;
 }
 
@@ -248,7 +234,7 @@ async function runSearch() {
 }
 
 async function drawNav(target) {
-    const url = `${CONFIG.OSRM_API}${userPos[1]},${userPos[0]};${target[1]},${target[0]}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${target[1]},${target[0]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     const data = await res.json();
     routeLayerMain.clearLayers(); routeLayerZoom.clearLayers();
@@ -262,7 +248,7 @@ async function drawNav(target) {
 
 async function scanFuel() {
     const type = document.getElementById('fuel-select').value;
-    const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${userPos[1]} ${userPos[0]})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
+    const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${userPos[1]} ${userPos[0]})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
     const res = await fetch(url);
     const data = await res.json();
     fuelLayer.clearLayers();
