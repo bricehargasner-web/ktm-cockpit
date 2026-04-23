@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V72 - MISSION CONTROL</title>
+    <title>KTM HUD V74 - AVIONIC MASTER</title>
     
     <script>
-        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
         const CONFIG = {
             USER: "Brice CARDONA",
             KTM_ORANGE: '#FF6600',
             DANGER_RED: '#FF0000',
             WHITE_GLOW: '#FFFFFF',
-            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            SCAN_RADIUS: 30000,
-            DEFAULT_ZOOM: 15
+            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
         };
     </script>
 
@@ -25,96 +22,67 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* CONTRAINTE PAYSAGE */
-        #landscape-lock { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 5px solid #FF6600; }
+        #landscape-lock { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         @media (orientation: portrait) { #landscape-lock { display: flex; } }
 
-        /* CARTE IMMERSIVE */
-        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.35) contrast(1.3) saturate(0.7); }
+        #map { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.25) contrast(1.5) saturate(0.5); }
 
-        /* HUD - VISION COCKPIT */
-        #hud-global {
-            position: absolute; inset: 0; z-index: 100; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
-        }
+        /* HUD CENTRAL PURGÉ */
+        #hud-global { position: absolute; inset: 0; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        #cockpit-ring { width: 88vh; height: 88vh; position: relative; border-radius: 50%; }
 
-        #cockpit-ring {
-            width: 82vh; height: 82vh;
-            border: 2px solid rgba(255, 102, 0, 0.2);
-            border-radius: 50%;
-            position: relative;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-        }
-
-        /* COMPAS GYROSCOPIQUE */
-        .tick { position: absolute; width: 2px; background: rgba(255,255,255,0.15); left: 50%; transform-origin: center 41vh; }
-        .tick.major { width: 3px; background: rgba(255,102,0,0.5); box-shadow: 0 0 5px #FF6600; }
+        /* GRADUATIONS HAUTE DENSITÉ (AVION) */
+        .tick { position: absolute; width: 1px; background: rgba(255, 255, 255, 0.1); left: 50%; transform-origin: center 44vh; }
+        .tick.med { width: 2px; background: rgba(255, 255, 255, 0.4); height: 15px; }
+        .tick.major { width: 3px; background: #FF6600; box-shadow: 0 0 12px #FF6600; height: 25px; }
         
-        /* POINT ZERO - LIGNE DE FOI */
-        #zero-marker {
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-            width: 8px; height: 35px; background: #FFF; 
-            box-shadow: 0 0 20px #FFF; z-index: 150;
-            border-radius: 2px;
-        }
+        #zero-marker { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 4px; height: 40px; background: #FFF; box-shadow: 0 0 20px #FFF; z-index: 150; }
 
-        /* HORIZON ARTIFICIEL DYNAMIQUE */
-        #horizon-line {
-            position: absolute; top: 50%; width: 140%; left: -20%; height: 3px;
-            background: linear-gradient(90deg, transparent, #FFF, transparent);
-            box-shadow: 0 0 20px rgba(255,255,255,0.6);
-            z-index: 110; transition: background 0.1s ease;
-        }
+        #horizon-line { position: absolute; top: 50%; width: 160%; left: -30%; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent); z-index: 110; }
 
-        /* SPEEDOMETER CENTRAL */
-        #speed-wrap { text-align: center; transform: translateY(20px); }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 11rem; font-weight: 900; line-height: 0.7; letter-spacing: -6px; text-shadow: 0 0 30px rgba(0,0,0,1); }
+        #speed-wrap { text-align: center; }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 13rem; font-weight: 900; line-height: 0.7; letter-spacing: -10px; opacity: 0.9; }
 
-        /* UI COMMANDES */
-        #top-ui { position: absolute; top: 20px; width: 80%; left: 10%; z-index: 500; display: flex; gap: 10px; pointer-events: auto; }
-        #search-input { flex-grow: 1; background: rgba(0,0,0,0.8); border: 1px solid #444; color: #FFF; padding: 12px; border-radius: 4px; font-family: 'Orbitron'; font-size: 0.7rem; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-family: 'Orbitron'; }
-        
-        #btn-recenter { position: absolute; bottom: 110px; right: 30px; width: 60px; height: 60px; background: #FF6600; border: 3px solid #FFF; border-radius: 50%; color: #000; font-size: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 400; pointer-events: auto; }
+        /* WIDGETS DÉPORTÉS SUR LES CÔTÉS */
+        .side-bar { position: absolute; top: 50%; transform: translateY(-50%); z-index: 200; display: flex; flex-direction: column; gap: 40px; pointer-events: auto; }
+        .left-side { left: 20px; }
+        .right-side { right: 20px; text-align: right; }
 
-        /* DASHBOARD BAS */
-        #dashboard {
-            position: absolute; bottom: 0; width: 100%; height: 95px;
-            background: rgba(0,0,0,0.9); border-top: 2px solid #FF6600;
-            display: grid; grid-template-columns: repeat(4, 1fr); z-index: 200;
-        }
-        .widget { text-align: center; border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: center; }
-        .label { font-size: 0.6rem; color: #FF6600; letter-spacing: 2px; margin-bottom: 2px; }
-        .value { font-family: 'Barlow Condensed'; font-size: 2.8rem; font-weight: 900; line-height: 1; }
+        .widget { background: rgba(0,0,0,0.4); padding: 10px; border-left: 3px solid #FF6600; min-width: 120px; }
+        .right-side .widget { border-left: none; border-right: 3px solid #FF6600; }
+        .label { font-size: 0.6rem; color: #FF6600; font-weight: 900; margin-bottom: 5px; opacity: 0.7; }
+        .value { font-family: 'Barlow Condensed'; font-size: 3rem; font-weight: 900; line-height: 1; }
 
-        /* STATIONS LIST */
-        #fuel-list {
-            position: absolute; right: 20px; top: 80px; width: 280px; max-height: 50%;
-            background: rgba(0,0,0,0.9); border: 1px solid #333; border-top: 4px solid #FF6600;
-            display: none; overflow-y: auto; z-index: 600; pointer-events: auto;
-        }
-        .fuel-item { padding: 12px; border-bottom: 1px solid #222; }
-        .fuel-price { font-family: 'Barlow Condensed'; font-size: 1.8rem; font-weight: 900; color: #FFF; }
+        /* NAVIGATION & SCAN */
+        #top-ui { position: absolute; top: 20px; width: 94%; left: 3%; z-index: 500; display: flex; gap: 15px; pointer-events: auto; }
+        #search-input { flex-grow: 1; background: rgba(0,0,0,0.85); border: 1px solid #444; color: #FFF; padding: 15px; border-radius: 4px; font-family: 'Orbitron'; font-size: 0.8rem; }
+        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 25px; border-radius: 4px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; }
+
+        #fuel-list { position: absolute; right: 20px; top: 100px; width: 280px; max-height: 50%; background: rgba(0,0,0,0.95); border: 1px solid #333; display: none; overflow-y: auto; z-index: 600; pointer-events: auto; }
+        .fuel-item { padding: 15px; border-bottom: 1px solid #222; }
     </style>
 </head>
 <body>
 
-    <div id="landscape-lock">
-        <h1 style="margin:0;">READY TO RACE</h1>
-        <p>BASCULEZ EN MODE PAYSAGE</p>
-    </div>
-
+    <div id="landscape-lock"><h1>READY TO RACE</h1><p>PAYSAGE REQUIS</p></div>
     <div id="map"></div>
 
     <div id="top-ui">
-        <input type="text" id="search-input" placeholder="RECHERCHE DESTINATION...">
-        <button class="btn-ktm" onclick="findFuel()">⛽ SCAN</button>
+        <input type="text" id="search-input" placeholder="DESTINATION (VILLE, CP...)" onkeypress="if(event.key==='Enter') searchCity(this.value)">
+        <button class="btn-ktm" onclick="findFuel()">⛽ SCAN CARBURANT</button>
     </div>
 
-    <div id="fuel-list">
-        <div style="padding:10px; background:#111; font-size:0.7rem; font-weight:900; color:#FF6600; border-bottom:1px solid #333;">STATIONS PROCHES [OSMAND]</div>
-        <div id="fuel-list-content"></div>
+    <div class="side-bar left-side">
+        <div class="widget"><div class="label">ALTITUDE</div><div id="alt" class="value">---</div></div>
+        <div class="widget"><div class="label">TRIP KM</div><div id="dist" class="value">0.0</div></div>
     </div>
+
+    <div class="side-bar right-side">
+        <div class="widget"><div class="label">CAP GPS</div><div id="cap" class="value">---</div></div>
+        <div class="widget"><div class="label">INCLINAISON</div><div id="lean-val" class="value">0°</div><div onclick="calibrate()" style="font-size:8px; color:#555; cursor:pointer;">[ CALIBRER ]</div></div>
+    </div>
+
+    <div id="fuel-list"><div id="fuel-list-content"></div></div>
 
     <div id="hud-global">
         <div id="cockpit-ring">
@@ -123,22 +91,9 @@
             <div style="height:100%; display:flex; align-items:center; justify-content:center;">
                 <div id="speed-wrap">
                     <div id="speed-val">000</div>
-                    <div style="font-size:1.4rem; color:#FF6600; font-weight:900; letter-spacing:10px;">KM/H</div>
+                    <div style="font-size:1.4rem; color:#FF6600; font-weight:900; letter-spacing:15px;">KM/H</div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="btn-recenter" onclick="recenter()">⊕</div>
-
-    <div id="dashboard">
-        <div class="widget"><div class="label">ALTITUDE</div><div id="alt" class="value">--</div></div>
-        <div class="widget"><div class="label">TRIP KM</div><div id="dist" class="value">0.0</div></div>
-        <div class="widget"><div class="label">CAP</div><div id="cap" class="value">---</div></div>
-        <div class="widget">
-            <div class="label">LEAN ANGLE</div>
-            <div id="lean-val" class="value">0°</div>
-            <div onclick="calibrate()" style="font-size:9px; color:#555; cursor:pointer; font-weight:bold;">[ RESET ZERO ]</div>
         </div>
     </div>
 
@@ -147,24 +102,24 @@
 
         function createCompass() {
             const ring = document.getElementById('cockpit-ring');
-            for(let i=0; i<360; i+=10) {
+            for(let i=0; i<360; i+=2) { // Graduation tous les 2 degrés pour l'aspect avion
                 let t = document.createElement('div');
-                t.className = (i % 30 === 0) ? 'tick major' : 'tick';
-                t.style.height = (i % 30 === 0) ? "35px" : "15px";
+                t.className = 'tick';
+                if (i % 30 === 0) { t.className += ' major'; t.style.height = '35px'; }
+                else if (i % 10 === 0) { t.className += ' med'; t.style.height = '20px'; }
+                else { t.style.height = '8px'; }
                 t.style.transform = `rotate(${i}deg)`;
                 ring.appendChild(t);
             }
         }
 
         function init() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], CONFIG.DEFAULT_ZOOM);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], 16);
             L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
             userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 3 }).addTo(map);
-            
             createCompass();
             window.addEventListener('deviceorientation', handleOrientation);
             startTracking();
-            document.getElementById('search-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') searchCity(e.target.value); });
         }
 
         function handleOrientation(e) {
@@ -172,31 +127,17 @@
             let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
             if (screenAngle === -90) raw = -raw;
             lastRaw = raw;
-
-            let currentLean = raw - offset;
-            smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
+            smoothedLean = (smoothedLean * 0.85) + ((raw - offset) * 0.15);
             let angle = Math.abs(Math.round(smoothedLean));
 
             const horizon = document.getElementById('horizon-line');
             const leanTxt = document.getElementById('lean-val');
-            
             horizon.style.transform = `rotate(${smoothedLean}deg)`;
             leanTxt.innerText = angle + "°";
 
-            // LOGIQUE COULEUR COCKPIT AVION
-            if (angle > 45) { // Angle fort
-                horizon.style.background = CONFIG.DANGER_RED;
-                horizon.style.boxShadow = "0 0 30px #FF0000";
-                leanTxt.style.color = CONFIG.DANGER_RED;
-            } else if (angle > 20) { // Prise d'angle
-                horizon.style.background = CONFIG.KTM_ORANGE;
-                horizon.style.boxShadow = "0 0 15px #FF6600";
-                leanTxt.style.color = CONFIG.KTM_ORANGE;
-            } else { // Stable / Ligne droite
-                horizon.style.background = "linear-gradient(90deg, transparent, #FFF, transparent)";
-                horizon.style.boxShadow = "0 0 20px rgba(255,255,255,0.6)";
-                leanTxt.style.color = "#FFF";
-            }
+            if (angle > 40) { horizon.style.background = CONFIG.DANGER_RED; leanTxt.style.color = CONFIG.DANGER_RED; }
+            else if (angle > 15) { horizon.style.background = CONFIG.KTM_ORANGE; leanTxt.style.color = CONFIG.KTM_ORANGE; }
+            else { horizon.style.background = "linear-gradient(90deg, transparent, #FFF, transparent)"; leanTxt.style.color = "#FFF"; }
         }
 
         function startTracking() {
@@ -204,7 +145,6 @@
                 const p = [u.coords.latitude, u.coords.longitude];
                 userMarker.setLatLng(p);
                 map.panTo(p);
-
                 document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                 if (u.coords.altitude) document.getElementById('alt').innerText = Math.round(u.coords.altitude) + "m";
                 if (lastCoord) totalDist += map.distance(lastCoord, p) / 1000;
@@ -214,41 +154,42 @@
             }, null, { enableHighAccuracy: true });
         }
 
+        // NAVIGATION OSMAND CORRIGÉE
+        function goNav(lat, lon) {
+            // Tentative 1: Intent Android direct (Le plus fiable)
+            const intentUrl = `intent://center?lat=${lat}&lon=${lon}&zoom=16#Intent;scheme=osmand.api;package=net.osmand;end`;
+            // Tentative 2: Protocole geo standard
+            const geoUrl = `geo:${lat},${lon}?q=${lat},${lon}`;
+            
+            window.location.href = intentUrl; 
+            setTimeout(() => { window.location.href = geoUrl; }, 500);
+        }
+
         async function findFuel() {
             const center = map.getCenter();
-            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=20`;
             try {
-                const res = await fetch(url);
+                const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', 30000m)&limit=8`);
                 const data = await res.json();
                 const list = document.getElementById('fuel-list-content');
                 document.getElementById('fuel-list').style.display = "block";
-                list.innerHTML = "";
-
+                list.innerHTML = `<div style="padding:10px; color:#FF6600; font-weight:900; border-bottom:1px solid #333; display:flex; justify-content:space-between;">STATIONS <span onclick="document.getElementById('fuel-list').style.display='none'" style="cursor:pointer;">[X]</span></div>`;
                 data.results.forEach(st => {
                     const price = st.gazole_prix || st.sp95_prix || st.e10_prix || 0;
-                    if(price > 0) {
-                        const div = document.createElement('div');
-                        div.className = "fuel-item";
-                        div.innerHTML = `
-                            <div style="font-size:0.6rem; color:#888;">${st.nom || st.adresse}</div>
-                            <div class="fuel-price">${price.toFixed(2)}€</div>
-                            <button class="btn-ktm" style="width:100%; margin-top:5px; font-size:10px;" onclick="window.location.href='osmand.geo:0,0?q=${st.geom.lat},${st.geom.lon}'">NAVIGUER (OSMAND)</button>
-                        `;
-                        list.appendChild(div);
-                    }
+                    const div = document.createElement('div');
+                    div.className = "fuel-item";
+                    div.innerHTML = `<div style="font-size:0.6rem; color:#888;">${st.nom || st.adresse}</div><div style="font-size:1.8rem; font-family:'Barlow Condensed'; font-weight:900;">${price.toFixed(2)}€</div><button class="btn-ktm" style="width:100%; margin-top:5px; padding:8px;" onclick="goNav(${st.geom.lat}, ${st.geom.lon})">NAVIGUER</button>`;
+                    list.appendChild(div);
                 });
-            } catch(e) { console.error("API Erreur"); }
+            } catch(e) { alert("Erreur scan"); }
         }
 
         async function searchCity(q) {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
             const data = await res.json();
-            if (data.length > 0) map.flyTo([data[0].lat, data[0].lon], CONFIG.DEFAULT_ZOOM);
+            if (data.length > 0) map.flyTo([data[0].lat, data[0].lon], 15);
         }
 
-        function calibrate() { offset = lastRaw; smoothedLean = 0; }
-        function recenter() { if(lastCoord) map.flyTo(lastCoord, CONFIG.DEFAULT_ZOOM); }
-
+        function calibrate() { offset = lastRaw; }
         window.onload = init;
     </script>
 </body>
