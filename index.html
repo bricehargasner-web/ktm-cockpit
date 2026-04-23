@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V110 AERO</title>
+    <title>ENERGY CONCEPT - KTM V111</title>
     
     <script>
         const CONFIG = {
@@ -16,7 +16,7 @@
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
             WEATHER_UPDATE_MS: 900000,
-            DEFAULT_ZOOM: 14
+            DEFAULT_ZOOM: 15
         };
     </script>
 
@@ -34,7 +34,7 @@
             user-select: none; -webkit-user-select: none;
         }
 
-        /* --- ÉCRAN DE VERROUILLAGE PORTRAIT --- */
+        /* VERROUILLAGE PORTRAIT */
         #portrait-lock { display: none; }
         @media screen and (orientation: portrait) {
             #app-core { display: none !important; }
@@ -45,20 +45,17 @@
             }
         }
         
-        /* --- COCKPIT CORE --- */
         #app-core { width: 100%; height: 100%; position: relative; }
         #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); transition: 0.5s; cursor: crosshair; }
 
-        /* COMPAS CENTRAL */
+        /* COMPAS & HORIZON */
         #central-hud { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 88vmin; height: 88vmin; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: center; }
         #compass-svg { width: 100%; height: 100%; filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.9)); }
         .tick-line { stroke: var(--dynamic-hud); stroke-width: 2.5; transition: 0.3s; }
         .azimut-text { fill: var(--dynamic-hud); font-weight: 900; font-size: 11px; paint-order: stroke; stroke: rgba(0,0,0,0.8); stroke-width: 1px; }
-
-        /* HORIZON PRÉCIS */
         #horizon-line { position: absolute; width: calc(100% + 10vmin); height: 4px; background: linear-gradient(90deg, transparent 0%, var(--dynamic-hud) 15%, #fff 50%, var(--dynamic-hud) 85%, transparent 100%); border-top: 1.5px solid rgba(255, 102, 0, 0.7); box-shadow: 0 0 15px var(--dynamic-hud), 0 -2px 8px rgba(255, 102, 0, 0.5); transition: transform 0.1s linear; z-index: 110; }
 
-        /* WIDGETS */
+        /* WIDGETS VOL */
         .flight-widget { position: fixed; bottom: 15vh; z-index: 700; color: var(--ktm); display: flex; flex-direction: column; }
         .val-big { font-size: clamp(3.5rem, 11vmin, 7.5rem); font-weight: 900; line-height: 0.75; text-shadow: 4px 4px 15px rgba(0,0,0,1); }
         .sub-label { font-size: clamp(1rem, 3vmin, 1.4rem); font-weight: 800; letter-spacing: 4px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
@@ -73,7 +70,6 @@
         #controls-right { position: fixed; top: 15px; right: 15px; z-index: 2100; display: flex; flex-direction: column; gap: 15px; align-items: center; }
         #ui-trigger { cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
         .bar { width: 35px; height: 4px; background: var(--ktm); border-radius: 2px; box-shadow: 0 0 10px black; }
-        
         #lock-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.8); border: 2px solid white; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: 0.3s; }
         #lock-btn.active { border-color: var(--ktm); color: var(--ktm); box-shadow: 0 0 10px var(--ktm); }
         #lock-btn svg { width: 20px; height: 20px; fill: currentColor; }
@@ -88,7 +84,14 @@
         .pane.active { display: block; }
         .station-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid var(--ktm); }
 
-        /* --- DASHBOARD BAS : INTÉGRATION NAV-TAPE --- */
+        /* --- SWITCH DE TRI (NOUVEAU) --- */
+        .switch-wrapper { display: flex; align-items: center; position: relative; height: 42px; background: #111; border: 1px solid #333; border-radius: 4px; cursor: pointer; margin-bottom: 15px; }
+        .switch-slider { position: absolute; top: 0; left: 0; width: 50%; height: 100%; background: var(--ktm); border-radius: 3px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .switch-label { flex: 1; text-align: center; font-size: 1rem; font-weight: 900; z-index: 2; transition: color 0.3s; pointer-events: none; }
+        .switch-label.active { color: black; }
+        .switch-label.inactive { color: #888; }
+
+        /* DASHBOARD BAS */
         #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 8vh; min-height: 60px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: 1fr 3fr 1.5fr; z-index: 800; }
         .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
@@ -99,11 +102,11 @@
 
         /* TAPE AZIMUT */
         .azi-container { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; }
-        #azi-tape { position: absolute; left: 50%; top: 50%; transform: translate(-1080px, -50%); /* 1080 est le 0° (Nord) */ }
+        #azi-tape { position: absolute; left: 50%; top: 50%; transform: translate(-1080px, -50%); }
         .azi-cursor { position: absolute; left: 50%; top: 0; width: 2px; height: 100%; background: var(--ktm); transform: translateX(-50%); box-shadow: 0 0 8px black; z-index: 10; }
         .azi-cursor::after { content:''; position:absolute; top:0; left:-4px; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--ktm); }
 
-        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; }
+        input[type="range"], select, input[type="text"] { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -157,10 +160,13 @@
 
             <div id="p-radar" class="pane active">
                 <h3 style="color:var(--ktm); margin-top:0;">RADAR FUEL</h3>
-                <div style="display:flex; gap:5px; margin-bottom:15px;">
-                    <button id="sort-price" class="sort-btn active" style="flex:1" onclick="APP.setSort('price')">PRIX</button>
-                    <button id="sort-dist" class="sort-btn" style="flex:1" onclick="APP.setSort('dist')">KM</button>
+                
+                <div class="switch-wrapper" onclick="APP.toggleSort()">
+                    <div class="switch-slider" id="switch-slider"></div>
+                    <div class="switch-label active" id="lbl-price">PRIX</div>
+                    <div class="switch-label inactive" id="lbl-dist">KM</div>
                 </div>
+
                 <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
                 <button class="btn-zero" style="width:100%; font-size:1rem; margin-bottom:10px; border-color:var(--ktm);" onclick="APP.scanFuel()">LANCER LE SCAN</button>
                 <button class="btn-zero" style="width:100%; font-size:0.8rem; border-color:#444;" onclick="APP.clearFuel()">EFFACER LES STATIONS</button>
@@ -179,10 +185,11 @@
                 <button class="btn-zero" style="width:100%; font-size:1rem; border-color:var(--ktm);" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
                 <button class="btn-zero" style="width:100%; font-size:1rem; border-color:var(--ktm); margin-top:15px;" onclick="APP.goFullscreen()">ACTIVER PLEIN ÉCRAN</button>
                 
-                <label style="display:block; margin-top:25px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white;">30</span> KM</label>
-                <input type="range" min="5" max="100" value="30" oninput="document.getElementById('rad-val').innerText=this.value">
-                <label style="display:block; margin-top:20px; color:#888;">ZOOM CARTE : <span id="zoom-val" style="color:white;">14</span></label>
-                <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
+                <label style="display:block; margin-top:25px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white;">10</span> KM</label>
+                <input type="range" min="2" max="15" value="10" oninput="document.getElementById('rad-val').innerText=this.value">
+                
+                <label style="display:block; margin-top:20px; color:#888;">ZOOM CARTE : <span id="zoom-val" style="color:white;">15</span></label>
+                <input type="range" min="12" max="19" value="15" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
             </div>
         </div>
 
@@ -197,7 +204,7 @@
                 </div>
             </div>
 
-            <div class="widget weather-btn" id="weather-widget-btn" onclick="window.open('https://open-meteo.com', '_blank')">
+            <div class="widget weather-btn" id="weather-widget-btn">
                 <div class="label">Météo LIVE ↗</div>
                 <div id="weather-val" class="data">--°C</div>
                 <div id="weather-loc" class="sub-data">RECHERCHE...</div>
@@ -210,20 +217,27 @@
             map: null, userMarker: null, fuelLayer: null, navLine: null,
             isNight: false, isLocked: true, sortMode: 'price', offset: 0, lastRaw: 0, lastH: 0, lastWeatherUpdate: 0,
             stationsData: [],
+            currentLat: null, currentLng: null,
 
             init: function() {
                 this.map = L.map('map', { 
-                    zoomControl: false, attributionControl: false, 
+                    maxZoom: 19, zoomControl: false, attributionControl: false, 
                     dragging: true, touchZoom: true, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
                 }).setView([43.76, 1.99], CONFIG.DEFAULT_ZOOM); 
                 
-                L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
+                L.tileLayer(CONFIG.MAP_DAY, {maxZoom: 19}).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
                 
                 this.buildAziTape();
                 this.drawCompass();
                 this.startSensors();
+                
+                // Météo clic ouvre une recherche Google Météo ultra-fiable
+                document.getElementById('weather-widget-btn').onclick = () => {
+                    if(this.currentLat) window.open(`https://www.google.com/search?q=meteo+${this.currentLat},${this.currentLng}`, '_blank');
+                };
+
                 this.updateSnitch('> SYS: ONLINE | AERO-LOCK ACTIF');
             },
 
@@ -253,27 +267,40 @@
                 }
             },
 
-            /* CRÉATION DE LA BANDE AZIMUT */
+            toggleSort: function() {
+                this.sortMode = this.sortMode === 'price' ? 'dist' : 'price';
+                const slider = document.getElementById('switch-slider');
+                const lblP = document.getElementById('lbl-price');
+                const lblD = document.getElementById('lbl-dist');
+
+                if(this.sortMode === 'dist') {
+                    slider.style.transform = 'translateX(100%)';
+                    lblP.className = 'switch-label inactive';
+                    lblD.className = 'switch-label active';
+                } else {
+                    slider.style.transform = 'translateX(0)';
+                    lblP.className = 'switch-label active';
+                    lblD.className = 'switch-label inactive';
+                }
+                if(this.stationsData.length > 0) this.renderStations();
+            },
+
             buildAziTape: function() {
                 const tape = document.getElementById('azi-tape');
                 let html = `<svg width="3240" height="40" viewBox="0 0 3240 40">`;
                 for(let i = -360; i <= 720; i += 5) {
                     let x = (i + 360) * 3;
-                    let isMajor = i % 30 === 0;
-                    let isMedium = i % 10 === 0;
+                    let isMajor = i % 30 === 0, isMedium = i % 10 === 0;
                     let h = isMajor ? 18 : (isMedium ? 10 : 5);
                     html += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="white" stroke-opacity="${isMajor ? 1 : 0.5}" stroke-width="${isMajor ? 2 : 1}"/>`;
-                    
                     if (isMajor) {
                         let val = i < 0 ? i + 360 : (i >= 360 ? i - 360 : i);
                         let text = val === 0 ? 'N' : (val === 90 ? 'E' : (val === 180 ? 'S' : (val === 270 ? 'W' : val)));
                         let color = (val % 90 === 0) ? CONFIG.KTM_ORANGE : "white";
-                        let fontSize = (val % 90 === 0) ? 14 : 11;
-                        html += `<text x="${x}" y="35" fill="${color}" font-size="${fontSize}" font-weight="900" text-anchor="middle" font-family="'Saira Condensed', sans-serif">${text}</text>`;
+                        html += `<text x="${x}" y="35" fill="${color}" font-size="${(val % 90 === 0) ? 14 : 11}" font-weight="900" text-anchor="middle" font-family="'Saira Condensed', sans-serif">${text}</text>`;
                     }
                 }
-                html += `</svg>`;
-                tape.innerHTML = html;
+                html += `</svg>`; tape.innerHTML = html;
             },
 
             drawCompass: function() {
@@ -295,21 +322,12 @@
                 }
             },
 
-            getWeatherEmoji: function(code) {
-                if(code === 0) return '☀️';
-                if(code > 0 && code <= 3) return '⛅';
-                if(code >= 45 && code <= 48) return '🌫️';
-                if(code >= 51 && code <= 67) return '🌧️';
-                if(code >= 71 && code <= 77) return '❄️';
-                if(code >= 95) return '⛈️';
-                return '🌡️';
+            getWeatherEmoji: function(c) {
+                if(c === 0) return '☀️'; if(c > 0 && c <= 3) return '⛅'; if(c >= 45 && c <= 48) return '🌫️';
+                if(c >= 51 && c <= 67) return '🌧️'; if(c >= 71 && c <= 77) return '❄️'; if(c >= 95) return '⛈️'; return '🌡️';
             },
 
             fetchWeather: async function(lat, lng) {
-                // MISE A JOUR URL OPEN METEO PROFONDE
-                const meteoUrl = `https://open-meteo.com/en/forecast?latitude=${lat}&longitude=${lng}`;
-                document.getElementById('weather-widget-btn').onclick = () => window.open(meteoUrl, '_blank');
-
                 if(Date.now() - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return;
                 this.lastWeatherUpdate = Date.now();
                 try {
@@ -327,21 +345,22 @@
                 if(navigator.geolocation) {
                     navigator.geolocation.watchPosition(u => {
                         const p = [u.coords.latitude, u.coords.longitude]; 
+                        this.currentLat = p[0]; this.currentLng = p[1];
                         this.userMarker.setLatLng(p);
+                        
                         if(this.isLocked && !this.navLine) this.map.setView(p, this.map.getZoom()); 
                         this.fetchWeather(p[0], p[1]);
                         
                         document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
                         
-                        // ANIMATION DU BANDEAU AZIMUT
                         if(u.coords.heading !== null && !isNaN(u.coords.heading)) {
                             let h = Math.round(u.coords.heading);
                             const tape = document.getElementById('azi-tape');
-                            if (Math.abs(h - this.lastH) > 180) tape.style.transition = 'none'; // Évite le glitch du 360
+                            if (Math.abs(h - this.lastH) > 180) tape.style.transition = 'none';
                             else tape.style.transition = 'transform 0.5s linear';
                             tape.style.transform = `translate(${-1080 - (h * 3)}px, -50%)`;
-                            void tape.offsetWidth; // Force CSS apply
+                            void tape.offsetWidth;
                             this.lastH = h;
                         }
                     }, null, { enableHighAccuracy: true });
@@ -407,14 +426,12 @@
 
             clearFuel: function() { this.fuelLayer.clearLayers(); this.stationsData = []; document.getElementById('station-list').innerHTML = ""; this.updateSnitch('> RADAR: PURGE STATIONS'); },
             clearNav: function() { if(this.navLine) { this.map.removeLayer(this.navLine); this.navLine = null; } this.recenterMap(); },
-            toggleTheme: function() { this.isNight = !this.isNight; this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); }); L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map); },
+            toggleTheme: function() { this.isNight = !this.isNight; this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); }); L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY, {maxZoom: 19}).addTo(this.map); },
             toggleDrawer: function() { document.getElementById('mission-drawer').classList.toggle('open'); },
             showPane: function(id, btn) { document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); btn.classList.add('active'); },
             recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); this.isLocked = true; document.getElementById('lock-btn').classList.add('active'); },
             resetGyro: function() { this.offset = this.lastRaw; },
-            updateZoom: function(v) { this.map.setZoom(v); },
-            setSort: function(m) { this.sortMode = m; document.getElementById('sort-price').className = m=='price'?'active sort-btn':'sort-btn'; document.getElementById('sort-dist').className = m=='dist'?'active sort-btn':'sort-btn'; if(this.stationsData.length > 0) this.renderStations(); },
-            searchCity: async function() { const city = document.getElementById('city-in').value; const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`); const data = await res.json(); if(data.length > 0) this.startNav(data[0].lat, data[0].lon); }
+            updateZoom: function(v) { this.map.setZoom(v); }
         };
 
         window.onload = () => APP.init();
