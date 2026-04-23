@@ -3,149 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V78 - MASTER MASK</title>
+    <title>KTM V79 - TARN VIRTUAL COCKPIT</title>
     
     <script>
-        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (BRICE CARDONA) --- */
+        /* --- CONFIGURATION BRICE CARDONA --- */
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_GREEN: '#2ecc71',
             DANGER_RED: '#ff4757',
-            REFRESH_RATE: 30 // Images par seconde du HUD
+            SCAN_RADIUS: 30000, 
+            FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
+            // STYLE CLAIR ET PRÉCIS (Type MapBox/Audi Virtual Cockpit)
+            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
         };
     </script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Barlow+Condensed:wght@900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
         
-        /* INTERFACE DE PRÉPARATION */
-        #ui-layer { text-align: center; z-index: 10; padding: 20px; width: 100%; }
-        .btn-launch { background: #FF6600; color: #000; border: none; padding: 25px; font-weight: 900; font-size: 1.4rem; border-radius: 12px; cursor: pointer; width: 80%; max-width: 400px; text-transform: uppercase; margin-bottom: 20px; }
-        .btn-nav { background: #34a853; color: #fff; border: none; padding: 15px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 80%; max-width: 400px; text-transform: uppercase; }
+        /* 1. LA CARTE (L'OCÉAN CLAIR ET LISIBLE) */
+        #map { position: absolute; inset: 0; z-index: 1; filter: saturate(1.2) contrast(1.1) brightness(1.0); }
 
-        /* PRÉVISUALISATION DU MASQUE */
-        #pipVideo { width: 90%; max-width: 600px; border: 2px solid #333; border-radius: 10px; background: #111; margin: 20px 0; }
+        /* 2. LE COCKPIT SAUCE KTM/AUDI (Transparent et Angular) */
+        #cockpit-frame {
+            position: absolute; inset: 0; z-index: 100;
+            border: 15px solid rgba(0,0,0,0.5); /* Cadre masque semi-transparent */
+            pointer-events: none;
+        }
+
+        /* COMPTEUR CENTRAL (KTM MY RIDE / AIRPLANE MFD) */
+        #mfd-center {
+            position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
+            width: 280px; height: 280px; z-index: 150; pointer-events: none;
+            background: rgba(0,0,0,0.6); /* Transparence noire */
+            border: 4px solid #FF6600; /* Cadre Orange KTM */
+            border-radius: 5px; /* Angular shapes */
+            box-shadow: 0 0 25px rgba(255,102,0,0.5);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #speed-val { font-family: 'Barlow Condensed'; font-size: 8.5rem; font-weight: 900; line-height: 0.7; color: #FFF; text-shadow: 0 0 15px #000; }
+        #speed-unit { color:#FF6600; font-weight:900; font-size: 1.2rem; letter-spacing: 3px; margin-top: 10px; }
+
+        /* INSTRUMENTS DE BORD LATERAUX (Plein Transparece) */
+        .mfd-panel {
+            position: absolute; bottom: 30px; padding: 10px;
+            background: rgba(0,0,0,0.6); border: 2px solid #333; z-index: 200; pointer-events: auto;
+        }
         
-        /* MOTEUR GRAPHIQUE CACHÉ */
-        #hudCanvas { display: none; }
+        #lean-panel { right: 30px; text-align: right; border-left: 4px solid #FF6600; }
+        #lean-val { font-family: 'Barlow Condensed'; font-size: clamp(3rem, 10vw, 5rem); font-weight: 900; color: #2ecc71; line-height: 1; }
         
-        .alert { color: #FF6600; font-size: 0.8rem; margin-top: 10px; }
+        #alt-panel { left: 30px; text-align: left; border-right: 4px solid #FF6600; }
+        #alt-val { font-size: 1.5rem; font-weight: 900; color: #aaa; }
+
+        /* INTERFACE TACTIQUE (SCAN & NAVIGATION EXTERNE) */
+        #tactical-ui { position: absolute; top: 20px; width: 94%; left: 3%; z-index: 300; display: flex; gap: 10px; pointer-events: auto; }
+        
+        .scan-module { display: flex; gap: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; border: 2px solid #333; }
+        .btn-ktm-scan { background: #FF6600; color: #000; border: none; padding: 12px 25px; font-weight: 900; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+
+        /* PORTAILS DE NAVIGATION (Pour sortir vers le GPS réel d'un clic) */
+        .btn-nav-portal { background: rgba(0,0,0,0.8); color: #fff; border: 1.5px solid #fff; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.7rem; cursor: pointer; text-decoration: none; }
+
+        /* LISTE DES STATIONS (SCAN OVERLAY) */
+        #radar-overlay {
+            position: absolute; top: 90px; left: 3%; width: 280px; max-height: 55%;
+            background: rgba(0,0,0,0.95); border-left: 5px solid #FF6600;
+            overflow-y: auto; display: none; z-index: 250; pointer-events: auto;
+        }
+        .radar-card { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; }
+        .radar-card:active { background: #333; }
+
+        /* LIGNE D'HORIZON SLIM */
+        #horizon { position: absolute; top: 50%; left: 50%; width: 35%; height: 1px; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); z-index: 50; }
     </style>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <h1 style="color:#FF6600; font-size: 2rem; margin-bottom: 5px;">KTM MASTER MASK</h1>
-        <p style="color:#666; margin-bottom: 20px;">Visière de plongée pour Google Maps</p>
+    <div id="map"></div>
+    <div id="cockpit-frame"></div>
+    <div id="horizon"></div>
 
-        <button class="btn-launch" onclick="startVisiere()">1. Activer la Visière</button>
-        
-        <button class="btn-nav" onclick="launchGoogleMaps()">2. Ouvrir Google Maps</button>
-
-        <video id="pipVideo" autoplay playsinline muted></video>
-
-        <div style="display: flex; justify-content: center; gap: 10px;">
-            <button onclick="calibrate()" style="background:#222; color:#fff; border:1px solid #444; padding:10px; border-radius:5px;">ZERO ANGLE</button>
-        </div>
-        
-        <div class="alert" id="status">En attente des capteurs...</div>
+    <div id="mfd-center">
+        <div id="speed-val">000</div>
+        <div id="speed-unit">KM/H</div>
     </div>
 
-    <canvas id="hudCanvas" width="600" height="300"></canvas>
+    <div id="tactical-ui">
+        <div class="scan-module">
+            <select id="fuel-type" style="background:#000; color:#FF6600; border:1px solid #FF6600; font-weight:900;">
+                <option value="gazole_prix">GAZOLE</option>
+                <option value="sp95_prix">SP95</option>
+                <option value="e10_prix">E10</option>
+            </select>
+            <button class="btn-ktm-scan" onclick="findFuel()">⛽ SCAN RADAR</button>
+        </div>
+        
+        <a href="google.navigation:q=Graulhet" class="btn-nav-portal" style="background: #34a853;">MAPS</a>
+        <a href="waze://" class="btn-nav-portal" style="background: #33ccff;">WAZE</a>
+    </div>
+
+    <div id="radar-overlay"></div>
+
+    <div id="lean-panel" class="mfd-panel">
+        <div id="lean-val">0°</div>
+        <div style="font-size:0.7rem; color:#888;">INCLINAISON</div>
+        <button onclick="calibrate()" style="background:#222; color:#555; border:none; padding:2px 5px; margin-top:5px; font-size:10px; cursor:pointer;">ZERO</button>
+    </div>
+
+    <div id="alt-panel" class="mfd-panel">
+        <div id="alt-val">--- M</div>
+        <div style="color:#FF6600; font-weight:900; font-size: 0.8rem;">ALTITUDE</div>
+    </div>
 
     <script>
-        const canvas = document.getElementById('hudCanvas');
-        const ctx = canvas.getContext('2d');
-        const video = document.getElementById('pipVideo');
-        let speed = "000", lean = 0, offset = 0, lastRaw = 0;
+        let map, userMarker, fuelLayer, offset = 0, lastRaw = 0, smoothedLean = 0;
 
-        // --- LOGIQUE CLINIQUE : GÉNÉRATION DU COCKPIT ---
-        function runHudEngine() {
-            const stream = canvas.captureStream(CONFIG.REFRESH_RATE);
-            video.srcObject = stream;
+        function init() {
+            // Initialisation de la carte (L'Océan clair et précis)
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], 14);
+            L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
+            fuelLayer = L.layerGroup().addTo(map);
+            userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 3 }).addTo(map);
 
-            function draw() {
-                // Fond Noir
-                ctx.fillStyle = "black";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // --- VITESSE (CENTRE) ---
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#FFFFFF";
-                ctx.font = "900 160px 'Barlow Condensed'";
-                ctx.fillText(speed, canvas.width/2, canvas.height/2 + 40);
-                
-                ctx.fillStyle = CONFIG.KTM_ORANGE;
-                ctx.font = "900 30px 'Orbitron'";
-                ctx.fillText("KM/H", canvas.width/2, canvas.height/2 + 90);
-
-                // --- INCLINAISON (DROITE) ---
-                let color = CONFIG.SAFE_GREEN;
-                let absLean = Math.abs(lean);
-                if(absLean > 20) color = CONFIG.KTM_ORANGE;
-                if(absLean > 42) color = CONFIG.DANGER_RED;
-
-                ctx.fillStyle = color;
-                ctx.font = "900 80px 'Barlow Condensed'";
-                ctx.textAlign = "right";
-                ctx.fillText(absLean + "°", canvas.width - 30, canvas.height/2 + 30);
-
-                // --- CADRE MASQUE (Visière) ---
-                ctx.strokeStyle = CONFIG.KTM_ORANGE;
-                ctx.lineWidth = 4;
-                ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-
-                requestAnimationFrame(draw);
-            }
-            draw();
+            window.addEventListener('deviceorientation', handleOrientation);
+            startTracking();
         }
 
-        // --- GESTION DES CAPTEURS (GPS & GYRO) ---
-        function initSensors() {
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(u => {
-                    speed = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
-                    document.getElementById('status').innerText = "GPS Fixé - Prêt pour le Tarn";
-                }, () => {
-                    document.getElementById('status').innerText = "Erreur GPS : Activez la localisation";
-                }, { enableHighAccuracy: true });
-            }
+        function handleOrientation(e) {
+            let screenAngle = window.orientation || 0;
+            let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
+            if (screenAngle === -90) raw = -raw;
+            lastRaw = raw;
+            let currentLean = raw - offset;
+            smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
+            let angle = Math.abs(Math.round(smoothedLean));
 
-            window.addEventListener('deviceorientation', (e) => {
-                let screenAngle = window.orientation || 0;
-                let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
-                if (screenAngle === -90) raw = -raw;
-                lastRaw = raw;
-                lean = Math.round(raw - offset);
-            });
+            document.getElementById('lean-val').innerText = angle + "°";
+            document.getElementById('horizon').style.transform = `translate(-50%, -50%) rotate(${smoothedLean}deg)`;
+            
+            const val = document.getElementById('lean-val');
+            if (angle < 20) val.style.color = CONFIG.SAFE_GREEN;
+            else if (angle < 42) val.style.color = CONFIG.KTM_ORANGE;
+            else val.style.color = CONFIG.DANGER_RED;
         }
 
-        // --- LA MAGIE : MODE FLOTTANT (Picture-in-Picture) ---
-        async function startVisiere() {
+        function startTracking() {
+            navigator.geolocation.watchPosition(u => {
+                const p = [u.coords.latitude, u.coords.longitude];
+                userMarker.setLatLng(p);
+                map.panTo(p);
+                document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
+                if (u.coords.altitude) document.getElementById('alt-val').innerText = Math.round(u.coords.altitude) + " M";
+            }, null, { enableHighAccuracy: true });
+        }
+
+        async function findFuel() {
+            const center = map.getCenter();
+            const fuelType = document.getElementById('fuel-type').value;
+            const overlay = document.getElementById('radar-overlay');
+            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
+            
             try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else {
-                    await video.requestPictureInPicture();
-                }
-            } catch (error) {
-                alert("Mode Visière non supporté sur ce navigateur ou cette version d'Android.");
-            }
-        }
+                const res = await fetch(url);
+                const data = await res.json();
+                fuelLayer.clearLayers();
+                overlay.innerHTML = "";
+                overlay.style.display = "block";
 
-        function launchGoogleMaps() {
-            // Ouvre l'application Google Maps directement
-            window.location.href = "google.navigation:q=Graulhet";
+                if (data.results) {
+                    data.results.forEach(st => {
+                        const price = st[fuelType];
+                        if (!price) return;
+                        
+                        // Marqueur sur carte clair
+                        L.marker([st.geom.lat, st.geom.lon], {
+                            icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:3px; border-radius:3px; font-weight:bold; border:1px solid white; font-size:11px;">${price.toFixed(2)}</div>`, iconSize: [45, 20] })
+                        }).addTo(fuelLayer);
+
+                        // Radar Card
+                        const card = document.createElement('div');
+                        card.className = 'radar-card';
+                        card.innerHTML = `<div style="font-size:0.6rem; color:#aaa; text-transform:uppercase;">${(st.nom || st.adresse).substring(0,18)}</div><div style="font-size:1.6rem; font-weight:900;">${price.toFixed(2)}€</div>`;
+                        card.onclick = () => {
+                            // NAVIGATION EXTERNE INSTANTANÉE (D'un clic)
+                            // Utilise le lien geo: pour garantir la localisation dans le Tarn
+                            window.location.href = `geo:${st.geom.lat},${st.geom.lon}?z=16&q=${st.geom.lat},${st.geom.lon}`;
+                        };
+                        overlay.appendChild(card);
+                    });
+                }
+            } catch(e) { console.error("Erreur API", e); }
         }
 
         function calibrate() { offset = lastRaw; }
-
-        window.onload = () => {
-            runHudEngine();
-            initSensors();
-        };
+        window.onload = init;
     </script>
 </body>
 </html>
