@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - KTM V100 GPS</title>
+    <title>ENERGY CONCEPT - KTM V101</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_WHITE: '#FFFFFF',
             DANGER_RED: '#FF0000',
-            NAV_BLUE: '#00D2FF', // Couleur de la ligne de guidage GPS
+            NAV_BLUE: '#00D2FF',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
@@ -27,29 +27,28 @@
         
         #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); transition: 0.5s; }
 
-        /* COMPAS CENTRAL (SCALABLE & ÉPURÉ) */
+        /* --- COMPAS CENTRAL (ABSOLUMENT FIXE & ÉPURÉ) --- */
         #central-hud {
-            position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
-            /* Utilisation de vh pour s'adapter à la hauteur de l'écran sans chevaucher */
-            width: 55vh; height: 55vh; z-index: 100; pointer-events: none;
+            position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
+            width: 55vh; max-width: 450px; height: 55vh; max-height: 450px; z-index: 100; pointer-events: none;
             display: flex; align-items: center; justify-content: center;
         }
         #compass-svg { width: 100%; height: 100%; filter: drop-shadow(0px 0px 3px rgba(0,0,0,0.8)); }
         .tick-line { stroke: var(--dynamic-hud); stroke-width: 2.5; transition: 0.3s; }
         .azimut-text { fill: var(--dynamic-hud); font-weight: 900; font-size: 11px; transition: 0.3s; paint-order: stroke; stroke: rgba(0,0,0,0.8); stroke-width: 1px; }
 
-        /* HORIZON INFINI TRAVERSANT */
+        /* --- HORIZON TRAVERSANT (DÉPASSE JUSTE DE QUELQUES CM) --- */
         #horizon-line {
             position: absolute; 
-            width: 150vw; /* Dépasse largement l'écran de chaque côté */
+            width: calc(100% + 80px); /* 100% du compas + 40px de chaque côté */
             height: 4px;
-            background: linear-gradient(90deg, transparent 0%, var(--dynamic-hud) 20%, #fff 50%, var(--dynamic-hud) 80%, transparent 100%);
-            border-top: 1px solid rgba(255, 102, 0, 0.5);
+            background: linear-gradient(90deg, transparent 0%, var(--dynamic-hud) 15%, #fff 50%, var(--dynamic-hud) 85%, transparent 100%);
+            border-top: 1px solid rgba(255, 102, 0, 0.6);
             box-shadow: 0 0 15px var(--dynamic-hud), 0 -2px 8px rgba(255, 102, 0, 0.4);
             transition: transform 0.1s linear, background 0.3s; z-index: 110;
         }
 
-        /* WIDGETS SYMÉTRIQUES (AÉRÉS) */
+        /* --- WIDGETS SYMÉTRIQUES KTM --- */
         .flight-widget { position: absolute; bottom: 100px; z-index: 700; color: var(--ktm); }
         .val-big { font-size: 8.5rem; font-weight: 900; line-height: 0.75; text-shadow: 4px 4px 20px rgba(0,0,0,1); }
         .sub-label { font-size: 1.4rem; font-weight: 800; letter-spacing: 6px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
@@ -59,11 +58,11 @@
         
         .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 4px 12px; font-size: 0.8rem; cursor: pointer; border-radius: 2px; margin-top: 10px; pointer-events: auto; font-family: inherit; font-weight: 900; letter-spacing: 1px; }
 
-        /* DÉCLENCHEUR STEALTH */
+        /* --- DÉCLENCHEUR STEALTH --- */
         #ui-trigger { position: absolute; top: 20px; right: 20px; z-index: 1100; cursor: pointer; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
         .bar { width: 35px; height: 3px; background: var(--ktm); border-radius: 2px; box-shadow: 0 0 10px black; }
 
-        /* TIROIR MISSION */
+        /* --- TIROIR MISSION --- */
         #mission-drawer { position: absolute; top: 0; right: -350px; width: 320px; height: 100%; background: rgba(10,10,10,0.85); backdrop-filter: blur(15px); border-left: 3px solid var(--ktm); z-index: 1000; transition: 0.4s; }
         #mission-drawer.open { right: 0; }
         .tab-nav { display: flex; justify-content: space-around; padding: 15px; border-bottom: 1px solid #333; }
@@ -72,13 +71,13 @@
         .pane { display: none; padding: 20px; height: calc(100% - 100px); overflow-y: auto; }
         .pane.active { display: block; }
 
-        /* UI INTERNE */
+        /* --- UI INTERNE --- */
         .sort-bar { display: flex; gap: 5px; margin-bottom: 15px; }
         .sort-btn { flex: 1; padding: 10px; border: 1px solid #333; background: #111; color: #888; font-weight: 800; cursor: pointer; font-family: inherit; transition: 0.2s; }
         .sort-btn.active { background: var(--ktm); color: black; border-color: var(--ktm); }
         .station-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid var(--ktm); }
 
-        /* DASHBOARD BAS */
+        /* --- DASHBOARD BAS --- */
         #dash-bottom { position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,0,0,0.95); border-top: 1px solid rgba(255,102,0,0.4); display: grid; grid-template-columns: repeat(5, 1fr); z-index: 800; }
         .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
@@ -133,7 +132,7 @@
         </div>
         <div id="p-search" class="pane">
             <h3 style="color:var(--ktm); margin-top:0;">CAP GPS</h3>
-            <input type="text" id="city-in" placeholder="Ex: Bastia, Corte...">
+            <input type="text" id="city-in" placeholder="Ex: Albi, Toulouse, Corte...">
             <button class="sort-btn active" style="width:100%" onclick="APP.searchCity()">TRACER LE CAP</button>
             <button class="btn-zero" style="width:100%; border-color:#444; margin-top:15px;" onclick="APP.clearNav()">EFFACER LE CAP</button>
         </div>
@@ -159,7 +158,8 @@
             isNight: false, sortMode: 'price', offset: 0, lastRaw: 0,
 
             init: function() {
-                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([42.15, 9.1], 11);
+                // Centrage par défaut sur la France du Sud, se mettra à jour avec le vrai GPS
+                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.76, 1.99], 10);
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
@@ -194,8 +194,7 @@
                     navigator.geolocation.watchPosition(u => {
                         const p = [u.coords.latitude, u.coords.longitude]; 
                         this.userMarker.setLatLng(p);
-                        // Si pas de ligne de nav active, on centre sur l'utilisateur
-                        if(!this.navLine) this.map.setView(p);
+                        if(!this.navLine) this.map.setView(p); // Centre la carte si aucun GPS actif
                         document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
                         if(u.coords.heading) document.getElementById('azi-val').innerText = Math.round(u.coords.heading) + '°';
@@ -219,15 +218,15 @@
                 });
             },
 
-            // --- NOUVEAU : SYSTÈME DE CAP GPS (LIGNE BLEUE) ---
             startNav: function(lat, lng) {
                 if(this.navLine) this.map.removeLayer(this.navLine);
                 const start = this.userMarker.getLatLng();
                 const end = [lat, lng];
-                // Ligne de guidage Bleue HUD
                 this.navLine = L.polyline([start, end], {color: CONFIG.NAV_BLUE, weight: 4, dashArray: '10, 15', opacity: 0.8}).addTo(this.map);
                 this.map.fitBounds(this.navLine.getBounds(), {padding: [50, 50]});
-                this.toggleDrawer(); // Ferme le tiroir pour voir le cap
+                
+                // FERMETURE FORCÉE DU TIROIR
+                document.getElementById('mission-drawer').classList.remove('open');
             },
 
             clearNav: function() {
@@ -239,11 +238,12 @@
                 const city = document.getElementById('city-in').value;
                 if(!city) return;
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}+corse`);
+                    // API de recherche globale (sans le blocage Corse)
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`);
                     const data = await res.json();
                     if(data && data.length > 0) {
                         this.startNav(data[0].lat, data[0].lon);
-                    } else { alert("Ville introuvable en Corse."); }
+                    } else { alert("Destination introuvable."); }
                 } catch(e) { console.error(e); }
             },
 
@@ -267,7 +267,7 @@
                         const card = document.createElement('div'); card.className = "station-card";
                         card.innerHTML = `
                         <button class="sort-btn active" style="float:right; padding:8px; border-radius:3px;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
-                        <div style="font-size:0.8rem; color:#ccc; text-transform:uppercase; font-weight:bold;">${st.ville || "CORSE"}</div>
+                        <div style="font-size:0.8rem; color:#ccc; text-transform:uppercase; font-weight:bold;">${st.ville || ""}</div>
                         <div style="font-size:0.7rem; color:#888;">${(st.nom || st.adresse).substring(0,30)}</div>
                         <div style="font-size:1.8rem; font-weight:900; color:white; margin-top:5px;">
                             ${st.price.toFixed(2)}€ <span style="color:var(--ktm); font-size:1rem; vertical-align:middle;">| ${st.distance.toFixed(1)} KM</span>
@@ -277,7 +277,7 @@
                 } catch(e) { console.error(e); }
             },
 
-            // Utilitaires UI
+            // Utilitaires
             toggleTheme: function() {
                 this.isNight = !this.isNight;
                 this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); });
