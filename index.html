@@ -3,193 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - RACING COCKPIT V2</title>
+    <title>ENERGY CONCEPT - COCKPIT PRO</title>
     
     <script>
-        /* ============================================================
-           PANNEAU DE CONTRÔLE (MODIFIABLE)
-           ============================================================ */
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            MAP_DAY: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
-            SEARCH_API: 'https://nominatim.openstreetmap.org/search?format=json&q=',
-            DEFAULT_RADIUS: 15, // km
-            PERSPECTIVE: "rotateX(45deg)"
+            SEARCH_API: 'https://nominatim.openstreetmap.org/search?format=json&countrycodes=fr&addressdetails=1&q='
         };
-        /* ============================================================ */
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* VISUEL & STRUCTURE GÉNÉRALE */
-        :root { --accent: #FF6600; --bg: rgba(10, 10, 15, 0.95); --border: rgba(255,255,255,0.1); }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        :root { --accent: #FF6600; --bg: rgba(10, 10, 15, 0.95); }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
 
-        /* VERROUILLAGE PAYSAGE FORCE */
-        @media screen and (orientation: portrait) {
-            #landscape-lock { display: flex !important; }
-        }
-        #landscape-lock {
-            position: fixed; inset: 0; background: #000; z-index: 9999;
-            display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        }
+        /* HUD & CARTE */
+        #viewport { position: absolute; inset: 0; z-index: 1; }
+        #map { width: 100%; height: 100%; }
 
-        /* VUE CARTE */
-        #viewport { position: absolute; inset: 0; perspective: 1000px; z-index: 1; }
-        #map-container { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; transform: var(--perspective); }
-        #map { width: 100%; height: 100%; filter: brightness(0.6); }
-
-        /* HUD - LES 4 PAVÉS */
-        #hud-container {
+        /* PAVÉS HUD */
+        #hud-bottom {
             position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-            width: 98%; height: 160px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; z-index: 100; pointer-events: none;
+            width: 98%; height: 130px; display: grid; grid-template-columns: 1fr 1fr 1fr 1.2fr; gap: 8px; z-index: 100; pointer-events: none;
         }
-        .pane { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 10px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .pane-label { position: absolute; top: 5px; left: 8px; font-size: 0.65rem; color: #888; font-weight: bold; text-transform: uppercase; }
+        .pane { background: var(--bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .pane-label { position: absolute; top: 5px; left: 8px; font-size: 0.6rem; color: #888; font-weight: bold; }
 
-        /* MENU TIROIR (SETTINGS) */
-        #menu-trigger {
-            position: fixed; top: 20px; left: 20px; z-index: 500; background: var(--bg);
-            border: 1px solid var(--accent); color: white; padding: 12px; border-radius: 50%; cursor: pointer; pointer-events: auto;
-        }
-        #side-menu {
-            position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: var(--bg);
-            z-index: 1000; transition: 0.4s; padding: 20px; border-right: 2px solid var(--accent); overflow-y: auto;
-        }
-        #side-menu.active { left: 0; }
-        .menu-section { margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; }
-        .menu-section h3 { color: var(--accent); font-size: 0.9rem; margin-top: 0; }
+        /* MENU & INPUTS */
+        #menu-btn { position: fixed; top: 15px; left: 15px; z-index: 500; background: var(--bg); border: 1px solid var(--accent); color: white; padding: 12px; border-radius: 5px; cursor: pointer; pointer-events: auto; }
+        #side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: var(--bg); z-index: 1000; transition: 0.3s; padding: 20px; border-right: 2px solid var(--accent); pointer-events: auto; overflow-y: auto; }
+        #side-menu.open { left: 0; }
 
-        /* INPUTS & RECHERCHE */
-        input, select { background: #1a1a1a; border: 1px solid #444; color: white; padding: 8px; width: 100%; border-radius: 4px; box-sizing: border-box; }
-        #search-results { background: #1a1a1a; border-radius: 4px; margin-top: 5px; max-height: 150px; overflow-y: auto; }
-        .search-item { padding: 8px; border-bottom: 1px solid #333; cursor: pointer; font-size: 0.85rem; }
+        input, select { background: #111; border: 1px solid #333; color: white; padding: 12px; width: 100%; border-radius: 5px; margin-bottom: 10px; box-sizing: border-box; }
+        .suggest-item { padding: 10px; border-bottom: 1px solid #222; font-size: 0.8rem; cursor: pointer; }
+
+        /* INFOS STATIONS */
+        .fuel-popup { color: #000; font-family: sans-serif; min-width: 150px; }
+        .go-btn { background: #28a745; color: white; border: none; padding: 8px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; text-decoration: none; display: block; text-align: center; }
+
+        /* COMPTEURS */
+        #speed-val { font-size: 3.5rem; font-weight: bold; }
+        #lean-needle { position: absolute; bottom: 0; left: 50%; width: 4px; height: 40px; background: var(--accent); transform-origin: bottom center; }
         
-        /* ÉLÉMENTS HUD SPECIFIQUES */
-        #speed-val { font-size: 3.5rem; font-weight: 900; color: white; }
-        #lean-deg { font-size: 2.2rem; font-weight: bold; }
-        #lean-ui { width: 100%; height: 60px; border-bottom: 2px solid #333; position: relative; }
-        #lean-cursor { position: absolute; bottom: 0; left: 50%; width: 3px; height: 50px; background: var(--accent); transform-origin: bottom center; }
-        .rec-btn { pointer-events: auto; background: var(--accent); border: none; padding: 8px 20px; color: white; font-weight: bold; border-radius: 4px; margin-top: 10px; }
-        #mini-map-view { width: 100%; height: 100%; border-radius: 3px; overflow: hidden; }
+        @media screen and (orientation: portrait) { #lock { display: flex; } }
+        #lock { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-    <div id="landscape-lock">
-        <div style="font-size: 50px;">🔄</div>
-        <h2>Veuillez pivoter votre appareil</h2>
-        <p>L'interface Cockpit nécessite le mode Paysage.</p>
+    <div id="lock"><h2>🔄 PIVOTER EN PAYSAGE</h2></div>
+    <div id="menu-btn" onclick="UI.toggleMenu()">☰ MENU</div>
+
+    <div id="side-menu">
+        <h3 style="color:var(--accent)">PARAMÈTRES</h3>
+        
+        <label>MODE CARTE</label>
+        <button class="go-btn" style="background:#444; margin-bottom:20px;" onclick="CORE.toggleMapMode()">INVERSER JOUR/NUIT</button>
+
+        <label>📍 DESTINATION</label>
+        <input type="text" id="addr-in" placeholder="Ex: Vanteaux Sequestre..." oninput="CORE.searchAddress(this.value)">
+        <div id="search-results"></div>
+
+        <label>⛽ CARBURANT</label>
+        <select id="fuel-type">
+            <option value="Gazole">Gazole</option>
+            <option value="SP95">SP95</option>
+            <option value="E10">E10</option>
+        </select>
+        <button class="go-btn" onclick="CORE.findFuel()">SCANNER PROXIMITÉ</button>
+        
+        <button class="go-btn" style="background:#333; margin-top:30px;" onclick="UI.toggleMenu()">FERMER</button>
     </div>
 
-    <div id="menu-trigger" onclick="UI.toggleMenu()">☰</div>
+    <div id="viewport"><div id="map"></div></div>
 
-    <div id="side-menu" id="drawer">
-        <div class="menu-section">
-            <h3>📍 DESTINATION (Auto-complétion)</h3>
-            <input type="text" id="addr-input" placeholder="Saisir adresse..." oninput="CORE.searchAddress(this.value)">
-            <div id="search-results"></div>
-        </div>
-
-        <div class="menu-section">
-            <h3>⛽ STATIONS SERVICE</h3>
-            <label>Carburant :</label>
-            <select id="fuel-type">
-                <option value="Gazole">Gazole</option>
-                <option value="SP95">SP95</option>
-                <option value="SP98">SP98</option>
-                <option value="E10">E10 / SP95-E10</option>
-                <option value="E85">Superéthanol E85</option>
-            </select>
-            <br><br>
-            <label>Rayon : <span id="radius-val">15</span> km</label>
-            <input type="range" min="1" max="50" value="15" oninput="UI.updateRadius(this.value)">
-            <button class="rec-btn" style="width: 100%;" onclick="CORE.findGas()">SCANNER LA ZONE</button>
-        </div>
-
-        <button class="rec-btn" style="background: #333; width: 100%;" onclick="UI.toggleMenu()">FERMER LE MENU</button>
-    </div>
-
-    <div id="viewport">
-        <div id="map-container" id="m-cont">
-            <div id="map"></div>
-        </div>
-    </div>
-
-    <div id="hud-container">
+    <div id="hud-bottom">
         <div class="pane">
-            <div class="pane-label">Tracking</div>
-            <div id="chrono-val" style="font-family: monospace; font-size: 1.5rem;">00:00.00</div>
-            <div id="dist-val" style="color: var(--accent);">0.00 km</div>
-            <button class="rec-btn" id="btn-rec" onclick="CORE.toggleRec()">START REC</button>
+            <div class="pane-label">SESSION</div>
+            <div id="chrono-val" style="font-size:1.5rem;">00:00</div>
+            <div id="dist-val" style="color:var(--accent)">0.0 km</div>
+            <button class="go-btn" style="font-size:0.7rem; padding:4px;" onclick="CORE.toggleRec()" id="btn-rec">REC</button>
         </div>
         <div class="pane">
-            <div class="pane-label">Inclinaison</div>
-            <div id="lean-ui"><div id="lean-cursor"></div></div>
-            <div id="lean-deg">0°</div>
+            <div class="pane-label">ANGLE</div>
+            <div style="width:60px; height:40px; position:relative; border-bottom:2px solid #333;">
+                <div id="lean-needle"></div>
+            </div>
+            <div id="lean-deg" style="font-size:1.5rem;">0°</div>
         </div>
         <div class="pane">
-            <div class="pane-label">Vitesse</div>
+            <div class="pane-label">VITESSE</div>
             <div id="speed-val">0</div>
-            <div style="font-size: 0.8rem; color: #666;">KM/H</div>
+            <div style="font-size:0.6rem;">KM/H</div>
         </div>
-        <div class="pane" style="padding: 2px;">
-            <div id="mini-map-view"></div>
+        <div class="pane" id="mini-map-container" style="overflow:hidden; padding:0;">
+             <div id="mini-map" style="width:100%; height:100%;"></div>
         </div>
     </div>
 
     <script>
         const UI = {
-            toggleMenu: () => document.getElementById('side-menu').classList.toggle('active'),
-            updateRadius: (v) => document.getElementById('radius-val').innerText = v
+            toggleMenu: () => document.getElementById('side-menu').classList.toggle('open')
         };
 
         const CORE = {
-            map: null, miniMap: null, isRecording: false, startTime: null, totalDist: 0, 
-            lastPos: null, path: [], gasLayer: L.layerGroup(),
+            map: null, miniMap: null, isRec: false, startTime: null, lastPos: null,
+            totalDist: 0, fuelLayer: L.layerGroup(), isNight: true,
 
             init() {
-                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.60, 1.97], 15);
-                L.tileLayer(CONFIG.MAP_STYLE).addTo(this.map);
-                this.gasLayer.addTo(this.map);
+                const hour = new Date().getHours();
+                this.isNight = (hour < 7 || hour > 19);
 
-                this.miniMap = L.map('mini-map-view', { zoomControl: false, attributionControl: false }).setView([43.60, 1.97], 14);
-                L.tileLayer(CONFIG.MAP_STYLE).addTo(this.miniMap);
-                this.trace = L.polyline([], {color: CONFIG.KTM_ORANGE, weight: 4}).addTo(this.miniMap);
+                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.60, 1.97], 15);
+                this.tileLayer = L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map);
+                this.fuelLayer.addTo(this.map);
+
+                this.miniMap = L.map('mini-map', { zoomControl: false, attributionControl: false }).setView([43.60, 1.97], 13);
+                L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.miniMap);
+                this.trace = L.polyline([], {color: CONFIG.KTM_ORANGE}).addTo(this.miniMap);
 
                 this.bindSensors();
-                this.startClock();
+            },
+
+            toggleMapMode() {
+                this.isNight = !this.isNight;
+                this.tileLayer.setUrl(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY);
             },
 
             bindSensors() {
-                navigator.geolocation.watchPosition(pos => {
-                    const { latitude, longitude, speed, heading } = pos.coords;
-                    const cPos = [latitude, longitude];
+                navigator.geolocation.watchPosition(p => {
+                    const { latitude, longitude, speed } = p.coords;
+                    const pos = [latitude, longitude];
+                    this.lastPos = pos;
                     
                     document.getElementById('speed-val').innerText = Math.round((speed || 0) * 3.6);
-                    this.map.setView(cPos, 16, {animate: false});
-                    
-                    if (heading !== null) {
-                        document.getElementById('m-cont').style.transform = `${CONFIG.PERSPECTIVE} rotateZ(${-heading}deg)`;
-                    }
+                    this.map.panTo(pos);
 
-                    if (this.isRecording && this.lastPos) {
-                        this.totalDist += this.map.distance(this.lastPos, cPos);
-                        document.getElementById('dist-val').innerText = (this.totalDist/1000).toFixed(2) + " km";
-                        this.path.push(cPos);
-                        this.trace.setLatLngs(this.path);
-                        this.miniMap.setView(cPos, 14);
+                    if(this.isRec) {
+                        if(this.pathStart) this.totalDist += this.map.distance(this.pathStart, pos);
+                        document.getElementById('dist-val').innerText = (this.totalDist/1000).toFixed(1) + " km";
+                        this.trace.addLatLng(pos);
+                        this.miniMap.setView(pos, 13);
+                        this.pathStart = pos;
                     }
-                    this.lastPos = cPos;
                 }, null, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', e => {
-                    let angle = Math.round(e.gamma || 0); // Gamma = inclinaison latérale en mode paysage
+                    let angle = Math.round(e.gamma || 0); // Utilise l'inclinaison latérale
                     document.getElementById('lean-deg').innerText = Math.abs(angle) + "°";
-                    document.getElementById('lean-cursor').style.transform = `rotate(${angle}deg)`;
+                    document.getElementById('lean-needle').style.transform = `rotate(${angle}deg)`;
                 });
             },
 
@@ -198,62 +165,57 @@
                 fetch(CONFIG.SEARCH_API + encodeURIComponent(q))
                     .then(r => r.json())
                     .then(data => {
-                        const resDiv = document.getElementById('search-results');
-                        resDiv.innerHTML = '';
-                        data.forEach(item => {
+                        const res = document.getElementById('search-results');
+                        res.innerHTML = '';
+                        data.slice(0, 3).forEach(d => {
                             let div = document.createElement('div');
-                            div.className = 'search-item';
-                            div.innerText = item.display_name;
+                            div.className = 'suggest-item';
+                            div.innerText = d.display_name;
                             div.onclick = () => {
-                                const target = [item.lat, item.lon];
-                                this.map.setView(target, 16);
-                                L.marker(target).addTo(this.map).bindPopup("Destination").openPopup();
+                                const latlng = [d.lat, d.lon];
+                                this.map.setView(latlng, 16);
+                                L.marker(latlng).addTo(this.map).bindPopup("Destination").openPopup();
                                 UI.toggleMenu();
-                                resDiv.innerHTML = '';
                             };
-                            resDiv.appendChild(div);
+                            res.appendChild(div);
                         });
                     });
             },
 
-            async findGas() {
+            async findFuel() {
                 if(!this.lastPos) return;
-                this.gasLayer.clearLayers();
+                this.fuelLayer.clearLayers();
                 const fuel = document.getElementById('fuel-type').value;
-                const rad = document.getElementById('radius-val').innerText;
                 
-                try {
-                    const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${this.lastPos[1]} ${this.lastPos[0]})', ${rad}km)&limit=20`;
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    
-                    data.results.forEach(st => {
-                        const prix = JSON.parse(st.prix || "[]");
-                        const infoPrix = prix.find(p => p['@nom'] === fuel);
-                        if(infoPrix) {
-                            L.circleMarker([st.geom.lat, st.geom.lon], {color: 'green', radius: 8})
-                             .addTo(this.gasLayer)
-                             .bindPopup(`<b>${st.adresse}</b><br>${fuel}: ${infoPrix['@valeur']}€`);
-                        }
-                    });
-                    UI.toggleMenu();
-                } catch(e) { alert("Erreur scan carburant"); }
+                const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${this.lastPos[1]} ${this.lastPos[0]})', 20km)&limit=20`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                data.results.forEach(s => {
+                    const p = JSON.parse(s.prix || "[]").find(x => x['@nom'] === fuel);
+                    if(p) {
+                        const dist = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon]) / 1000).toFixed(1);
+                        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.geom.lat},${s.geom.lon}`;
+                        
+                        L.marker([s.geom.lat, s.geom.lon])
+                         .addTo(this.fuelLayer)
+                         .bindPopup(`
+                            <div class="fuel-popup">
+                                <b>${s.ville.toUpperCase()}</b> (${dist} km)<br>
+                                <small>${s.adresse}</small><br>
+                                <h2 style="margin:5px 0; color:green">${p['@valeur']}€</h2>
+                                <a href="${googleMapsUrl}" target="_blank" class="go-btn">GO (GPS)</a>
+                            </div>
+                         `);
+                    }
+                });
+                UI.toggleMenu();
             },
 
             toggleRec() {
-                this.isRecording = !this.isRecording;
-                if(this.isRecording) { this.startTime = Date.now(); this.totalDist = 0; this.path = []; }
-                document.getElementById('btn-rec').innerText = this.isRecording ? "STOP" : "START REC";
-                document.getElementById('btn-rec').style.background = this.isRecording ? "red" : CONFIG.KTM_ORANGE;
-            },
-
-            startClock() {
-                setInterval(() => {
-                    if (this.isRecording && this.startTime) {
-                        const d = new Date(Date.now() - this.startTime);
-                        document.getElementById('chrono-val').innerText = `${String(d.getUTCMinutes()).padStart(2,'0')}:${String(d.getUTCSeconds()).padStart(2,'0')}.${String(Math.floor(d.getUTCMilliseconds()/10)).padStart(2,'0')}`;
-                    }
-                }, 50);
+                this.isRec = !this.isRec;
+                document.getElementById('btn-rec').style.background = this.isRec ? "red" : "#28a745";
+                if(this.isRec) { this.startTime = Date.now(); this.totalDist = 0; this.trace.setLatLngs([]); }
             }
         };
 
