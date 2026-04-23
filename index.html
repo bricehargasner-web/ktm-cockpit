@@ -3,151 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V76 - POCKET OVERLAY</title>
+    <title>KTM HUD V77 - GHOST MASK</title>
     
     <script>
-        /* --- CONFIGURATION BRICE CARDONA --- */
+        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (BRICE CARDONA) --- */
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
-            FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
-            MAP_STYLE: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
+            SAFE_GREEN: '#2ecc71',
+            DANGER_RED: '#ff4757',
+            TEXT_COLOR: '#FFFFFF'
         };
     </script>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Barlow+Condensed:wght@900&display=swap" rel="stylesheet">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Orbitron', sans-serif; background: #000; overflow: hidden; color: white; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #111; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
-        /* LA CARTE (FOND DE L'OCÉAN) */
-        #map { position: absolute; inset: 0; z-index: 1; filter: brightness(0.5); }
+        /* CANVAS CACHÉ (C'est lui qui génère l'image du masque) */
+        #hudCanvas { display: none; background: #000; }
 
-        /* CADRE DU MASQUE (V76 : Plus discret pour le mode fenêtre) */
-        #goggle-frame {
-            position: absolute; inset: 0; z-index: 100;
-            border: 10px solid rgba(0,0,0,0.8);
-            box-shadow: inset 0 0 50px #000;
-            pointer-events: none;
-        }
-
-        /* COMPTEUR VITESSE GÉANT (CENTRAL) */
-        #main-hud {
-            position: absolute; inset: 0; z-index: 200;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-shadow: 0 0 20px #000; pointer-events: none;
-        }
-        #speed-val { font-family: 'Barlow Condensed'; font-size: 10rem; font-weight: 900; line-height: 0.8; }
-        #lean-val { font-size: 3rem; color: #2ecc71; margin-top: 10px; }
-
-        /* INTERFACE SCAN (HAUT) */
-        #top-ui { position: absolute; top: 10px; width: 100%; z-index: 300; display: flex; justify-content: center; gap: 5px; }
-        .btn-ktm { background: #FF6600; color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 4px; }
-
-        /* LISTE DES STATIONS */
-        #station-overlay {
-            position: absolute; bottom: 0; width: 100%; max-height: 40%;
-            background: rgba(0,0,0,0.9); z-index: 400; display: none; overflow-y: auto;
-        }
-        .st-item { padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .btn-osmand { background: #FFF; color: #000; border: none; padding: 10px; font-weight: 900; text-decoration: none; border-radius: 4px; }
-
-        #horizon { position: absolute; top: 50%; width: 100%; height: 2px; background: rgba(255,255,255,0.2); z-index: 50; }
+        /* INTERFACE DE PRÉPARATION */
+        #setup-ui { text-align: center; z-index: 100; padding: 20px; }
+        .btn-ghost { background: #FF6600; color: #000; border: none; padding: 20px 40px; font-weight: 900; font-size: 1.5rem; border-radius: 10px; cursor: pointer; box-shadow: 0 10px 30px rgba(255,102,0,0.4); text-transform: uppercase; }
+        
+        /* VIDÉO DE SORTIE (C'est elle qu'on va faire flotter) */
+        #pipVideo { width: 320px; height: 180px; border: 2px solid #333; margin-top: 20px; border-radius: 8px; }
+        
+        .status { margin-top: 20px; font-size: 0.8rem; color: #666; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-    <div id="goggle-frame"></div>
-    <div id="horizon"></div>
-
-    <div id="top-ui">
-        <select id="fuel-type" style="background:#000; color:#FF6600; border:1px solid #FF6600; font-weight:900;">
-            <option value="gazole_prix">GAZOLE</option>
-            <option value="sp95_prix">SP95</option>
-        </select>
-        <button class="btn-ktm" onclick="findFuel()">⛽ SCAN</button>
-        <button class="btn-ktm" style="background:#444; color:#fff;" onclick="calibrate()">ZERO</button>
+    <div id="setup-ui">
+        <h1 style="color:#FF6600; margin-bottom:10px;">GHOST MASK</h1>
+        <p style="font-size:0.9rem; color:#aaa; margin-bottom:30px;">Préparez votre visière avant de lancer OsmAnd</p>
+        
+        <button class="btn-ghost" onclick="togglePiP()">🚀 ACTIVER LA VISIÈRE</button>
+        
+        <div class="status" id="stat">Capteurs prêts : Inclinaison & GPS</div>
+        
+        <video id="pipVideo" autoplay playsinline muted></video>
+        
+        <div style="margin-top:20px;">
+            <button onclick="calibrate()" style="background:#222; color:#fff; border:1px solid #444; padding:10px;">RESET ZERO</button>
+        </div>
     </div>
 
-    <div id="station-overlay"></div>
-
-    <div id="main-hud">
-        <div id="speed-val">000</div>
-        <div id="lean-val">0°</div>
-        <div id="alt-val" style="font-size: 1rem; color:#888;">--- M</div>
-    </div>
+    <canvas id="hudCanvas" width="640" height="360"></canvas>
 
     <script>
-        let map, userMarker, fuelLayer, offset = 0, lastRaw = 0, smoothedLean = 0;
+        const canvas = document.getElementById('hudCanvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('pipVideo');
+        let speed = "000", lean = 0, alt = "---", offset = 0, lastRaw = 0;
 
-        function init() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 1.9], 13);
-            L.tileLayer(CONFIG.MAP_STYLE).addTo(map);
-            fuelLayer = L.layerGroup().addTo(map);
-            userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight: 3 }).addTo(map);
-            window.addEventListener('deviceorientation', handleOrientation);
-            startTracking();
-        }
-
-        function handleOrientation(e) {
-            let screenAngle = window.orientation || 0;
-            let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
-            if (screenAngle === -90) raw = -raw;
-            lastRaw = raw;
-            let currentLean = raw - offset;
-            smoothedLean = (smoothedLean * 0.8) + (currentLean * 0.2);
-            let angle = Math.abs(Math.round(smoothedLean));
-            document.getElementById('lean-val').innerText = angle + "°";
-            document.getElementById('horizon').style.transform = `rotate(${smoothedLean}deg)`;
-        }
-
-        function startTracking() {
-            navigator.geolocation.watchPosition(u => {
-                const p = [u.coords.latitude, u.coords.longitude];
-                userMarker.setLatLng(p);
-                map.panTo(p);
-                document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
-                if (u.coords.altitude) document.getElementById('alt-val').innerText = Math.round(u.coords.altitude) + " M";
-            }, null, { enableHighAccuracy: true });
-        }
-
-        async function findFuel() {
-            const center = map.getCenter();
-            const fuelType = document.getElementById('fuel-type').value;
-            const overlay = document.getElementById('station-overlay');
-            const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', 25000m)&limit=8`;
+        // 1. DÉMARRAGE DU FLUX GRAPHIQUE
+        function startHudEngine() {
+            const stream = canvas.captureStream(30); // 30 FPS
+            video.srcObject = stream;
             
+            function draw() {
+                // Fond noir pur
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // --- DESSIN DU COCKPIT (L'image que tu verras flotter) ---
+                
+                // Vitesse (Gros centre)
+                ctx.fillStyle = CONFIG.TEXT_COLOR;
+                ctx.font = "900 150px 'Barlow Condensed'";
+                ctx.textAlign = "center";
+                ctx.fillText(speed, canvas.width/2, canvas.height/2 + 30);
+                
+                ctx.fillStyle = CONFIG.KTM_ORANGE;
+                ctx.font = "900 30px 'Orbitron'";
+                ctx.fillText("KM/H", canvas.width/2, canvas.height/2 + 80);
+
+                // Angle (Côté droit)
+                let angleColor = CONFIG.SAFE_GREEN;
+                if (Math.abs(lean) > 20) angleColor = CONFIG.KTM_ORANGE;
+                if (Math.abs(lean) > 42) angleColor = CONFIG.DANGER_RED;
+                
+                ctx.fillStyle = angleColor;
+                ctx.font = "900 80px 'Barlow Condensed'";
+                ctx.textAlign = "right";
+                ctx.fillText(Math.abs(lean) + "°", canvas.width - 40, canvas.height - 40);
+
+                // Altitude (Côté gauche)
+                ctx.fillStyle = "#888888";
+                ctx.font = "900 40px 'Barlow Condensed'";
+                ctx.textAlign = "left";
+                ctx.fillText(alt + " M", 40, canvas.height - 40);
+
+                // Lignes de visée (Effet masque)
+                ctx.strokeStyle = "rgba(255,102,0,0.3)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(20, 20); ctx.lineTo(100, 20); ctx.moveTo(20, 20); ctx.lineTo(20, 100);
+                ctx.moveTo(canvas.width-20, 20); ctx.lineTo(canvas.width-100, 20); ctx.moveTo(canvas.width-20, 20); ctx.lineTo(canvas.width-20, 100);
+                ctx.stroke();
+
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        // 2. CAPTEURS (GPS & GYRO)
+        function initSensors() {
+            navigator.geolocation.watchPosition(u => {
+                speed = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
+                alt = u.coords.altitude ? Math.round(u.coords.altitude) : "---";
+            }, null, { enableHighAccuracy: true });
+
+            window.addEventListener('deviceorientation', (e) => {
+                let screenAngle = window.orientation || 0;
+                let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
+                if (screenAngle === -90) raw = -raw;
+                lastRaw = raw;
+                lean = Math.round(raw - offset);
+            });
+        }
+
+        // 3. LA MAGIE : PASSER EN MODE FLOTTANT (PiP)
+        async function togglePiP() {
             try {
-                const res = await fetch(url);
-                const data = await res.json();
-                fuelLayer.clearLayers();
-                overlay.innerHTML = "";
-                overlay.style.display = "block";
-
-                data.results.forEach(st => {
-                    const price = st[fuelType];
-                    if (!price) return;
-                    const lat = st.geom.lat; const lon = st.geom.lon;
-
-                    L.marker([lat, lon], {
-                        icon: L.divIcon({ html: `<div style="background:#FF6600; color:white; padding:2px; border-radius:3px; font-weight:bold; border:1px solid white; font-size:10px;">${price.toFixed(2)}</div>`, iconSize: [40, 18] })
-                    }).addTo(fuelLayer);
-
-                    const card = document.createElement('div');
-                    card.className = 'st-item';
-                    card.innerHTML = `
-                        <div style="font-size:0.8rem;">${price.toFixed(2)}€ - ${(st.nom || st.adresse).substring(0,15)}</div>
-                        <a href="https://osmand.net/go?lat=${lat}&lon=${lon}&z=16" target="_blank" class="btn-osmand">NAV</a>
-                    `;
-                    overlay.appendChild(card);
-                });
-            } catch(e) { console.error(e); }
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await video.requestPictureInPicture();
+                }
+            } catch (error) {
+                alert("Le mode Visière n'est pas supporté par votre navigateur ou nécessite une interaction.");
+            }
         }
 
         function calibrate() { offset = lastRaw; }
-        window.onload = init;
+
+        window.onload = () => {
+            startHudEngine();
+            initSensors();
+        };
     </script>
 </body>
 </html>
