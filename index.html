@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM HUD V6.4 - MISSION CONTROL</title>
+    <title>ENERGY CONCEPT - KTM COCKPIT V6.4</title>
     <script>
-    /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT (MODIFIABLE) --- */
+    /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
     const CONFIG = {
         USER: "Brice CARDONA",
         KTM_ORANGE: '#FF6600',
         DANGER_RED: '#FF0000',
+        NEUTRAL_WHITE: '#FFFFFF',
         SCAN_RADIUS: 25000, 
         MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
         FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
@@ -22,102 +23,129 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Barlow+Condensed:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
-        :root { --ktm: #FF6600; --glass: rgba(10, 10, 10, 0.9); }
+        :root { --ktm: #FF6600; --glass: rgba(15, 15, 15, 0.7); }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Barlow Condensed', sans-serif; background: #000; overflow: hidden; color: white; }
         
         #portrait-blocker { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: var(--ktm); font-family: 'Orbitron'; }
         @media (orientation: portrait) { #portrait-blocker { display: flex; } }
 
-        #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.6) saturate(1.1); }
+        #map-main { position: absolute; width: 100%; height: 100%; z-index: 1; filter: brightness(0.5) saturate(1.2); }
         
-        /* HUD CENTRAL */
+        /* HUD CENTRAL & BOUSSOLE EXTERNE */
         #hud-container { 
             position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
-            width: 340px; height: 340px; z-index: 100; pointer-events: none;
+            width: 320px; height: 320px; z-index: 100; pointer-events: none;
         }
         #compass-frame {
-            width: 100%; height: 100%; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.1);
-            overflow: hidden; position: relative; background: #000; box-shadow: 0 0 50px #000;
+            width: 100%; height: 100%; border-radius: 50%; border: 1.5px solid rgba(255,102,0,0.2);
+            position: relative; background: #000; box-shadow: 0 0 50px #000; overflow: hidden;
         }
-        
-        /* POINTS CARDINAUX - Fixés sur un calque dédié */
-        #cardinal-layer { position: absolute; inset: 0; z-index: 200; pointer-events: none; }
-        .cardinal { position: absolute; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; color: var(--ktm); text-shadow: 0 0 10px #000; }
+        #cardinal-ring {
+            position: absolute; width: 400px; height: 400px; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 110; transition: transform 0.4s ease-out;
+        }
+        .cardinal {
+            position: absolute; font-family: 'Orbitron'; font-weight: 900; 
+            font-size: 18px; color: var(--ktm); text-shadow: 0 0 10px #000;
+        }
+        #n { top: 0; left: 50%; transform: translateX(-50%); }
+        #e { right: 0; top: 50%; transform: translateY(-50%); }
+        #s { bottom: 0; left: 50%; transform: translateX(-50%); }
+        #w { left: 0; top: 50%; transform: translateY(-50%); }
 
         #azimuth-bar {
-            position: absolute; top: 50%; left: 8%; right: 8%; height: 2px;
-            background: #fff; z-index: 150; transform-origin: center center;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4); transition: background 0.2s;
+            position: absolute; top: 50%; left: 10%; right: 10%; height: 2px;
+            background: #fff; z-index: 120; transform-origin: center center;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
         }
-        #map-zoom { width: 100%; height: 100%; z-index: 100; }
+        #map-zoom { width: 100%; height: 100%; }
         #moto-marker {
             position: absolute; top: 50%; left: 50%; width: 18px; height: 26px;
-            transform: translate(-50%, -50%); z-index: 160;
+            transform: translate(-50%, -50%); z-index: 130;
             background: #fff; clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
         }
 
+        /* UI ELEMENTS - LOOK TRANSPARENT DOSSIER */
+        .btn-stealth {
+            background: var(--glass); color: #fff; border: 1px solid rgba(255,102,0,0.3);
+            font-family: 'Orbitron'; font-weight: 900; font-size: 0.7rem; cursor: pointer;
+            backdrop-filter: blur(8px);
+            clip-path: polygon(0 0, 85% 0, 100% 30%, 100% 100%, 0 100%);
+            transition: all 0.2s;
+        }
+        .btn-stealth:active { background: var(--ktm); color: #000; }
+        
+        .input-stealth {
+            background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid var(--ktm);
+            color: #fff; padding: 10px; font-family: 'Barlow Condensed'; font-size: 0.9rem; outline: none;
+            backdrop-filter: blur(8px);
+        }
+
+        #search-area { position: absolute; top: 15px; left: 15px; z-index: 700; width: 220px; display: flex; gap: 8px; }
+        #right-ui { position: absolute; top: 15px; right: 15px; z-index: 700; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+        
         /* OUTILS CARTE */
         #map-tools { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); z-index: 800; display: flex; flex-direction: column; gap: 10px; }
-        .btn-tool { width: 35px; height: 35px; background: rgba(0,0,0,0.6); border: 1px solid var(--ktm); color: #fff; border-radius: 4px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .btn-map-tool {
+            width: 42px; height: 42px; background: var(--glass); border: 1px solid var(--ktm);
+            color: var(--ktm); border-radius: 4px; font-weight: 900; cursor: pointer; backdrop-filter: blur(5px);
+        }
 
-        /* UI CONTROLS */
-        #search-area { position: absolute; top: 15px; left: 15px; z-index: 700; width: 220px; display: flex; gap: 5px; }
-        .input-dark { background: rgba(0,0,0,0.8); border: 1px solid #333; border-left: 3px solid var(--ktm); color: #fff; padding: 10px; font-family: 'Barlow Condensed'; font-size: 0.9rem; outline: none; width: 100%; }
-        .btn-ktm { background: var(--ktm); color: #000; border: none; padding: 8px 12px; font-family: 'Orbitron'; font-weight: 900; font-size: 0.7rem; cursor: pointer; clip-path: polygon(0 0, 95% 0, 100% 30%, 100% 100%, 5% 100%, 0 70%); }
-        #right-ui { position: absolute; top: 15px; right: 15px; z-index: 700; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+        /* BRIEFING */
+        #station-list { position: absolute; right: 15px; top: 110px; width: 230px; max-height: 45vh; background: var(--glass); border-right: 3px solid var(--ktm); display: none; z-index: 900; flex-direction: column; }
+        .briefing-header { background: rgba(0,0,0,0.8); color: var(--ktm); padding: 8px; font-size: 0.6rem; text-align: center; font-family: 'Orbitron'; border-bottom: 1px solid #333; }
 
-        /* BRIEFING STATIONS */
-        #station-list { position: absolute; right: 15px; top: 105px; width: 220px; max-height: 45vh; background: var(--glass); border-right: 3px solid var(--ktm); display: none; z-index: 900; flex-direction: column; }
-        .briefing-header { background: #000; color: var(--ktm); padding: 8px; font-size: 0.6rem; text-align: center; font-family: 'Orbitron'; cursor: pointer; border-bottom: 1px solid #222; }
-        #fuel-results { overflow-y: auto; flex-grow: 1; }
-        .fuel-card { padding: 10px; border-bottom: 1px solid #222; }
-
-        /* DASHBOARD */
-        #dash-bottom { position: absolute; bottom: 0; width: 100%; height: 65px; z-index: 500; display: flex; justify-content: center; gap: 3px; padding: 0 5px 5px 5px; box-sizing: border-box; }
-        .widget { background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.95) 100%); border-top: 1px solid var(--ktm); flex: 1; text-align: center; padding: 5px; clip-path: polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%); position: relative; }
-        .stat-label { font-size: 0.55rem; color: #777; font-family: 'Orbitron'; }
-        .stat-value { font-size: 1.4rem; font-weight: 700; transition: color 0.3s ease; }
-        
-        /* BOUTON ZERO SENSOR */
-        #btn-zero { position: absolute; bottom: 2px; right: 2px; font-size: 0.5rem; background: rgba(255,255,255,0.1); border: none; color: #666; padding: 2px 4px; border-radius: 2px; cursor: pointer; font-family: 'Orbitron'; }
+        /* DASHBOARD - STYLE DOSSIER */
+        #dash-bottom {
+            position: absolute; bottom: 0; width: 100%; height: 75px;
+            z-index: 500; display: flex; justify-content: center; gap: 4px; padding: 0 5px 5px 5px; box-sizing: border-box;
+        }
+        .widget {
+            background: var(--glass); border-top: 2px solid var(--ktm);
+            flex: 1; text-align: center; padding: 8px; position: relative;
+            clip-path: polygon(0 0, 88% 0, 100% 25%, 100% 100%, 0 100%);
+            backdrop-filter: blur(10px);
+        }
+        .stat-label { font-size: 0.6rem; color: #888; font-family: 'Orbitron'; letter-spacing: 1px; }
+        .stat-value { font-size: 1.6rem; font-weight: 700; transition: color 0.3s; }
     </style>
 </head>
 <body>
 
-<div id="portrait-blocker"><h1>KTM AVIONICS</h1><p>PAYSAGE REQUIS</p></div>
+<div id="portrait-blocker"><h1>KTM AVIONICS</h1><p>ORIENTATION PAYSAGE</p></div>
 
 <div id="search-area">
-    <input type="text" id="dest-input" class="input-dark" placeholder="DESTINATION...">
-    <button class="btn-ktm" onclick="runSearch()">NAV</button>
+    <input type="text" id="dest-input" class="input-stealth" style="flex:1" placeholder="DESTINATION...">
+    <button class="btn-stealth" style="padding: 10px 15px;" onclick="runSearch()">NAV</button>
 </div>
 
 <div id="map-tools">
-    <button class="btn-tool" onclick="mapZoom(1)">+</button>
-    <button class="btn-tool" onclick="mapZoom(-1)">-</button>
-    <button class="btn-tool" onclick="recenterMap()">🎯</button>
+    <button class="btn-map-tool" onclick="mapZoom(1)">+</button>
+    <button class="btn-map-tool" onclick="mapZoom(-1)">-</button>
+    <button class="btn-map-tool" onclick="recenterMap()" title="Recentrer">🎯</button>
 </div>
 
 <div id="right-ui">
-    <select id="fuel-select" class="input-dark" style="background:#111; width:110px; font-weight:bold; border-left:none; border-right:3px solid var(--ktm);">
+    <select id="fuel-select" class="input-stealth" style="background:#111; width:120px; font-weight:bold; border-left:none; border-right:3px solid var(--ktm);">
         <option value="gazole_prix">GAZOLE</option>
         <option value="sp95_prix">SP95</option>
     </select>
-    <button class="btn-ktm" onclick="scanFuel()">⛽ SCAN</button>
+    <button class="btn-stealth" style="padding: 10px 20px; width: 100%;" onclick="scanFuel()">⛽ SCAN</button>
 </div>
 
 <div id="station-list">
-    <div class="briefing-header" onclick="document.getElementById('station-list').style.display='none'">CLOSE BRIEFING [X]</div>
-    <div id="fuel-results"></div>
+    <div class="briefing-header" onclick="this.parentElement.style.display='none'">CLOSE BRIEFING [X]</div>
+    <div id="fuel-results" style="overflow-y:auto; flex:1"></div>
 </div>
 
 <div id="hud-container">
+    <div id="cardinal-ring">
+        <div class="cardinal" id="n">N</div>
+        <div class="cardinal" id="e">E</div>
+        <div class="cardinal" id="s">S</div>
+        <div class="cardinal" id="w">W</div>
+    </div>
     <div id="compass-frame">
-        <div id="cardinal-layer">
-            <div class="cardinal" id="card-n" style="top:15px; left:50%; transform:translateX(-50%)">N</div>
-            <div class="cardinal" id="card-e" style="top:50%; right:15px; transform:translateY(-50%)">E</div>
-            <div class="cardinal" id="card-s" style="bottom:15px; left:50%; transform:translateX(-50%)">S</div>
-            <div class="cardinal" id="card-w" style="top:50%; left:15px; transform:translateY(-50%)">W</div>
-        </div>
         <div id="azimuth-bar"></div>
         <div id="map-zoom"></div>
         <div id="moto-marker"></div>
@@ -128,19 +156,16 @@
 
 <div id="dash-bottom">
     <div class="widget"><div class="stat-label">Altitude</div><div id="v-alt" class="stat-value">---</div></div>
-    <div class="widget" id="lean-widget">
-        <div class="stat-label">Angle</div>
-        <div id="v-lean" class="stat-value">0°</div>
-        <button id="btn-zero" onclick="calibrateLean()">ZERO</button>
-    </div>
-    <div class="widget" style="flex:1.4"><div id="v-speed" class="stat-value" style="font-size:2.5rem; line-height:1">00</div><div class="stat-label">KM/H</div></div>
+    <div class="widget"><div class="stat-label">Inclinaison</div><div id="v-lean" class="stat-value">0°</div></div>
+    <div class="widget" style="flex:1.5"><div id="v-speed" class="stat-value" style="font-size:2.8rem; line-height:1">00</div><div class="stat-label">KM/H</div></div>
     <div class="widget"><div class="stat-label">Cap</div><div id="v-cap" class="stat-value">---</div></div>
     <div class="widget"><div class="stat-label">Trip</div><div id="v-dist" class="stat-value">0.0</div></div>
 </div>
 
 <script>
 let mainMap, zoomMap, fuelLayer, routeLayerMain, routeLayerZoom;
-let userPos = [41.9, 8.7], lastPos = null, tripDist = 0, leanOffset = 0, currentRawLean = 0;
+let userPos = [41.9, 8.7], lastPos = null, tripDist = 0;
+let isFollowMode = true;
 
 function init() {
     mainMap = L.map('map-main', { zoomControl: false, attributionControl: false }).setView(userPos, 13);
@@ -153,6 +178,7 @@ function init() {
     routeLayerZoom = L.layerGroup().addTo(zoomMap);
 
     mainMap.on('move', () => { zoomMap.setView(mainMap.getCenter(), mainMap.getZoom() + 2, { animate: false }); });
+    mainMap.on('dragstart', () => { isFollowMode = false; });
 
     startGPS();
     window.addEventListener('deviceorientation', handleOrientation);
@@ -161,16 +187,14 @@ function init() {
 function startGPS() {
     navigator.geolocation.watchPosition(p => {
         userPos = [p.coords.latitude, p.coords.longitude];
-        if(!mainMap.pannedManually) mainMap.panTo(userPos);
+        if(isFollowMode) mainMap.panTo(userPos);
         
         document.getElementById('v-speed').innerText = p.coords.speed ? Math.round(p.coords.speed * 3.6) : "00";
         if(p.coords.altitude) document.getElementById('v-alt').innerText = Math.round(p.coords.altitude) + "m";
         
         const h = p.coords.heading || 0;
         document.getElementById('v-cap').innerText = Math.round(h) + "°";
-        
-        // Rotation des points cardinaux
-        document.getElementById('cardinal-layer').style.transform = `rotate(${-h}deg)`;
+        document.getElementById('cardinal-ring').style.transform = `translate(-50%, -50%) rotate(${-h}deg)`;
         document.getElementById('moto-marker').style.transform = `translate(-50%, -50%) rotate(${h}deg)`;
 
         if(lastPos) tripDist += (mainMap.distance(lastPos, userPos) / 1000);
@@ -180,21 +204,19 @@ function startGPS() {
 }
 
 function handleOrientation(e) {
-    // Inversion beta/gamma pour le mode paysage
-    let raw = Math.round(e.beta); 
-    if (window.orientation === -90) raw = -Math.round(e.beta);
-    
-    currentRawLean = raw;
-    let lean = raw - leanOffset;
+    // CORRECTION CAPTEUR PAYSAGE : 
+    // En paysage, 'beta' devient le Roll (Inclinaison latérale)
+    let lean = Math.round(e.beta); 
+    if (window.orientation === -90) lean = -lean;
+
     const absLean = Math.abs(lean);
-    
     const bar = document.getElementById('azimuth-bar');
     const display = document.getElementById('v-lean');
     
     bar.style.transform = `translateY(-50%) rotate(${-lean}deg)`;
     display.innerText = absLean + "°";
 
-    let color = "#FFF";
+    let color = CONFIG.NEUTRAL_WHITE;
     if(absLean > 12) color = CONFIG.KTM_ORANGE;
     if(absLean > 30) color = CONFIG.DANGER_RED;
     
@@ -203,20 +225,17 @@ function handleOrientation(e) {
     bar.style.boxShadow = `0 0 15px ${color}`;
 }
 
-function calibrateLean() {
-    leanOffset = currentRawLean;
-    console.log("Calibration effectuée à : " + leanOffset + "°");
-}
-
 function mapZoom(delta) { mainMap.setZoom(mainMap.getZoom() + delta); }
-function recenterMap() { mainMap.pannedManually = false; mainMap.panTo(userPos); }
-mainMap && mainMap.on('dragstart', () => mainMap.pannedManually = true);
+function recenterMap() { isFollowMode = true; mainMap.panTo(userPos); }
 
 async function runSearch() {
     const q = document.getElementById('dest-input').value;
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
     const data = await res.json();
-    if(data[0]) drawNav([data[0].lat, data[0].lon]);
+    if(data[0]) {
+        drawNav([data[0].lat, data[0].lon]);
+        isFollowMode = false;
+    }
 }
 
 async function drawNav(target) {
@@ -224,7 +243,7 @@ async function drawNav(target) {
     const res = await fetch(url);
     const data = await res.json();
     routeLayerMain.clearLayers(); routeLayerZoom.clearLayers();
-    if(data.routes && data.routes[0]) {
+    if(data.routes[0]) {
         const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
         L.polyline(coords, { color: CONFIG.KTM_ORANGE, weight: 6 }).addTo(routeLayerMain);
         L.polyline(coords, { color: CONFIG.KTM_ORANGE, weight: 10 }).addTo(routeLayerZoom);
@@ -236,7 +255,7 @@ async function scanFuel() {
     const type = document.getElementById('fuel-select').value;
     const results = document.getElementById('fuel-results');
     document.getElementById('station-list').style.display = 'flex';
-    results.innerHTML = "<p style='padding:10px; font-size:0.7rem;'>SCAN...</p>";
+    results.innerHTML = "<p style='padding:15px; font-size:0.7rem;'>SCAN CORSE...</p>";
 
     const url = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${userPos[1]} ${userPos[0]})', ${CONFIG.SCAN_RADIUS}m)&limit=15`;
     const res = await fetch(url);
@@ -250,16 +269,17 @@ async function scanFuel() {
         if(price) {
             const dist = (mainMap.distance(userPos, [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
             L.marker([st.geom.lat, st.geom.lon], {
-                icon: L.divIcon({ className: '', html: `<div style="background:#fff; color:#000; font-weight:900; padding:2px 5px; border:2px solid ${CONFIG.KTM_ORANGE}; font-size:13px; border-radius:3px;">${price.toFixed(2)}</div>`, iconSize: [45, 22] })
+                icon: L.divIcon({ className: '', html: `<div style="background:#fff; color:#000; border:2px solid var(--ktm); font-weight:900; font-size:12px; padding:2px 4px; border-radius:3px; box-shadow:0 0 10px #000;">${price.toFixed(2)}</div>`, iconSize: [45, 22] })
             }).addTo(fuelLayer);
 
             const div = document.createElement('div');
-            div.className = "fuel-card";
+            div.style.padding = "10px";
+            div.style.borderBottom = "1px solid #333";
             div.innerHTML = `
                 <div style="font-size:0.6rem; color:#888;">${st.ville || 'CORSE'} • ${dist} KM</div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:var(--ktm); font-size:1.3rem; font-weight:900;">${price.toFixed(2)}€</span>
-                    <button class="btn-ktm" style="padding:4px 8px;" onclick="drawNav([${st.geom.lat}, ${st.geom.lon}])">GO</button>
+                    <span style="color:var(--ktm); font-size:1.2rem; font-weight:900;">${price.toFixed(2)}€</span>
+                    <button class="btn-stealth" style="padding:4px 8px; font-size:0.6rem;" onclick="drawNav([${st.geom.lat}, ${st.geom.lon}])">GO</button>
                 </div>`;
             results.appendChild(div);
         }
