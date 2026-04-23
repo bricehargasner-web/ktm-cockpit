@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V114 FINAL</title>
+    <title>ENERGY CONCEPT - KTM V115</title>
     
     <script>
         /* ============================================================
            PANNEAU DE CONTRÔLE (MODIFIABLE)
            ============================================================ */
         const CONFIG = {
-            KTM_ORANGE: '#FF6600',       // Identité KTM
-            DANGER_RED: '#FF0000',       // Alertes
-            MAP_STYLE: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-            DEFAULT_ZOOM_NAV: 16,        // Zoom très proche pour anticipation
-            SEARCH_RADIUS_KM: 10,        // Rayon par défaut
+            KTM_ORANGE: '#FF6600',
+            DANGER_RED: '#FF0000',
+            MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            DEFAULT_ZOOM: 16,
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
-            WEATHER_UPDATE_MS: 900000    // 15 minutes
+            WEATHER_API: 'https://api.open-meteo.com/v1/forecast'
         };
-        /* ============================================================ */
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
@@ -27,101 +26,73 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* LOGIQUE VISUELLE - ÉTANCHE */
-        :root { --ktm: #FF6600; --bg-alpha: rgba(0,0,0,0.85); }
+        :root { --ktm: #FF6600; --bg: rgba(0,0,0,0.9); }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: 'Saira Condensed', sans-serif; overflow: hidden; }
         
         #map { position: fixed; inset: 0; z-index: 1; }
 
-        /* MOUCHARD HAUT GAUCHE */
-        #tech-snitch { 
-            position: fixed; top: 10px; left: 10px; z-index: 2000; 
-            font-size: 0.8rem; background: var(--bg-alpha); padding: 5px 12px; 
-            border-left: 4px solid var(--ktm); border-radius: 4px; pointer-events: none;
-        }
-
-        /* TBT NAVIGATION */
+        /* MOUCHARD & NAVIGATION */
+        #tech-snitch { position: fixed; top: 10px; left: 10px; z-index: 2000; color: var(--ktm); font-size: 0.8rem; background: var(--bg); padding: 5px 10px; border-radius: 4px; border-left: 3px solid var(--ktm); pointer-events: none; }
+        
         #tbt-hud { 
-            position: fixed; top: 45px; left: 10px; z-index: 2000; 
-            background: var(--bg-alpha); border: 2px solid var(--ktm); 
-            padding: 10px; border-radius: 8px; display: none; align-items: center; gap: 15px; 
+            position: fixed; top: 50px; left: 10px; z-index: 2000; 
+            background: var(--bg); border: 2px solid var(--ktm); padding: 12px; 
+            border-radius: 10px; display: none; align-items: center; gap: 15px; min-width: 160px;
         }
 
-        /* CONTRÔLES DROITE */
-        .map-ctrl { position: fixed; right: 15px; top: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 12px; }
-        .ctrl-btn { 
-            width: 60px; height: 60px; background: var(--bg-alpha); border: 2px solid var(--ktm); 
-            color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            font-size: 1.5rem; cursor: pointer; touch-action: manipulation;
-        }
+        /* CONTRÔLES CARTE */
+        .map-ctrl { position: fixed; right: 15px; top: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .ctrl-btn { width: 60px; height: 60px; background: var(--bg); border: 2px solid var(--ktm); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; cursor: pointer; }
         .ctrl-btn.active { background: var(--ktm); color: black; }
 
-        /* TIROIR GAUCHE (ADAPTÉ GANTS) */
-        #drawer { 
-            position: fixed; top: 0; left: 0; width: 340px; height: 100%; 
-            background: #080808; border-right: 2px solid var(--ktm); z-index: 3000; 
-            transition: transform 0.3s; transform: translateX(-100%); 
-        }
+        /* TIROIR GAUCHE */
+        #drawer { position: fixed; top: 0; left: 0; width: 340px; height: 100%; background: #080808; border-right: 2px solid var(--ktm); z-index: 3000; transition: transform 0.3s; transform: translateX(-100%); }
         #drawer.open { transform: translateX(0); }
-        
-        .pane { padding: 20px; display: none; height: 85vh; overflow-y: auto; padding-top: 70px; }
+        .pane { padding: 20px; display: none; height: 85vh; overflow-y: auto; padding-top: 80px; }
         .pane.active { display: block; }
-
         .tab-nav { position: absolute; top: 0; width: 100%; display: flex; background: #111; z-index: 3100; }
         .tab-btn { flex: 1; padding: 20px; border: none; background: transparent; fill: #666; cursor: pointer; }
         .tab-btn.active { fill: var(--ktm); border-bottom: 4px solid var(--ktm); }
 
-        /* ÉLÉMENTS DE SAISIE GÉANTS */
-        input, select, .btn-action { 
-            width: 100%; padding: 20px; margin-bottom: 15px; background: #1a1a1a; 
-            border: 1px solid #333; color: white; font-family: inherit; font-size: 1.2rem; 
-            border-radius: 8px; box-sizing: border-box; 
-        }
-        .btn-action { background: var(--ktm); color: black; font-weight: 900; border: none; cursor: pointer; }
+        /* INPUTS & BOUTONS GANTS */
+        input, select, .btn-action { width: 100%; padding: 20px; margin-bottom: 15px; background: #1a1a1a; border: 1px solid #333; color: white; font-family: inherit; font-size: 1.2rem; border-radius: 8px; box-sizing: border-box; }
+        .btn-action { background: var(--ktm); color: black; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
 
         /* WIDGETS FLOTTANTS */
         .widget-float { position: fixed; bottom: 100px; z-index: 1000; pointer-events: none; }
         #speed-box { right: 20px; text-align: right; }
         #angle-box { left: 20px; }
-        .num-big { font-size: 5.5rem; font-weight: 900; line-height: 0.8; text-shadow: 0 0 15px black; color: var(--ktm); }
+        .num-big { font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: var(--ktm); text-shadow: 0 0 15px black; }
 
         /* DASHBOARD BAS */
-        #dash-bottom { 
-            position: fixed; bottom: 0; width: 100%; height: 75px; 
-            background: rgba(0,0,0,0.95); border-top: 2px solid var(--ktm); 
-            display: grid; grid-template-columns: repeat(5, 1fr); z-index: 2500; 
-        }
+        #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.98); border-top: 2px solid var(--ktm); display: grid; grid-template-columns: repeat(5, 1fr); z-index: 2500; }
         .dash-item { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .dash-val { font-size: 1.3rem; font-weight: 900; }
         .dash-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
 
-        /* COMPAS & HORIZON */
-        #central-hud { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 75vmin; height: 75vmin; pointer-events: none; z-index: 100; }
-        #horizon-line { position: absolute; top: 50%; width: 100%; height: 3px; background: var(--ktm); box-shadow: 0 0 10px var(--ktm); opacity: 0.6; }
-
+        /* STATIONS */
         .station-card { background: #151515; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid var(--ktm); }
+        .price-tag { font-size: 1.6rem; font-weight: 900; color: var(--ktm); }
+        .price-nc { color: #555; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div id="tech-snitch">> SYS: STANDBY</div>
+    <div id="tech-snitch">> SYS: ONLINE</div>
 
     <div id="tbt-hud">
         <div id="tbt-icon" style="font-size: 2.5rem;">⬆️</div>
-        <div id="tbt-dist" style="font-size: 1.8rem; font-weight: 900;">---</div>
+        <div>
+            <div id="tbt-dist" style="font-size: 1.8rem; font-weight: 900;">---</div>
+            <div style="font-size: 0.8rem; opacity: 0.7;">PROCHAIN VIRAGE</div>
+        </div>
     </div>
 
     <div class="map-ctrl">
         <div id="btn-lock" class="ctrl-btn active" onclick="APP.toggleLock()">🔒</div>
-        <div class="ctrl-btn" onclick="APP.map.zoomIn()">+</div>
-        <div class="ctrl-btn" onclick="APP.map.zoomOut()">-</div>
+        <div class="ctrl-btn" onclick="APP.toggleTheme()">🌓</div>
         <div class="ctrl-btn" onclick="APP.toggleDrawer()" style="background:var(--ktm); color:black;">☰</div>
-    </div>
-
-    <div id="central-hud">
-        <div id="horizon-line"></div>
-        <svg viewBox="0 0 200 200" id="compass-svg" style="width:100%; height:100%;"></svg>
     </div>
 
     <div id="angle-box" class="widget-float">
@@ -150,82 +121,75 @@
 
         <div id="p-search" class="pane">
             <h2 style="color:var(--ktm)">GPS / DESTINATION</h2>
-            <input type="text" id="city-in" placeholder="Ex: Castres, Albi...">
+            <input type="text" id="city-in" placeholder="Ex: Albi, Castres...">
             <button class="btn-action" onclick="APP.searchCity()">NAVIGUER</button>
             <button class="btn-action" style="background:#333; color:white;" onclick="APP.clearNav()">ARRÊTER NAVIGATION</button>
         </div>
 
         <div id="p-settings" class="pane">
-            <h2 style="color:var(--ktm)">PARAMÈTRES</h2>
-            <label>RAYON DE RECHERCHE : <span id="val-radius">10</span> KM</label>
-            <input type="range" min="5" max="50" value="10" oninput="APP.updateRadius(this.value)">
-            
-            <label style="margin-top:20px; display:block;">ZOOM CARTE : <span id="val-zoom-cfg">16</span></label>
-            <input type="range" min="12" max="18" value="16" oninput="APP.updateZoomCfg(this.value)">
+            <h2 style="color:var(--ktm)">SYSTÈME</h2>
+            <button class="btn-action" onclick="APP.toggleTheme()">INTERRUPTEUR JOUR / NUIT</button>
+            <label>RAYON SCAN : <span id="val-radius">10</span> KM</label>
+            <input type="range" min="5" max="50" value="10" oninput="APP.radius = this.value*1000; document.getElementById('val-radius').innerText=this.value;">
         </div>
     </div>
 
     <div id="dash-bottom">
         <div class="dash-item" onclick="APP.toggleRec()">
             <div class="dash-val" id="rec-icon" style="color:red;">🔴</div>
-            <div class="dash-label" id="rec-label">REC GPX</div>
+            <div class="dash-label">REC GPX</div>
         </div>
-        <div class="dash-item"><div class="dash-val" id="alt-val">---</div><div class="dash-label">ALT</div></div>
-        <div class="dash-item"><div class="dash-val" id="azi-val">0°</div><div class="dash-label">AZI</div></div>
-        <div class="dash-item"><div class="dash-val" id="weather-val">--°</div><div class="dash-label" id="weather-loc">...</div></div>
-        <div class="dash-item" onclick="APP.recenter()"><div class="dash-val">🎯</div><div class="dash-label">CENTRE</div></div>
+        <div class="dash-item"><div class="dash-val" id="alt-val">---</div><div class="dash-label">ALTITUDE</div></div>
+        <div class="dash-item"><div class="dash-val" id="azi-val">0°</div><div class="dash-label">AZIMUT</div></div>
+        <div class="dash-item" onclick="APP.fetchWeather()">
+            <div class="dash-val" id="weather-temp">--°</div>
+            <div class="dash-label" id="weather-wind">SCAN MÉTÉO</div>
+        </div>
+        <div class="dash-item" onclick="APP.recenter()"><div class="dash-val">🎯</div><div class="dash-label">RECENTRER</div></div>
     </div>
 
     <script>
         const APP = {
-            map: null, userMarker: null, fuelLayer: null, navLine: null,
-            isLocked: true, lastLat: null, lastLng: null,
-            radius: 10000, navZoom: 16, offset: 0, lastRaw: 0,
-            isRecording: false, trackData: [],
+            map: null, userMarker: null, fuelLayer: null, navLine: null, tiles: null,
+            isNight: true, isLocked: true, lastLat: 43.76, lastLng: 1.99,
+            radius: 10000, offset: 0, lastRaw: 0, isRecording: false, track: [],
 
             init: function() {
-                this.map = L.map('map', { zoomControl: false, attributionControl: false })
-                          .setView([43.76, 1.99], CONFIG.DEFAULT_ZOOM_NAV);
-                L.tileLayer(CONFIG.MAP_STYLE).addTo(this.map);
+                this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM);
+                this.tiles = L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 10, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, zIndexOffset: 1000}).addTo(this.map);
                 
-                this.drawCompass();
                 this.startSensors();
-                this.updateSnitch("ATTENTE GPS...");
+                this.fetchWeather();
             },
 
             updateSnitch: function(m) { document.getElementById('tech-snitch').innerText = '> ' + m; },
-            
+
+            toggleTheme: function() {
+                this.isNight = !this.isNight;
+                this.map.removeLayer(this.tiles);
+                this.tiles = L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map);
+                this.updateSnitch(this.isNight ? "MODE NUIT" : "MODE JOUR");
+            },
+
             toggleLock: function() {
                 this.isLocked = !this.isLocked;
                 document.getElementById('btn-lock').classList.toggle('active', this.isLocked);
-                this.updateSnitch(this.isLocked ? "CARTE VERROUILLÉE" : "MODE EXPLORATION");
             },
-
-            updateRadius: function(v) { this.radius = v * 1000; document.getElementById('val-radius').innerText = v; },
-            updateZoomCfg: function(v) { this.navZoom = parseInt(v); document.getElementById('val-zoom-cfg').innerText = v; },
 
             startSensors: function() {
                 navigator.geolocation.watchPosition(p => {
-                    this.lastLat = p.coords.latitude;
-                    this.lastLng = p.coords.longitude;
+                    this.lastLat = p.coords.latitude; this.lastLng = p.coords.longitude;
                     const pos = [this.lastLat, this.lastLng];
-                    
                     this.userMarker.setLatLng(pos);
-                    if(this.isLocked) this.map.setView(pos, this.navZoom, { animate: true });
+                    if(this.isLocked) this.map.panTo(pos);
                     
                     document.getElementById('val-speed').innerText = p.coords.speed ? Math.round(p.coords.speed * 3.6).toString().padStart(3, '0') : "000";
                     document.getElementById('alt-val').innerText = Math.round(p.coords.altitude || 0) + 'm';
                     if(p.coords.heading) document.getElementById('azi-val').innerText = Math.round(p.coords.heading) + '°';
-                    
-                    this.updateSnitch("GPS OK");
-                    this.fetchWeather();
 
-                    if(this.isRecording) {
-                        this.trackData.push({ lat: this.lastLat, lng: this.lastLng, ele: p.coords.altitude || 0, time: new Date().toISOString() });
-                        document.getElementById('rec-label').innerText = "TRACKING (" + this.trackData.length + ")";
-                    }
+                    if(this.isRecording) this.track.push({lat:this.lastLat, lng:this.lastLng, t:new Date().toISOString()});
                 }, null, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', e => {
@@ -233,33 +197,25 @@
                     this.lastRaw = raw;
                     let lean = Math.round(raw - this.offset);
                     document.getElementById('val-angle').innerText = Math.abs(lean);
-                    document.getElementById('horizon-line').style.transform = `rotate(${lean}deg)`;
                 });
             },
 
             scanFuel: async function() {
-                if(!this.lastLat) return alert("Attente signal GPS...");
                 const list = document.getElementById('station-list');
-                list.innerHTML = "<div class='station-card'>SCAN EN COURS...</div>";
-                
+                list.innerHTML = "SCAN EN COURS...";
                 const type = document.getElementById('fuel-type').value;
                 const filter = `within_distance(geom, geom'POINT(${this.lastLng} ${this.lastLat})', ${this.radius}m)`;
-                const url = `${CONFIG.FUEL_API}?where=${encodeURIComponent(filter)}&limit=40`;
+                const url = `${CONFIG.FUEL_API}?where=${encodeURIComponent(filter)}&limit=50`;
 
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
-                    list.innerHTML = "";
-                    this.fuelLayer.clearLayers();
-
-                    if(!data.results.length) {
-                        list.innerHTML = "<div class='station-card'>AUCUNE STATION TROUVÉE</div>";
-                        return;
-                    }
+                    list.innerHTML = ""; this.fuelLayer.clearLayers();
 
                     data.results.forEach(st => {
-                        const prix = st[type];
-                        if(!prix) return;
+                        const rawPrice = st[type];
+                        const priceDisplay = rawPrice ? rawPrice.toFixed(2) + "€" : "PRIX N.C.";
+                        const isNC = !rawPrice;
                         const dist = (this.map.distance([this.lastLat, this.lastLng], [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
                         
                         const card = document.createElement('div');
@@ -267,19 +223,64 @@
                         card.innerHTML = `
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <div>
-                                    <div style="font-size:1.5rem; font-weight:900; color:var(--ktm);">${prix.toFixed(2)}€</div>
-                                    <div style="font-size:0.9rem; opacity:0.7;">${st.nom || st.adresse}</div>
+                                    <div class="price-tag ${isNC ? 'price-nc' : ''}">${priceDisplay}</div>
+                                    <div style="font-size:0.8rem; opacity:0.6;">${st.nom || st.adresse}</div>
                                 </div>
-                                <div style="text-align:right;">
-                                    <div style="font-weight:bold;">${dist} KM</div>
-                                    <button class="btn-action" style="padding:10px; margin:0; width:auto;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
+                                <div style="text-align:right">
+                                    <div style="font-weight:900;">${dist} KM</div>
+                                    <button class="btn-action" style="width:auto; padding:10px 20px; margin:0;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                         list.appendChild(card);
-                        L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:var(--ktm); color:black; padding:2px 5px; border-radius:4px; font-weight:900;">${prix.toFixed(2)}</div>`, className:'' })}).addTo(this.fuelLayer);
+                        L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:${isNC ? '#444' : 'var(--ktm)'}; color:white; padding:2px 5px; border-radius:4px; font-weight:900; border:1px solid white;">${isNC ? '?' : rawPrice.toFixed(2)}</div>`, className:'' })}).addTo(this.fuelLayer);
                     });
-                } catch(e) { this.updateSnitch("ERREUR SCAN FUEL"); }
+                } catch(e) { this.updateSnitch("ERREUR FUEL"); }
+            },
+
+            fetchWeather: async function() {
+                try {
+                    const res = await fetch(`${CONFIG.WEATHER_API}?latitude=${this.lastLat}&longitude=${this.lastLng}&current_weather=true`);
+                    const data = await res.json();
+                    document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + "°C";
+                    document.getElementById('weather-wind').innerText = Math.round(data.current_weather.windspeed) + " KM/H";
+                    this.updateSnitch("MÉTÉO À JOUR");
+                } catch(e) { this.updateSnitch("ERR MÉTÉO"); }
+            },
+
+            startNav: async function(lat, lng) {
+                const url = `${CONFIG.ROUTING_API}${this.lastLng},${this.lastLat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
+                try {
+                    const res = await fetch(url); const data = await res.json();
+                    if(this.navLine) this.map.removeLayer(this.navLine);
+                    this.navLine = L.geoJSON(data.routes[0].geometry, {style:{color:CONFIG.KTM_ORANGE, weight:8}}).addTo(this.map);
+                    this.map.fitBounds(this.navLine.getBounds());
+                    document.getElementById('drawer').classList.remove('open');
+                    this.isLocked = true;
+                    
+                    // Activation du bloc TBT
+                    const step = data.routes[0].legs[0].steps[0];
+                    document.getElementById('tbt-hud').style.display = 'flex';
+                    document.getElementById('tbt-dist').innerText = Math.round(data.routes[0].distance) + " m";
+                    this.updateSnitch("NAVIGATION ACTIVE");
+                } catch(e) { this.updateSnitch("ERR GPS"); }
+            },
+
+            clearNav: function() { 
+                if(this.navLine) this.map.removeLayer(this.navLine); 
+                document.getElementById('tbt-hud').style.display = 'none';
+                this.updateSnitch("NAVIGATION ARRÊTÉE");
+            },
+
+            toggleRec: function() {
+                this.isRecording = !this.isRecording;
+                document.getElementById('rec-icon').innerText = this.isRecording ? "⏹️" : "🔴";
+                if(!this.isRecording && this.track.length > 0) {
+                    let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM_HUD"><trk><trkseg>`;
+                    this.track.forEach(p => gpx += `<trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.t}</time></trkpt>`);
+                    gpx += `</trkseg></trk></gpx>`;
+                    const blob = new Blob([gpx], {type:'application/gpx+xml'});
+                    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `KTM_TRIP_${Date.now()}.gpx`; a.click();
+                }
             },
 
             searchCity: async function() {
@@ -288,83 +289,13 @@
                 const data = await res.json();
                 if(data.length) this.startNav(data[0].lat, data[0].lon);
             },
-
-            startNav: async function(lat, lng) {
-                this.updateSnitch("ITINÉRAIRE...");
-                const url = `${CONFIG.ROUTING_API}${this.lastLng},${this.lastLat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
-                try {
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    if(this.navLine) this.map.removeLayer(this.navLine);
-                    this.navLine = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.KTM_ORANGE, weight: 8, opacity: 0.8 }}).addTo(this.map);
-                    this.isLocked = true;
-                    document.getElementById('drawer').classList.remove('open');
-                    this.updateSnitch("NAVIGATION ACTIVE");
-                } catch(e) { this.updateSnitch("ERREUR ROUTAGE"); }
-            },
-
-            clearNav: function() {
-                if(this.navLine) this.map.removeLayer(this.navLine);
-                this.updateSnitch("NAVIGATION STOPPÉE");
-            },
-
-            fetchWeather: async function() {
-                const now = Date.now();
-                if(this.lastWeather && now - this.lastWeather < CONFIG.WEATHER_UPDATE_MS) return;
-                this.lastWeather = now;
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.lastLat}&longitude=${this.lastLng}&current_weather=true`);
-                const data = await res.json();
-                document.getElementById('weather-val').innerText = Math.round(data.current_weather.temperature) + "°";
-            },
-
-            toggleRec: function() {
-                this.isRecording = !this.isRecording;
-                if(this.isRecording) {
-                    this.trackData = [];
-                    document.getElementById('rec-icon').innerText = "⏹️";
-                    document.getElementById('rec-label').innerText = "ARRÊTER";
-                    this.updateSnitch("ENREGISTREMENT GPX...");
-                } else {
-                    document.getElementById('rec-icon').innerText = "🔴";
-                    document.getElementById('rec-label').innerText = "REC GPX";
-                    this.exportGPX();
-                }
-            },
-
-            exportGPX: function() {
-                if(!this.trackData.length) return;
-                let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM_HUD"><trk><trkseg>`;
-                this.trackData.forEach(p => {
-                    gpx += `<trkpt lat="${p.lat}" lon="${p.lng}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`;
-                });
-                gpx += `</trkseg></trk></gpx>`;
-                const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = `TRIP_KTM_${Date.now()}.gpx`; a.click();
-                this.updateSnitch("GPX EXPORTÉ");
-            },
-
-            drawCompass: function() {
-                const svg = document.getElementById('compass-svg');
-                for(let i=0; i<360; i+=10) {
-                    let a = (i * Math.PI) / 180;
-                    let x1 = 100 + 88 * Math.sin(a), y1 = 100 - 88 * Math.cos(a);
-                    let x2 = 100 + 80 * Math.sin(a), y2 = 100 - 80 * Math.cos(a);
-                    let l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
-                    l.setAttribute("stroke", i%90==0 ? "var(--ktm)" : "white");
-                    l.setAttribute("stroke-width", i%90==0 ? "3" : "1");
-                    svg.appendChild(l);
-                }
-            },
-
             toggleDrawer: function() { document.getElementById('drawer').classList.toggle('open'); },
             showPane: function(id, btn) {
                 document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById(id).classList.add('active'); btn.classList.add('active');
             },
-            recenter: function() { this.isLocked = true; this.map.setView([this.lastLat, this.lastLng], this.navZoom); },
+            recenter: function() { this.isLocked = true; this.map.panTo([this.lastLat, this.lastLng]); },
             resetGyro: function() { this.offset = this.lastRaw; }
         };
 
