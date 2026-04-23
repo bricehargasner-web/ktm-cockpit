@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V115</title>
+    <title>KTM RACING HUD - V116</title>
     
     <script>
         /* ============================================================
@@ -12,6 +12,7 @@
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             DANGER_RED: '#FF0000',
+            SAFE_GREEN: '#00FF41',
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             DEFAULT_ZOOM: 16,
@@ -26,126 +27,142 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        :root { --ktm: #FF6600; --bg: rgba(0,0,0,0.9); }
+        :root { --ktm: #FF6600; --carbon: #121212; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: 'Saira Condensed', sans-serif; overflow: hidden; }
         
-        #map { position: fixed; inset: 0; z-index: 1; }
+        #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.7); }
 
-        /* MOUCHARD & NAVIGATION */
-        #tech-snitch { position: fixed; top: 10px; left: 10px; z-index: 2000; color: var(--ktm); font-size: 0.8rem; background: var(--bg); padding: 5px 10px; border-radius: 4px; border-left: 3px solid var(--ktm); pointer-events: none; }
-        
-        #tbt-hud { 
-            position: fixed; top: 50px; left: 10px; z-index: 2000; 
-            background: var(--bg); border: 2px solid var(--ktm); padding: 12px; 
-            border-radius: 10px; display: none; align-items: center; gap: 15px; min-width: 160px;
-        }
+        /* UI OVERLAY LOGIQUE */
+        #ui-layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
+        .pointer { pointer-events: auto; }
 
-        /* CONTRÔLES CARTE */
-        .map-ctrl { position: fixed; right: 15px; top: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
-        .ctrl-btn { width: 60px; height: 60px; background: var(--bg); border: 2px solid var(--ktm); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; cursor: pointer; }
-        .ctrl-btn.active { background: var(--ktm); color: black; }
+        /* BOUTONS DISCRETS CORNERS */
+        .corner-btn { position: fixed; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); border-radius: 50%; border: 1px solid rgba(255,102,0,0.3); color: white; cursor: pointer; z-index: 500; }
+        #btn-menu { top: 15px; right: 15px; }
+        #btn-lock { top: 15px; left: 15px; }
+        #btn-lock.active { border-color: var(--ktm); background: rgba(255,102,0,0.2); }
 
-        /* TIROIR GAUCHE */
-        #drawer { position: fixed; top: 0; left: 0; width: 340px; height: 100%; background: #080808; border-right: 2px solid var(--ktm); z-index: 3000; transition: transform 0.3s; transform: translateX(-100%); }
-        #drawer.open { transform: translateX(0); }
-        .pane { padding: 20px; display: none; height: 85vh; overflow-y: auto; padding-top: 80px; }
-        .pane.active { display: block; }
-        .tab-nav { position: absolute; top: 0; width: 100%; display: flex; background: #111; z-index: 3100; }
-        .tab-btn { flex: 1; padding: 20px; border: none; background: transparent; fill: #666; cursor: pointer; }
-        .tab-btn.active { fill: var(--ktm); border-bottom: 4px solid var(--ktm); }
+        /* HUD CENTRAL (ARCS) */
+        #hud-container { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; height: 200px; display: flex; align-items: flex-end; justify-content: center; }
+        .arc-svg { width: 100%; height: 100%; }
+        .arc-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 8; }
+        .arc-val { fill: none; stroke: var(--ktm); stroke-width: 10; stroke-linecap: round; transition: 0.3s ease-out; }
 
-        /* INPUTS & BOUTONS GANTS */
-        input, select, .btn-action { width: 100%; padding: 20px; margin-bottom: 15px; background: #1a1a1a; border: 1px solid #333; color: white; font-family: inherit; font-size: 1.2rem; border-radius: 8px; box-sizing: border-box; }
-        .btn-action { background: var(--ktm); color: black; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
+        #speed-display { position: absolute; bottom: 20px; text-align: center; }
+        .vitesse-txt { font-size: 6rem; font-weight: 900; line-height: 1; color: white; }
+        .unit-txt { font-size: 1.2rem; color: var(--ktm); font-weight: 800; letter-spacing: 2px; }
 
-        /* WIDGETS FLOTTANTS */
-        .widget-float { position: fixed; bottom: 100px; z-index: 1000; pointer-events: none; }
-        #speed-box { right: 20px; text-align: right; }
-        #angle-box { left: 20px; }
-        .num-big { font-size: 5.5rem; font-weight: 900; line-height: 0.8; color: var(--ktm); text-shadow: 0 0 15px black; }
+        #angle-display { position: absolute; left: 5%; bottom: 40px; text-align: center; }
+        .angle-val-txt { font-size: 2.5rem; font-weight: 900; color: var(--ktm); }
+
+        /* TIROIR PLEIN ÉCRAN */
+        #drawer { position: fixed; inset: 0; background: var(--carbon); z-index: 2000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1); padding: 20px; box-sizing: border-box; }
+        #drawer.open { transform: translateY(0); }
+        .close-drawer { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: var(--ktm); cursor: pointer; }
+
+        /* NAVIGATION TBT */
+        #tbt-hud { position: fixed; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border: 1px solid var(--ktm); border-radius: 12px; padding: 10px 25px; display: none; align-items: center; gap: 15px; box-shadow: 0 0 20px rgba(0,0,0,1); }
 
         /* DASHBOARD BAS */
-        #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.98); border-top: 2px solid var(--ktm); display: grid; grid-template-columns: repeat(5, 1fr); z-index: 2500; }
-        .dash-item { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .dash-val { font-size: 1.3rem; font-weight: 900; }
-        .dash-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        #dash-bottom { height: 70px; background: linear-gradient(to top, rgba(0,0,0,1), transparent); display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; border-top: 1px solid rgba(255,102,0,0.2); }
+        .dash-item { display: flex; flex-direction: column; align-items: center; font-size: 0.8rem; }
+        .dash-val { font-size: 1.4rem; font-weight: 900; color: white; }
 
-        /* STATIONS */
-        .station-card { background: #151515; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid var(--ktm); }
-        .price-tag { font-size: 1.6rem; font-weight: 900; color: var(--ktm); }
-        .price-nc { color: #555; font-style: italic; }
+        /* LISTE STATIONS */
+        .station-card { background: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 5px solid var(--ktm); display: flex; justify-content: space-between; align-items: center; }
+        .btn-action { background: var(--ktm); color: black; font-weight: 900; border: none; padding: 15px 25px; border-radius: 8px; font-family: inherit; font-size: 1.1rem; cursor: pointer; }
+        input, select { width: 100%; padding: 20px; margin-bottom: 15px; background: #222; border: 1px solid #444; color: white; font-family: inherit; font-size: 1.2rem; border-radius: 8px; box-sizing: border-box; }
+
+        #tech-snitch { position: fixed; top: 15px; left: 75px; color: var(--ktm); font-size: 0.7rem; letter-spacing: 1px; opacity: 0.8; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div id="tech-snitch">> SYS: ONLINE</div>
+    <div id="tech-snitch">> KTM_OS READY</div>
+
+    <div id="btn-lock" class="corner-btn pointer active" onclick="APP.toggleLock()">🔒</div>
+    <div id="btn-menu" class="corner-btn pointer" onclick="APP.toggleDrawer()">☰</div>
 
     <div id="tbt-hud">
-        <div id="tbt-icon" style="font-size: 2.5rem;">⬆️</div>
-        <div>
-            <div id="tbt-dist" style="font-size: 1.8rem; font-weight: 900;">---</div>
-            <div style="font-size: 0.8rem; opacity: 0.7;">PROCHAIN VIRAGE</div>
+        <span id="tbt-icon" style="font-size: 2.5rem; color:var(--ktm)">⬆️</span>
+        <span id="tbt-dist" style="font-size: 2rem; font-weight: 900;">---</span>
+    </div>
+
+    <div id="ui-layer">
+        <div></div> <div id="hud-container">
+            <svg class="arc-svg" viewBox="0 0 400 200">
+                <path class="arc-bg" d="M 50 180 A 150 150 0 0 1 350 180" />
+                <path id="speed-arc" class="arc-val" d="M 50 180 A 150 150 0 0 1 350 180" stroke-dasharray="471" stroke-dashoffset="471" />
+                
+                <path class="arc-bg" d="M 40 160 A 100 100 0 0 1 40 40" />
+                <path id="angle-arc" class="arc-val" d="M 40 160 A 100 100 0 0 1 40 40" stroke-dasharray="188" stroke-dashoffset="188" style="stroke:var(--ktm)" />
+            </svg>
+
+            <div id="angle-display">
+                <div class="angle-val-txt"><span id="val-angle">0</span>°</div>
+                <div style="font-size: 0.7rem; font-weight: 800; color: #888;">LEAN ANGLE</div>
+            </div>
+
+            <div id="speed-display">
+                <div class="vitesse-txt" id="val-speed">000</div>
+                <div class="unit-txt">KM/H</div>
+            </div>
         </div>
-    </div>
 
-    <div class="map-ctrl">
-        <div id="btn-lock" class="ctrl-btn active" onclick="APP.toggleLock()">🔒</div>
-        <div class="ctrl-btn" onclick="APP.toggleTheme()">🌓</div>
-        <div class="ctrl-btn" onclick="APP.toggleDrawer()" style="background:var(--ktm); color:black;">☰</div>
-    </div>
-
-    <div id="angle-box" class="widget-float">
-        <div class="num-big"><span id="val-angle">0</span>°</div>
-        <button class="btn-action" style="padding:5px 15px; width:auto; font-size:0.8rem;" onclick="APP.resetGyro()">CALIBRER</button>
-    </div>
-
-    <div id="speed-box" class="widget-float">
-        <div class="num-big" id="val-speed">000</div>
-        <div style="font-weight:900; letter-spacing:3px;">KM/H</div>
+        <div id="dash-bottom" class="pointer">
+            <div class="dash-item" onclick="APP.toggleRec()">
+                <div class="dash-val" id="rec-icon" style="color:red;">🔴</div>
+                <div style="font-size:0.6rem; color:#888;">GPX REC</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-val" id="alt-val">---</div>
+                <div style="font-size:0.6rem; color:#888;">ALTITUDE</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-val" id="weather-temp">--°</div>
+                <div style="font-size:0.6rem; color:#888;" id="weather-wind">MÉTÉO</div>
+            </div>
+            <div class="dash-item" onclick="APP.recenter()">
+                <div class="dash-val">🎯</div>
+                <div style="font-size:0.6rem; color:#888;">CENTER</div>
+            </div>
+        </div>
     </div>
 
     <div id="drawer">
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="APP.showPane('p-radar', this)"><svg viewBox="0 0 24 24" width="30"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 8 13 8 13s8-7.75 8-13c0-3.87-3.13-7-7-7z"/></svg></button>
-            <button class="tab-btn" onclick="APP.showPane('p-search', this)"><svg viewBox="0 0 24 24" width="30"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/></svg></button>
-            <button class="tab-btn" onclick="APP.showPane('p-settings', this)"><svg viewBox="0 0 24 24" width="30"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65z"/></svg></button>
+        <div class="close-drawer" onclick="APP.toggleDrawer()">✕</div>
+        <h1 style="color:var(--ktm); margin-top:0;">COMMANDES KTM</h1>
+        
+        <div style="display:flex; gap:10px; margin-bottom:30px;">
+            <button class="btn-action" style="flex:1" onclick="APP.showTab('tab-fuel')">⛽ FUEL</button>
+            <button class="btn-action" style="flex:1" onclick="APP.showTab('tab-gps')">📍 GPS</button>
+            <button class="btn-action" style="flex:1" onclick="APP.showTab('tab-sys')">⚙️ SYS</button>
         </div>
 
-        <div id="p-radar" class="pane active">
-            <h2 style="color:var(--ktm)">RADAR CARBURANT</h2>
-            <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
-            <button class="btn-action" onclick="APP.scanFuel()">SCANNER PROXIMITÉ</button>
-            <div id="station-list"></div>
+        <div id="tab-fuel" class="tab-content">
+            <select id="fuel-type">
+                <option value="sp95_prix">SANS PLOMB 95</option>
+                <option value="e10_prix">SANS PLOMB 95-E10</option>
+                <option value="sp98_prix">SANS PLOMB 98</option>
+                <option value="gazole_prix">GAZOLE</option>
+            </select>
+            <button class="btn-action" style="width:100%" onclick="APP.scanFuel()">SCANNER LES STATIONS</button>
+            <div id="station-list" style="margin-top:20px;"></div>
         </div>
 
-        <div id="p-search" class="pane">
-            <h2 style="color:var(--ktm)">GPS / DESTINATION</h2>
-            <input type="text" id="city-in" placeholder="Ex: Albi, Castres...">
-            <button class="btn-action" onclick="APP.searchCity()">NAVIGUER</button>
-            <button class="btn-action" style="background:#333; color:white;" onclick="APP.clearNav()">ARRÊTER NAVIGATION</button>
+        <div id="tab-gps" class="tab-content" style="display:none;">
+            <input type="text" id="city-in" placeholder="Rechercher une destination...">
+            <button class="btn-action" style="width:100%" onclick="APP.searchCity()">LANCER NAVIGATION</button>
+            <button class="btn-action" style="width:100%; background:#333; color:white; margin-top:10px;" onclick="APP.clearNav()">STOP NAVIGATION</button>
         </div>
 
-        <div id="p-settings" class="pane">
-            <h2 style="color:var(--ktm)">SYSTÈME</h2>
-            <button class="btn-action" onclick="APP.toggleTheme()">INTERRUPTEUR JOUR / NUIT</button>
-            <label>RAYON SCAN : <span id="val-radius">10</span> KM</label>
+        <div id="tab-sys" class="tab-content" style="display:none;">
+            <button class="btn-action" style="width:100%; margin-bottom:10px;" onclick="APP.toggleTheme()">🌓 MODE JOUR / NUIT</button>
+            <button class="btn-action" style="width:100%; margin-bottom:10px;" onclick="APP.resetGyro()">📐 CALIBRER ANGLE (ZÉRO)</button>
+            <label>RAYON SCAN FUEL : <span id="val-radius">10</span> KM</label>
             <input type="range" min="5" max="50" value="10" oninput="APP.radius = this.value*1000; document.getElementById('val-radius').innerText=this.value;">
         </div>
-    </div>
-
-    <div id="dash-bottom">
-        <div class="dash-item" onclick="APP.toggleRec()">
-            <div class="dash-val" id="rec-icon" style="color:red;">🔴</div>
-            <div class="dash-label">REC GPX</div>
-        </div>
-        <div class="dash-item"><div class="dash-val" id="alt-val">---</div><div class="dash-label">ALTITUDE</div></div>
-        <div class="dash-item"><div class="dash-val" id="azi-val">0°</div><div class="dash-label">AZIMUT</div></div>
-        <div class="dash-item" onclick="APP.fetchWeather()">
-            <div class="dash-val" id="weather-temp">--°</div>
-            <div class="dash-label" id="weather-wind">SCAN MÉTÉO</div>
-        </div>
-        <div class="dash-item" onclick="APP.recenter()"><div class="dash-val">🎯</div><div class="dash-label">RECENTRER</div></div>
     </div>
 
     <script>
@@ -158,19 +175,34 @@
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM);
                 this.tiles = L.tileLayer(CONFIG.MAP_NIGHT).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
-                this.userMarker = L.circleMarker([0,0], {radius: 10, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, zIndexOffset: 1000}).addTo(this.map);
-                
+                this.userMarker = L.circleMarker([0,0], {radius: 12, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1, weight:3}).addTo(this.map);
                 this.startSensors();
                 this.fetchWeather();
             },
 
-            updateSnitch: function(m) { document.getElementById('tech-snitch').innerText = '> ' + m; },
+            toggleDrawer: function() { document.getElementById('drawer').classList.toggle('open'); },
+            
+            showTab: function(tabId) {
+                document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+                document.getElementById(tabId).style.display = 'block';
+            },
+
+            updateHUD: function(speed, angle) {
+                // Update Arcs (471 is approx length of speed arc, 188 for angle)
+                const speedPercent = Math.min(speed / 200, 1);
+                document.getElementById('speed-arc').style.strokeDashoffset = 471 - (471 * speedPercent);
+                
+                const anglePercent = Math.min(Math.abs(angle) / 60, 1);
+                document.getElementById('angle-arc').style.strokeDashoffset = 188 - (188 * anglePercent);
+                
+                document.getElementById('val-speed').innerText = speed.toString().padStart(3, '0');
+                document.getElementById('val-angle').innerText = Math.abs(angle);
+            },
 
             toggleTheme: function() {
                 this.isNight = !this.isNight;
                 this.map.removeLayer(this.tiles);
                 this.tiles = L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map);
-                this.updateSnitch(this.isNight ? "MODE NUIT" : "MODE JOUR");
             },
 
             toggleLock: function() {
@@ -185,18 +217,16 @@
                     this.userMarker.setLatLng(pos);
                     if(this.isLocked) this.map.panTo(pos);
                     
-                    document.getElementById('val-speed').innerText = p.coords.speed ? Math.round(p.coords.speed * 3.6).toString().padStart(3, '0') : "000";
+                    const speed = p.coords.speed ? Math.round(p.coords.speed * 3.6) : 0;
+                    this.updateHUD(speed, Math.round(this.lastRaw - this.offset));
+                    
                     document.getElementById('alt-val').innerText = Math.round(p.coords.altitude || 0) + 'm';
-                    if(p.coords.heading) document.getElementById('azi-val').innerText = Math.round(p.coords.heading) + '°';
-
                     if(this.isRecording) this.track.push({lat:this.lastLat, lng:this.lastLng, t:new Date().toISOString()});
                 }, null, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', e => {
                     let raw = (window.orientation || 0) === 90 ? e.beta : e.gamma;
                     this.lastRaw = raw;
-                    let lean = Math.round(raw - this.offset);
-                    document.getElementById('val-angle').innerText = Math.abs(lean);
                 });
             },
 
@@ -205,7 +235,7 @@
                 list.innerHTML = "SCAN EN COURS...";
                 const type = document.getElementById('fuel-type').value;
                 const filter = `within_distance(geom, geom'POINT(${this.lastLng} ${this.lastLat})', ${this.radius}m)`;
-                const url = `${CONFIG.FUEL_API}?where=${encodeURIComponent(filter)}&limit=50`;
+                const url = `${CONFIG.FUEL_API}?where=${encodeURIComponent(filter)}&limit=40`;
 
                 try {
                     const res = await fetch(url);
@@ -214,27 +244,25 @@
 
                     data.results.forEach(st => {
                         const rawPrice = st[type];
-                        const priceDisplay = rawPrice ? rawPrice.toFixed(2) + "€" : "PRIX N.C.";
+                        const priceDisplay = rawPrice ? rawPrice.toFixed(2) + "€" : "N.C.";
                         const isNC = !rawPrice;
                         const dist = (this.map.distance([this.lastLat, this.lastLng], [st.geom.lat, st.geom.lon]) / 1000).toFixed(1);
                         
                         const card = document.createElement('div');
                         card.className = "station-card";
                         card.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <div class="price-tag ${isNC ? 'price-nc' : ''}">${priceDisplay}</div>
-                                    <div style="font-size:0.8rem; opacity:0.6;">${st.nom || st.adresse}</div>
-                                </div>
-                                <div style="text-align:right">
-                                    <div style="font-weight:900;">${dist} KM</div>
-                                    <button class="btn-action" style="width:auto; padding:10px 20px; margin:0;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
-                                </div>
+                            <div>
+                                <div style="font-size:1.6rem; font-weight:900; color:${isNC?'#666':'var(--ktm)'}">${priceDisplay}</div>
+                                <div style="font-size:0.8rem; opacity:0.6; max-width:180px;">${st.nom || st.adresse}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:900; font-size:1.2rem;">${dist} KM</div>
+                                <button class="btn-action" style="padding:10px 15px; font-size:0.9rem;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">NAVIGUER</button>
                             </div>`;
                         list.appendChild(card);
                         L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ html: `<div style="background:${isNC ? '#444' : 'var(--ktm)'}; color:white; padding:2px 5px; border-radius:4px; font-weight:900; border:1px solid white;">${isNC ? '?' : rawPrice.toFixed(2)}</div>`, className:'' })}).addTo(this.fuelLayer);
                     });
-                } catch(e) { this.updateSnitch("ERREUR FUEL"); }
+                } catch(e) { console.error(e); }
             },
 
             fetchWeather: async function() {
@@ -243,8 +271,7 @@
                     const data = await res.json();
                     document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + "°C";
                     document.getElementById('weather-wind').innerText = Math.round(data.current_weather.windspeed) + " KM/H";
-                    this.updateSnitch("MÉTÉO À JOUR");
-                } catch(e) { this.updateSnitch("ERR MÉTÉO"); }
+                } catch(e) {}
             },
 
             startNav: async function(lat, lng) {
@@ -252,23 +279,18 @@
                 try {
                     const res = await fetch(url); const data = await res.json();
                     if(this.navLine) this.map.removeLayer(this.navLine);
-                    this.navLine = L.geoJSON(data.routes[0].geometry, {style:{color:CONFIG.KTM_ORANGE, weight:8}}).addTo(this.map);
+                    this.navLine = L.geoJSON(data.routes[0].geometry, {style:{color:CONFIG.KTM_ORANGE, weight:8, opacity:0.8}}).addTo(this.map);
                     this.map.fitBounds(this.navLine.getBounds());
-                    document.getElementById('drawer').classList.remove('open');
-                    this.isLocked = true;
-                    
-                    // Activation du bloc TBT
-                    const step = data.routes[0].legs[0].steps[0];
+                    this.toggleDrawer();
                     document.getElementById('tbt-hud').style.display = 'flex';
-                    document.getElementById('tbt-dist').innerText = Math.round(data.routes[0].distance) + " m";
-                    this.updateSnitch("NAVIGATION ACTIVE");
-                } catch(e) { this.updateSnitch("ERR GPS"); }
+                    document.getElementById('tbt-dist').innerText = (data.routes[0].distance / 1000).toFixed(1) + " km";
+                } catch(e) {}
             },
 
             clearNav: function() { 
                 if(this.navLine) this.map.removeLayer(this.navLine); 
                 document.getElementById('tbt-hud').style.display = 'none';
-                this.updateSnitch("NAVIGATION ARRÊTÉE");
+                this.toggleDrawer();
             },
 
             toggleRec: function() {
@@ -288,12 +310,6 @@
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
                 const data = await res.json();
                 if(data.length) this.startNav(data[0].lat, data[0].lon);
-            },
-            toggleDrawer: function() { document.getElementById('drawer').classList.toggle('open'); },
-            showPane: function(id, btn) {
-                document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById(id).classList.add('active'); btn.classList.add('active');
             },
             recenter: function() { this.isLocked = true; this.map.panTo([this.lastLat, this.lastLng]); },
             resetGyro: function() { this.offset = this.lastRaw; }
