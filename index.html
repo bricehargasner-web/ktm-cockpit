@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>GPS MOTO COCKPIT - V11 PRO</title>
+    <title>GPS MOTO COCKPIT - V12 RECOVERY</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -23,8 +23,7 @@
         .pane { background: var(--bg); border: 1px solid var(--brd); border-radius: 4px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
         .pane-label { position: absolute; top: 5px; left: 8px; font-size: 0.6rem; color: #777; font-weight: bold; text-transform: uppercase; }
 
-        #recenter { position: absolute; top: 5px; right: 5px; background: var(--ktm); color: #000; padding: 5px; border-radius: 3px; font-size: 0.8rem; cursor: pointer; pointer-events: auto; z-index: 50; font-weight: 900; visibility: hidden; }
-        #recenter.visible { visibility: visible; }
+        #recenter { position: absolute; top: 5px; right: 5px; background: var(--ktm); color: #000; padding: 5px; border-radius: 3px; font-size: 0.8rem; cursor: pointer; pointer-events: auto; z-index: 50; font-weight: 900; }
         #weather { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.65rem; padding: 3px 0; display: flex; justify-content: space-around; z-index: 40; }
 
         #drawer { position: fixed; top: 0; left: -350px; width: 340px; height: 100%; background: #111; z-index: 2000; transition: 0.3s; padding: 20px; border-right: 2px solid var(--ktm); overflow-y: auto; box-sizing: border-box; pointer-events: auto; }
@@ -52,22 +51,41 @@
     </div>
 
     <div id="drawer">
-        <h3 style="color:var(--ktm)">COCKPIT KTM PRO</h3>
-        <input type="text" id="target" placeholder="Destination...">
-        <button class="btn-act" onclick="APP.findTarget()">GUIDER</button>
-        <button class="btn-act" onclick="APP.scanGas()">SCAN CARBURANT</button>
-        <button class="btn-act" style="background:#222; margin-top:10px;" onclick="APP.calibrate()">📐 ZÉRO ANGLE</button>
-        <button class="btn-act" style="background:#333; margin-top:20px;" onclick="APP.toggleMenu()">RETOUR</button>
+        <h3 style="color:var(--ktm)">PARAMÈTRES</h3>
+        
+        <button class="btn-act" style="background:#222" onclick="APP.toggleDayNight()">BASCULER JOUR / NUIT</button>
+        <button class="btn-act" style="background:#444; margin-bottom:20px;" onclick="APP.calibrate()">📐 ZÉRO ANGLE</button>
+
+        <label style="font-size:0.7rem;">📍 NAVIGATION</label>
+        <input type="text" id="target" placeholder="Ville ou adresse...">
+        <button class="btn-act" onclick="APP.findTarget()">LANCER GUIDAGE</button>
+
+        <label style="font-size:0.7rem; margin-top:20px; display:block;">⛽ RADAR CARBURANT</label>
+        <select id="gas-type">
+            <option value="Gazole">Gazole</option>
+            <option value="SP95">SP95</option>
+            <option value="E10">E10</option>
+            <option value="SP98">SP98</option>
+        </select>
+        
+        <div style="margin: 10px 0;">
+            <label style="font-size:0.8rem;">Rayon : <span id="rad-val" style="color:var(--ktm)">10</span> km</label>
+            <input type="range" id="radius-slider" min="1" max="20" value="10" oninput="document.getElementById('rad-val').innerText = this.value" style="width:100%;">
+        </div>
+        <button class="btn-act" onclick="APP.scanGas()">SCANNER PROXIMITÉ</button>
+        <div id="gas-list" style="margin-top:10px;"></div>
+        
+        <button class="btn-act" style="background:#333; margin-top:30px;" onclick="APP.toggleMenu()">FERMER</button>
     </div>
 
     <div id="viewport"><div id="map-box"><div id="map"></div></div></div>
 
     <div id="hud">
         <div class="pane">
-            <div class="pane-label">Enregistrement GPX</div>
+            <div class="pane-label">GPX Enregistrement</div>
             <div id="chrono" style="font-size: 1.5rem; font-family: monospace;">00:00.0</div>
             <div id="dist-rec" style="color:var(--ktm); font-weight:bold;">0.0 km</div>
-            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:4px 10px; border-radius:3px; font-weight:bold; pointer-events:auto; cursor:pointer;">REC</button>
+            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:4px 10px; border-radius:3px; font-weight:bold; pointer-events:auto; cursor:pointer; margin-top:5px;">REC</button>
         </div>
         <div class="pane">
             <div class="pane-label">Inclinaison</div>
@@ -92,47 +110,51 @@
     <script>
         const APP = {
             map: null, mini: null, lastPos: null, isRec: false, startT: null, totalD: 0,
-            gOffset: 0, rawG: 0, route: null, userM: null, isAutoCenter: true,
-            trackData: [], maxSpeed: 0, maxAngle: 0,
+            gOffset: 0, rawG: 0, route: null, userM: null, gasL: L.layerGroup(),
+            trackPoints: [], maxV: 0, maxA: 0,
+            styles: {
+                night: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                day: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            },
 
             init() {
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 2.1], 17);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.map);
+                this.tiles = L.tileLayer(this.styles.night).addTo(this.map);
+                this.gasL.addTo(this.map);
                 
-                this.map.on('movestart', (e) => { if (!e.hard) { this.isAutoCenter = false; document.getElementById('recenter').classList.add('visible'); } });
-
                 const icon = L.divIcon({ className: 'u-pos', html: '<div id="user-arrow"></div>', iconSize: [40, 40], iconAnchor: [20, 20] });
                 this.userM = L.marker([43.6, 2.1], {icon: icon, zIndexOffset: 1000}).addTo(this.map);
 
                 this.mini = L.map('mini', { zoomControl: false, attributionControl: false, dragging: false }).setView([43.6, 2.1], 13);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.mini);
+                L.tileLayer(this.styles.night).addTo(this.mini);
                 this.trace = L.polyline([], {color: '#FF6600', weight: 3}).addTo(this.mini);
 
                 this.bind();
                 this.fetchWeather();
             },
 
-            recenter() { this.isAutoCenter = true; document.getElementById('recenter').classList.remove('visible'); if(this.lastPos) this.map.setView(this.lastPos, 17); },
             toggleMenu() { document.getElementById('drawer').classList.toggle('open'); },
+            recenter() { if(this.lastPos) this.map.setView(this.lastPos, 17, {animate: true}); },
+            toggleDayNight() { this.tiles.setUrl(this.tiles._url === this.styles.night ? this.styles.day : this.styles.night); },
             calibrate() { this.gOffset = this.rawG; this.toggleMenu(); },
 
             bind() {
                 navigator.geolocation.watchPosition(p => {
                     const { latitude, longitude, speed, heading } = p.coords;
                     this.lastPos = [latitude, longitude];
-                    const currentSpeed = Math.round((speed || 0) * 3.6);
-                    document.getElementById('speed').innerText = currentSpeed;
+                    const vCur = Math.round((speed || 0) * 3.6);
+                    document.getElementById('speed').innerText = vCur;
                     
                     this.userM.setLatLng(this.lastPos);
-                    if(this.isAutoCenter) this.map.setView(this.lastPos, this.map.getZoom(), {animate: false, hard: true});
+                    this.map.panTo(this.lastPos, {animate: false});
                     if (heading !== null) document.getElementById('user-arrow').style.transform = `rotate(${heading}deg)`;
 
                     if(this.isRec) {
-                        if(currentSpeed > this.maxSpeed) this.maxSpeed = currentSpeed;
-                        const angle = Math.abs(Math.round(this.rawG - this.gOffset));
-                        if(angle > this.maxAngle) this.maxAngle = angle;
+                        if(vCur > this.maxV) this.maxV = vCur;
+                        let aCur = Math.abs(Math.round(this.rawG - this.gOffset));
+                        if(aCur > this.maxA) this.maxA = aCur;
 
-                        this.trackData.push({ lat: latitude, lon: longitude, alt: p.coords.altitude, spd: currentSpeed, ang: angle, time: new Date().toISOString() });
+                        this.trackPoints.push({lat: latitude, lon: longitude, spd: vCur, ang: aCur, time: new Date().toISOString()});
                         
                         if(this.pPrev) this.totalD += this.map.distance(this.pPrev, this.lastPos);
                         document.getElementById('dist-rec').innerText = (this.totalD/1000).toFixed(1) + " km";
@@ -157,55 +179,12 @@
                 }, 100);
             },
 
-            toggleRec() {
-                this.isRec = !this.isRec;
-                const btn = document.getElementById('btn-rec');
-                if(this.isRec) {
-                    this.startT = Date.now(); this.totalD = 0; this.maxSpeed = 0; this.maxAngle = 0; this.trackData = []; this.trace.setLatLngs([]);
-                    btn.innerText = "STOP & SAVE"; btn.style.background = "red";
-                } else {
-                    this.saveGPX();
-                    btn.innerText = "REC"; btn.style.background = "#FF6600";
-                }
-            },
-
-            saveGPX() {
-                if(this.trackData.length < 2) return;
-                const now = new Date();
-                const timestamp = now.toLocaleDateString().replace(/\//g, '-') + "_" + now.getHours() + "h" + now.getMinutes();
-                const filename = `KTM_${timestamp}_Vmax${this.maxSpeed}_Ang${this.maxAngle}.gpx`;
-
-                let g = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="KTM Cockpit" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>Sortie KTM ${timestamp}</name><trkseg>`;
-                
-                this.trackData.forEach(p => {
-                    g += `<trkpt lat="${p.lat}" lon="${p.lon}">
-<ele>${p.alt || 0}</ele>
-<time>${p.time}</time>
-<extensions>
-<speed>${p.spd}</speed>
-<angle>${p.ang}</angle>
-</extensions>
-</trkpt>`;
-                });
-
-                g += `</trkseg></trk></gpx>`;
-                
-                const blob = new Blob([g], {type: 'application/gpx+xml'});
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = filename;
-                // Déclenche la demande d'enregistrement du téléphone
-                a.click();
-            },
-
             async findTarget() {
                 const q = document.getElementById('target').value;
                 if(q.length < 3) return;
                 const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=fr`);
                 const data = await r.json();
-                if(data.features && data.features.length > 0) {
+                if(data.features[0]) {
                     const c = data.features[0].geometry.coordinates;
                     this.startNav(c[1], c[0], data.features[0].properties.name);
                 }
@@ -225,6 +204,36 @@
 
             stopNav() { if(this.route) this.map.removeLayer(this.route); document.getElementById('nav-info').style.display = 'none'; },
 
+            async scanGas() {
+                if(!this.lastPos) return;
+                const list = document.getElementById('gas-list');
+                const type = document.getElementById('gas-type').value;
+                const radius = document.getElementById('radius-slider').value;
+                list.innerHTML = "Scan...";
+                this.gasL.clearLayers();
+                try {
+                    const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${this.lastPos[1]}%20${this.lastPos[0]})'%2C%20${radius}km)&limit=30`);
+                    const data = await res.json();
+                    list.innerHTML = "";
+                    data.results.forEach(s => {
+                        let pV = "N.C.";
+                        try {
+                            const pA = JSON.parse(s.prix || "[]");
+                            const p = pA.find(x => x['@nom'] === type);
+                            if(p) pV = p['@valeur'] + "€";
+                        } catch(e) {}
+                        if(pV !== "N.C.") {
+                            const d = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
+                            const div = document.createElement('div');
+                            div.style = "background:#222; padding:10px; border-radius:4px; margin-bottom:5px; border-left:3px solid #FF6600; display:flex; justify-content:space-between; align-items:center;";
+                            div.innerHTML = `<div><b>${s.ville}</b> (${d} km)<br><span style="color:#FF6600; font-weight:bold;">${pV}</span></div><button onclick="APP.startNav(${s.geom.lat}, ${s.geom.lon}, '${s.ville}')" style="background:#FF6600; color:white; border:none; padding:8px 12px; border-radius:3px; font-weight:bold; cursor:pointer;">GO</button>`;
+                            list.appendChild(div);
+                            L.circleMarker([s.geom.lat, s.geom.lon], {color:'#FF6600', radius:6}).addTo(this.gasL);
+                        }
+                    });
+                } catch(e) { list.innerHTML = "Erreur radar."; }
+            },
+
             async fetchWeather() {
                 if(!this.lastPos) { setTimeout(() => this.fetchWeather(), 3000); return; }
                 const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.lastPos[0]}&longitude=${this.lastPos[1]}&current_weather=true`);
@@ -233,6 +242,32 @@
                 document.getElementById('w-t').innerText = Math.round(w.temperature) + "°C";
                 document.getElementById('w-w').innerText = Math.round(w.windspeed) + "km/h";
                 document.getElementById('w-i').innerText = w.weathercode < 3 ? "☀️" : (w.weathercode < 50 ? "☁️" : "🌧️");
+            },
+
+            toggleRec() {
+                this.isRec = !this.isRec;
+                const btn = document.getElementById('btn-rec');
+                if(this.isRec) {
+                    this.startT = Date.now(); this.totalD = 0; this.maxV = 0; this.maxA = 0; this.trackPoints = []; this.trace.setLatLngs([]);
+                    btn.innerText = "STOP & SAVE"; btn.style.background = "red";
+                } else {
+                    this.saveGPX();
+                    btn.innerText = "REC"; btn.style.background = "#FF6600";
+                }
+            },
+
+            saveGPX() {
+                if(this.trackPoints.length < 2) return;
+                const now = new Date();
+                const ts = now.toLocaleDateString().replace(/\//g, '-') + "_" + now.getHours() + "h" + now.getMinutes();
+                const fn = `KTM_${ts}_Vmax${this.maxV}_Ang${this.maxA}.gpx`;
+                let g = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><trkseg>`;
+                this.trackPoints.forEach(p => {
+                    g += `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time><extensions><speed>${p.spd}</speed><angle>${p.ang}</angle></extensions></trkpt>`;
+                });
+                g += `</trkseg></trk></gpx>`;
+                const b = new Blob([g], {type: 'application/gpx+xml'});
+                const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fn; a.click();
             }
         };
         window.onload = () => APP.init();
