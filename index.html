@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KTM COCKPIT FINAL</title>
+    <title>KTM COCKPIT - OPERA FIXED</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,64 +12,70 @@
         :root { --ktm: #FF6600; --bg: rgba(10, 10, 15, 0.95); --brd: rgba(255,255,255,0.1); }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
 
-        /* BLOCAGE PORTRAIT OBLIGATOIRE */
+        /* SÉCURITÉ PORTRAIT */
         @media screen and (orientation: portrait) { #lock-screen { display: flex !important; } }
-        #lock-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        #lock-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
 
-        /* CARTE ET NAVIGATION */
+        /* CARTE (Prend tout l'espace derrière) */
         #map-container { position: absolute; inset: 0; z-index: 1; perspective: 1000px; }
         #map-rotate { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; transform: rotateX(45deg); }
         #map { width: 100%; height: 100%; filter: contrast(1.1) brightness(0.85); }
 
-        /* HUD SLIM (OPTIMISÉ PAYSAGE) */
+        /* HUD SLIM - ANCRAGE FORCÉ POUR OPÉRA FULLSCREEN */
         #hud { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            height: 75px; /* RÉDUIT AU MAXIMUM */
-            display: grid; grid-template-columns: repeat(4, 1fr); 
-            z-index: 1000; pointer-events: none; background: var(--bg);
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 65px; /* Réduction drastique pour éviter le passage dessous */
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            z-index: 1000; 
+            pointer-events: none; 
+            background: var(--bg);
             border-top: 1px solid var(--brd);
+            padding-bottom: env(safe-area-inset-bottom); /* Support iPhone/Opera mobile */
         }
-        .pane { border-right: 1px solid var(--brd); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .pane-label { position: absolute; top: 2px; left: 5px; font-size: 0.5rem; color: #555; font-weight: bold; text-transform: uppercase; }
+        .pane { border-right: 1px solid var(--brd); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
+        .pane-label { position: absolute; top: 1px; left: 4px; font-size: 0.45rem; color: #555; font-weight: bold; text-transform: uppercase; }
 
-        /* MÉTÉO LIGNE FINE */
+        /* MÉTÉO LIGNE ULTRA-FINE */
         #weather-line { 
-            position: absolute; bottom: 2px; width: 100%; 
-            font-size: 0.65rem; display: flex; justify-content: space-around; 
+            position: absolute; bottom: 1px; width: 100%; 
+            font-size: 0.6rem; display: flex; justify-content: space-around; 
             z-index: 2000; color: var(--ktm); font-weight: bold;
         }
 
-        /* BOUTONS ET MENU */
-        #menu-btn { position: fixed; top: 10px; left: 10px; z-index: 1500; background: var(--bg); border: 1px solid var(--ktm); color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; pointer-events: auto; }
-        #drawer { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #111; z-index: 3000; transition: 0.3s; padding: 15px; border-right: 2px solid var(--ktm); overflow-y: auto; pointer-events: auto; }
+        /* BOUTON MENU */
+        #menu-btn { position: fixed; top: 10px; left: 10px; z-index: 1500; background: var(--bg); border: 1px solid var(--ktm); color: white; padding: 6px 10px; border-radius: 4px; cursor: pointer; pointer-events: auto; font-size: 0.8rem; }
+        
+        #drawer { position: fixed; top: 0; left: -320px; width: 280px; height: 100%; background: #111; z-index: 3000; transition: 0.3s; padding: 15px; border-right: 2px solid var(--ktm); overflow-y: auto; pointer-events: auto; }
         #drawer.open { left: 0; }
         
         .btn-act { background: var(--ktm); color: white; border: none; padding: 10px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 5px; font-size: 0.8rem; }
-        input, select { background: #000; border: 1px solid #333; color: white; padding: 10px; width: 100%; border-radius: 4px; margin-bottom: 5px; font-size: 0.8rem; }
+        input, select { background: #000; border: 1px solid #333; color: white; padding: 8px; width: 100%; border-radius: 4px; margin-bottom: 5px; font-size: 0.8rem; }
 
-        /* INDICATEURS COMPACTS */
-        #speed-val { font-size: 2.2rem; font-weight: 900; line-height: 1; }
-        #needle { position: absolute; bottom: 5px; left: 50%; width: 3px; height: 30px; background: var(--ktm); transform-origin: bottom center; }
-        #user-arrow { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 18px solid var(--ktm); }
-        
-        #recenter { position: absolute; top: 2px; right: 2px; background: var(--ktm); color: #000; padding: 2px 5px; border-radius: 2px; font-size: 0.6rem; cursor: pointer; pointer-events: auto; font-weight: 900; }
+        /* COMPTEURS COMPACTS */
+        #speed-val { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+        #needle { position: absolute; bottom: 4px; left: 50%; width: 2px; height: 25px; background: var(--ktm); transform-origin: bottom center; }
+        #user-arrow { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 16px solid var(--ktm); }
+        #recenter { position: absolute; top: 2px; right: 2px; background: var(--ktm); color: #000; padding: 2px 4px; border-radius: 2px; font-size: 0.5rem; cursor: pointer; pointer-events: auto; font-weight: 900; }
     </style>
 </head>
 <body>
 
-    <div id="lock-screen"><h1>🔄</h1><p>PIVOTER EN PAYSAGE</p></div>
-    <div id="menu-btn" onclick="APP.toggleMenu()">☰</div>
+    <div id="lock-screen"><h1>🔄</h1><p>MODE PAYSAGE REQUIS</p></div>
+    <div id="menu-btn" onclick="APP.toggleMenu()">☰ MENU</div>
 
     <div id="drawer">
-        <h3 style="color:var(--ktm); margin-top:0;">REGLAGES</h3>
+        <h3 style="color:var(--ktm); margin:0 0 10px 0; font-size: 1rem;">COCKPIT KTM</h3>
         <button class="btn-act" onclick="APP.toggleStyle()">JOUR / NUIT</button>
         <button class="btn-act" onclick="APP.calibrate()">📐 ZERO ANGLE</button>
         <hr style="border:0; border-top:1px solid #333; margin:10px 0;">
         <input type="text" id="target" placeholder="Destination...">
         <button class="btn-act" onclick="APP.findTarget()">GUIDER</button>
-        <select id="gas-type"><option value="Gazole">Gazole</option><option value="SP95">SP95</option><option value="E10">E10</option></select>
-        <button class="btn-act" onclick="APP.scanGas()">RADAR ESSENCE</button>
-        <div id="gas-list" style="font-size:0.7rem;"></div>
+        <button class="btn-act" onclick="APP.scanGas()">RADAR ESSENCE (10KM)</button>
+        <div id="gas-list" style="font-size:0.65rem;"></div>
         <button class="btn-act" style="background:#333; margin-top:15px;" onclick="APP.toggleMenu()">FERMER</button>
     </div>
 
@@ -78,13 +84,13 @@
     <div id="hud">
         <div class="pane">
             <div class="pane-label">GPX</div>
-            <div id="chrono" style="font-size: 1.1rem; font-family: monospace;">00:00.0</div>
-            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:2px 6px; border-radius:2px; font-weight:bold; pointer-events:auto; font-size:0.6rem; margin-top:2px;">REC</button>
+            <div id="chrono" style="font-size: 0.9rem; font-family: monospace; margin-top: 5px;">00:00.0</div>
+            <button onclick="APP.toggleRec()" id="btn-rec" style="background:var(--ktm); border:none; color:white; padding:2px 5px; border-radius:2px; font-weight:bold; font-size:0.55rem; margin-top:2px; cursor:pointer;">REC</button>
         </div>
         <div class="pane">
             <div class="pane-label">Angle</div>
-            <div style="width:60%; height:25px; border-bottom:1px solid #444; position:relative;"><div id="needle"></div></div>
-            <div id="angle-ui" style="font-size:1.2rem; font-weight:bold;">0°</div>
+            <div style="width:50%; height:20px; border-bottom:1px solid #444; position:relative;"><div id="needle"></div></div>
+            <div id="angle-ui" style="font-size:1rem; font-weight:bold;">0°</div>
         </div>
         <div class="pane">
             <div class="pane-label">Vitesse</div>
@@ -111,7 +117,7 @@
             init() {
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([43.6, 2.1], 17);
                 this.tiles = L.tileLayer(this.styles.night).addTo(this.map);
-                const icon = L.divIcon({ className: 'u-pos', html: '<div id="user-arrow"></div>', iconSize: [30, 30], iconAnchor: [15, 15] });
+                const icon = L.divIcon({ className: 'u-pos', html: '<div id="user-arrow"></div>', iconSize: [26, 26], iconAnchor: [13, 13] });
                 this.userM = L.marker([43.6, 2.1], {icon: icon, zIndexOffset: 1000}).addTo(this.map);
                 this.mini = L.map('mini', { zoomControl: false, attributionControl: false, dragging: false }).setView([43.6, 2.1], 13);
                 L.tileLayer(this.styles.night).addTo(this.mini);
@@ -141,7 +147,7 @@
                 }, null, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', e => {
-                    this.rawG = e.beta || 0; // Paysage
+                    this.rawG = e.beta || 0;
                     let v = Math.round(this.rawG - this.gOffset);
                     document.getElementById('angle-ui').innerText = Math.abs(v) + "°";
                     document.getElementById('needle').style.transform = `rotate(${Math.max(-45, Math.min(45, v))}deg)`;
@@ -165,7 +171,7 @@
                 const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${this.lastPos[1]},${this.lastPos[0]};${lng},${lat}?overview=full&geometries=geojson`);
                 const d = await r.json();
                 if(this.route) this.map.removeLayer(this.route);
-                this.route = L.geoJSON(d.routes[0].geometry, { style: { color: '#FF6600', weight: 6 } }).addTo(this.map);
+                this.route = L.geoJSON(d.routes[0].geometry, { style: { color: '#FF6600', weight: 5 } }).addTo(this.map);
                 this.recenter(); this.toggleMenu();
             },
 
@@ -173,15 +179,13 @@
                 if(!this.lastPos) return;
                 const list = document.getElementById('gas-list');
                 list.innerHTML = "Scan...";
-                try {
-                    const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${this.lastPos[1]}%20${this.lastPos[0]})'%2C%2010km)&limit=5`);
-                    const d = await res.json();
-                    list.innerHTML = "";
-                    d.results.forEach(s => {
-                        const dist = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
-                        list.innerHTML += `<div style="background:#222; padding:5px; margin-top:2px; border-left:2px solid #FF6600;">${s.ville} (${dist}km) <button onclick="APP.startNav(${s.geom.lat},${s.geom.lon},'${s.ville}')" style="background:#FF6600; border:none; padding:2px; font-size:0.6rem;">GO</button></div>`;
-                    });
-                } catch(e) { list.innerHTML = "Erreur radar."; }
+                const res = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${this.lastPos[1]}%20${this.lastPos[0]})'%2C%2010km)&limit=3`);
+                const d = await res.json();
+                list.innerHTML = "";
+                d.results.forEach(s => {
+                    const dist = (this.map.distance(this.lastPos, [s.geom.lat, s.geom.lon])/1000).toFixed(1);
+                    list.innerHTML += `<div style="background:#222; padding:3px; margin-top:2px; border-left:2px solid #FF6600;">${s.ville} (${dist}km) <button onclick="APP.startNav(${s.geom.lat},${s.geom.lon},'${s.ville}')" style="background:#FF6600; border:none; padding:2px; font-size:0.6rem;">GO</button></div>`;
+                });
             },
 
             async getWeather() {
@@ -191,7 +195,7 @@
                 const w = d.current_weather;
                 document.getElementById('w-t').innerText = Math.round(w.temperature) + "°C";
                 document.getElementById('w-w').innerText = Math.round(w.windspeed) + "km/h";
-                document.getElementById('w-i').innerText = w.weathercode < 3 ? "☀️" : (w.weathercode < 50 ? "☁️" : "🌧️");
+                document.getElementById('w-i').innerText = w.weathercode < 3 ? "☀️" : "☁️";
             },
 
             toggleRec() {
@@ -203,9 +207,11 @@
 
             saveGPX() {
                 if(this.track.length < 2) return;
-                const fn = `KTM_V${this.maxV}_A${this.maxA}.gpx`;
+                const now = new Date();
+                const ts = now.getHours() + "h" + now.getMinutes();
+                const fn = `KTM_${ts}_V${this.maxV}_A${this.maxA}.gpx`;
                 let g = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><trkseg>`;
-                this.track.forEach(p => g += `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.t}</time><extensions><speed>${p.spd}</speed><angle>${p.ang}</angle></extensions></trkpt>`);
+                this.track.forEach(p => g += `<trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time><extensions><speed>${p.spd}</speed><angle>${p.ang}</angle></extensions></trkpt>`);
                 g += `</trkseg></trk></gpx>`;
                 const b = new Blob([g], {type: 'application/gpx+xml'});
                 const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fn; a.click();
