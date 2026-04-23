@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V107</title>
+    <title>ENERGY CONCEPT - KTM V108 OPTIMISÉ</title>
     
     <script>
         const CONFIG = {
@@ -15,7 +15,8 @@
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
             ROUTING_API: 'https://router.project-osrm.org/route/v1/driving/',
-            WEATHER_UPDATE_MS: 900000
+            WEATHER_UPDATE_MS: 900000, // 15 minutes
+            DEFAULT_ZOOM: 14
         };
     </script>
 
@@ -35,7 +36,7 @@
         
         #map { position: fixed; inset: 0; z-index: 1; filter: brightness(0.9) contrast(1.1); transition: 0.5s; }
 
-        /* COMPAS GÉANT ET REMONTÉ POUR LE PAYSAGE */
+        /* COMPAS CENTRAL FIXÉ */
         #central-hud {
             position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
             width: 88vmin; height: 88vmin; z-index: 100; pointer-events: none;
@@ -54,17 +55,19 @@
             transition: transform 0.1s linear, background 0.3s; z-index: 110;
         }
 
-        /* WIDGETS REMONTÉS POUR NE PAS ÊTRE CACHÉS */
-        .flight-widget { position: fixed; bottom: 18vh; z-index: 700; color: var(--ktm); display: flex; flex-direction: column; }
-        .val-big { font-size: clamp(4rem, 12vmin, 8.5rem); font-weight: 900; line-height: 0.75; text-shadow: 4px 4px 15px rgba(0,0,0,1); }
+        /* WIDGETS ALIGNÉS (GAUCHE / DROITE) */
+        .flight-widget { position: fixed; bottom: 15vh; z-index: 700; color: var(--ktm); display: flex; flex-direction: column; }
+        .val-big { font-size: clamp(3.5rem, 11vmin, 7.5rem); font-weight: 900; line-height: 0.75; text-shadow: 4px 4px 15px rgba(0,0,0,1); }
         .sub-label { font-size: clamp(1rem, 3vmin, 1.4rem); font-weight: 800; letter-spacing: 4px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
         
-        #angle-widget { left: 4vw; align-items: flex-start; }
-        #speed-widget { right: 4vw; align-items: flex-end; }
-        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 6px 16px; font-size: 0.9rem; cursor: pointer; border-radius: 2px; margin-top: 10px; pointer-events: auto; font-family: inherit; font-weight: 900; }
+        #angle-widget { left: 5vw; align-items: flex-start; }
+        #speed-widget { right: 5vw; align-items: flex-end; }
+        
+        /* BOUTON ZÉRO RÉDUIT AU MAXIMUM */
+        .btn-zero { background: rgba(0,0,0,0.7); border: 1px solid var(--ktm); color: white; padding: 2px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 2px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
 
-        /* MOUCHARD ANCRÉ AU DESSUS DU DASHBOARD */
-        #tech-snitch { position: fixed; bottom: max(8vh + 5px, 65px); right: 2vw; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.8; text-transform: uppercase; }
+        /* MOUCHARD ANCRÉ EN HAUT À GAUCHE */
+        #tech-snitch { position: fixed; top: 20px; left: 20px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.8; text-transform: uppercase; text-shadow: 1px 1px 3px black; text-align: left; }
 
         /* DÉCLENCHEUR STEALTH */
         #ui-trigger { position: fixed; top: 20px; right: 20px; z-index: 2100; cursor: pointer; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; }
@@ -91,6 +94,10 @@
         .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
         .data { font-size: clamp(1.2rem, 4vmin, 2rem); font-weight: 800; display:flex; align-items:center; gap:5px; }
         .sub-data { font-size: 0.6rem; color: var(--ktm); font-family: monospace; text-transform: uppercase; letter-spacing: 1px; margin-top: -3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        
+        /* BLOC MÉTÉO CLIQUABLE */
+        .weather-btn { cursor: pointer; pointer-events: auto; transition: background 0.2s; }
+        .weather-btn:hover { background: rgba(255,255,255,0.05); }
 
         input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; box-sizing: border-box; }
     </style>
@@ -102,6 +109,8 @@
     <div id="ui-trigger" onclick="APP.toggleDrawer()">
         <div class="bar"></div><div class="bar"></div><div class="bar"></div>
     </div>
+
+    <div id="tech-snitch">> SYS: STANDBY</div>
 
     <div id="central-hud">
         <div id="horizon-line"></div>
@@ -120,8 +129,6 @@
         <div id="speed-val" class="val-big">000</div>
         <div class="sub-label">KM/H</div>
     </div>
-
-    <div id="tech-snitch">> SYS: STANDBY</div>
 
     <div id="mission-drawer">
         <div class="tab-nav">
@@ -149,9 +156,13 @@
         </div>
         <div id="p-settings" class="pane">
             <h3 style="color:var(--ktm); margin-top:0;">SYSTÈME</h3>
-            <button class="sort-btn active" style="width:100%; margin-bottom:20px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
-            <label style="display:block; margin-bottom:10px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white; font-weight:bold;">30</span> KM</label>
+            <button class="sort-btn active" style="width:100%; margin-bottom:10px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
+            
+            <label style="display:block; margin-bottom:10px; margin-top:20px; color:#888;">RAYON SCAN : <span id="rad-val" style="color:white; font-weight:bold;">30</span> KM</label>
             <input type="range" min="5" max="100" value="30" oninput="document.getElementById('rad-val').innerText=this.value">
+
+            <label style="display:block; margin-bottom:10px; margin-top:20px; color:#888;">ZOOM CARTE : <span id="zoom-val" style="color:white; font-weight:bold;">14</span></label>
+            <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
         </div>
     </div>
 
@@ -159,8 +170,8 @@
         <div class="widget"><div class="label">Altitude</div><div id="alt-val" class="data">---</div></div>
         <div class="widget"><div class="label">Cap</div><div id="cap-val" class="data">--</div></div>
         <div class="widget"><div class="label">Azimut</div><div id="azi-val" class="data">0°</div></div>
-        <div class="widget" style="border:none; grid-column: span 2;">
-            <div class="label">Météo LIVE</div>
+        <div class="widget weather-btn" style="border:none; grid-column: span 2;" onclick="window.open('https://open-meteo.com', '_blank')">
+            <div class="label">Météo LIVE ↗</div>
             <div id="weather-val" class="data">--°C ⏱️</div>
             <div id="weather-loc" class="sub-data">RECHERCHE STATION...</div>
         </div>
@@ -170,13 +181,14 @@
         const APP = {
             map: null, userMarker: null, fuelLayer: null, navLine: null,
             isNight: false, sortMode: 'price', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
-            stationsData: [], // STOCKAGE LOCAL POUR LE TRI INSTANTANÉ
+            stationsData: [],
 
             init: function() {
+                // Initialisation sur Graulhet
                 this.map = L.map('map', { 
                     zoomControl: false, attributionControl: false, 
                     dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
-                }).setView([43.76, 1.99], 14); 
+                }).setView([43.7614, 1.9902], CONFIG.DEFAULT_ZOOM); 
                 
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
@@ -188,6 +200,13 @@
             },
 
             updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
+
+            updateZoom: function(val) {
+                if(this.map) {
+                    this.map.setZoom(val);
+                    this.updateSnitch('> SYS.MAP : ZOOM ' + val);
+                }
+            },
 
             drawCompass: function() {
                 const g = document.getElementById('ticks-layer');
@@ -244,7 +263,7 @@
                     navigator.geolocation.watchPosition(u => {
                         const p = [u.coords.latitude, u.coords.longitude]; 
                         this.userMarker.setLatLng(p);
-                        if(!this.navLine) this.map.setView(p, 14); 
+                        if(!this.navLine) this.map.setView(p, this.map.getZoom()); 
                         this.fetchWeatherAndStation(p[0], p[1]);
                         document.getElementById('speed-val').innerText = (u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0).toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
@@ -307,19 +326,17 @@
                 const type = document.getElementById('fuel-type').value;
                 const radius = document.getElementById('rad-val').innerText * 1000;
                 this.updateSnitch('> RADAR: SCAN EN COURS...');
-                
-                // DÉBRIDAGE API: limit=200 pour choper tout Graulhet et environs sans exception
-                const api = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radius}m)&limit=200`;
+                const query = `within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radius}m) AND ${type} > 0`;
+                const api = `${CONFIG.FUEL_API}?where=${encodeURIComponent(query)}&limit=100`;
                 
                 try {
                     const res = await fetch(api); const data = await res.json();
-                    
-                    // Stockage local pour le tri sans recharger
+                    this.fuelLayer.clearLayers(); document.getElementById('station-list').innerHTML = "";
                     this.stationsData = data.results.map(st => {
                         const price = st[type] || null;
                         const d = (this.map.distance([center.lat, center.lng], [st.geom.lat, st.geom.lon]) / 1000);
                         return { ...st, price, distance: d };
-                    }).filter(s => s.price !== null && s.price > 0);
+                    }).filter(s => s.price !== null);
                     
                     this.renderStations();
                     this.updateSnitch('> RADAR: ' + this.stationsData.length + ' STATIONS');
@@ -330,8 +347,6 @@
                 this.fuelLayer.clearLayers(); 
                 const list = document.getElementById('station-list');
                 list.innerHTML = "";
-                
-                // Tri local instantané
                 this.stationsData.sort((a,b) => this.sortMode === 'price' ? a.price - b.price : a.distance - b.distance);
                 
                 this.stationsData.forEach(st => {
@@ -355,7 +370,6 @@
                 this.sortMode = m; 
                 document.getElementById('sort-price').className = m=='price'?'sort-btn active':'sort-btn'; 
                 document.getElementById('sort-dist').className = m=='dist'?'sort-btn active':'sort-btn'; 
-                // Tri instantané en local sans faire planter l'API
                 if(this.stationsData.length > 0) this.renderStations();
             },
 
@@ -371,7 +385,7 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById(id).classList.add('active'); btn.classList.add('active');
             },
-            recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), 14); document.getElementById('mission-drawer').classList.remove('open'); },
+            recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); document.getElementById('mission-drawer').classList.remove('open'); },
             resetGyro: function() { this.offset = this.lastRaw; }
         };
 
