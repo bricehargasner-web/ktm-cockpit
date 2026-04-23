@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ENERGY CONCEPT - KTM V110</title>
+    <title>ENERGY CONCEPT - KTM V111</title>
     
     <script>
         const CONFIG = {
             KTM_ORANGE: '#FF6600',
             SAFE_WHITE: '#FFFFFF',
             DANGER_RED: '#FF0000',
-            NAV_COLOR: '#FF6600', /* Guidage passé en Orange KTM */
+            NAV_COLOR: '#FF6600',
             MAP_DAY: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
             MAP_NIGHT: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             FUEL_API: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records',
@@ -54,76 +54,62 @@
             transition: transform 0.1s linear, background 0.3s; z-index: 110;
         }
 
-        /* WIDGETS DYNAMIQUES AÉRÉS */
+        /* WIDGETS */
         .flight-widget { position: fixed; bottom: 15dvh; z-index: 700; color: var(--ktm); display: flex; flex-direction: column; }
         .val-big { font-size: clamp(3rem, 10vmin, 7rem); font-weight: 900; line-height: 0.8; text-shadow: 4px 4px 15px rgba(0,0,0,1); }
         .sub-label { font-size: clamp(0.9rem, 2.5vmin, 1.2rem); font-weight: 800; letter-spacing: 4px; margin-top: 8px; text-shadow: 2px 2px 5px black; text-transform: uppercase; }
-        
         #angle-widget { left: 4vw; align-items: flex-start; }
         #speed-widget { right: 4vw; align-items: flex-end; }
         .btn-zero { background: rgba(0,0,0,0.8); border: 1px solid var(--ktm); color: white; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; border-radius: 3px; margin-top: 5px; pointer-events: auto; font-family: inherit; font-weight: 900; }
 
-        /* HUD TURN-BY-TURN MASSIF */
+        /* HUD NAVIGATION (STYLE KTM) */
         #tbt-hud {
             position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(10,10,10,0.95); border: 2px solid var(--ktm);
-            padding: 8px 25px; border-radius: 4px; z-index: 1500; display: none;
-            color: white; font-size: 2rem; font-weight: 900; box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            align-items: center; gap: 15px; text-transform: uppercase;
+            background: rgba(10,10,10,0.95); border: 3px solid var(--ktm); /* Bordure KTM */
+            padding: 10px 30px; border-radius: 4px; z-index: 1500; display: none;
+            color: white; font-size: 2.2rem; font-weight: 900; box-shadow: 0 0 20px rgba(0,0,0,1);
+            align-items: center; gap: 20px;
         }
+        #tbt-icon { color: var(--ktm); font-size: 2.5rem; }
 
-        /* MOUCHARD ANCRÉ TOP-LEFT */
-        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.9; text-transform: uppercase; text-shadow: 1px 1px 3px black; text-align: left; }
+        #tech-snitch { position: fixed; top: 15px; left: 15px; z-index: 900; color: var(--ktm); font-size: 0.7rem; font-family: monospace; opacity: 0.9; text-transform: uppercase; text-shadow: 1px 1px 3px black; }
 
-        /* DÉCLENCHEUR STEALTH (Menu) */
         #ui-trigger { position: fixed; top: 15px; right: 15px; z-index: 3100; cursor: pointer; pointer-events: auto; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; }
-        .bar { width: 35px; height: 4px; background: var(--ktm); border-radius: 2px; box-shadow: 0 0 8px black; transition: 0.3s; }
+        .bar { width: 35px; height: 4px; background: var(--ktm); border-radius: 2px; }
 
-        /* TIROIR MISSION ÉTANCHE */
+        /* TIROIR MISSION */
         #mission-drawer { 
             position: fixed; top: 0; right: 0; width: 340px; height: 100dvh; 
             background: #090909; border-left: 2px solid var(--ktm); 
             z-index: 3000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(100%);
-            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
         }
         #mission-drawer.open { transform: translateX(0); }
-        
-        /* Dégagement massif en haut pour éviter le cadenas du user */
-        .tab-nav { display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid #222; margin-top: 80px; }
+        .tab-nav { display: flex; justify-content: space-around; padding: 10px; border-bottom: 1px solid #222; margin-top: 70px; }
         .tab-btn { background: transparent; border: none; fill: white; cursor: pointer; transition: 0.2s; padding: 5px; }
         .tab-btn svg { width: 26px; height: 26px; }
         .tab-btn.active { fill: var(--ktm); transform: scale(1.15); }
-        
-        /* PANE AUTO-AJUSTABLE POUR NE PAS TOUCHER LE FOND */
-        .pane { display: none; padding: 15px; height: calc(100dvh - 180px); overflow-y: auto; padding-bottom: 20px; }
+        .pane { display: none; padding: 15px; height: calc(100dvh - 180px); overflow-y: auto; padding-bottom: 30px; }
         .pane.active { display: block; }
         
-        /* CARTE STATION RESTRUCTURÉE */
-        .station-card { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid var(--ktm); display: flex; flex-direction: column; gap: 5px; }
-        .st-header { display: flex; justify-content: space-between; align-items: center; }
-        .st-ville { font-size: 1.1rem; color: white; font-weight: 900; text-transform: uppercase; }
-        .st-nom { font-size: 0.75rem; color: #bbb; line-height: 1.2; }
-        .st-prix { font-size: 1.8rem; font-weight: 900; color: var(--ktm); display: flex; align-items: baseline; gap: 8px; }
-        .st-km { font-size: 1rem; color: white; }
+        .station-card { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid var(--ktm); }
+        .st-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .st-ville { font-size: 1.1rem; color: white; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; }
+        .st-nom { font-size: 0.75rem; color: #888; font-family: monospace; }
+        .st-data { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
+        .st-prix { font-size: 1.8rem; font-weight: 900; color: var(--ktm); }
+        .st-km { font-size: 1rem; color: #fff; font-weight: 800; }
 
         .sort-bar { display: flex; gap: 5px; margin-bottom: 15px; }
-        .sort-btn { flex: 1; padding: 10px; border: 1px solid #333; background: #111; color: #888; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: 0.2s; }
+        .sort-btn { flex: 1; padding: 10px; border: 1px solid #333; background: #111; color: #888; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.85rem; }
         .sort-btn.active { background: var(--ktm); color: black; border-color: var(--ktm); }
 
-        /* DASHBOARD BAS */
         #dash-bottom { position: fixed; bottom: 0; width: 100%; height: 9dvh; min-height: 55px; background: rgba(0,0,0,0.98); border-top: 1px solid rgba(255,102,0,0.5); display: grid; grid-template-columns: 0.8fr repeat(3, 1fr) 1.5fr; z-index: 800; }
-        .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .widget { border-right: 1px solid #222; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-        .data { font-size: clamp(1.1rem, 3.5vmin, 1.8rem); font-weight: 800; display:flex; align-items:center; gap:5px; }
-        .sub-data { font-size: 0.6rem; color: var(--ktm); font-family: monospace; text-transform: uppercase; letter-spacing: 1px; margin-top: -2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        .data { font-size: clamp(1.1rem, 3.5vmin, 1.8rem); font-weight: 800; }
+        .sub-data { font-size: 0.6rem; color: var(--ktm); font-family: monospace; text-transform: uppercase; margin-top: -2px; }
         
-        .weather-btn, .rec-btn { cursor: pointer; pointer-events: auto; transition: background 0.2s; }
-        .weather-btn:hover { background: rgba(255,255,255,0.05); }
-        .rec-btn { color: #888; }
-        .rec-btn.active { color: var(--DANGER_RED); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; box-sizing: border-box; font-size: 0.9rem; }
+        input, select { width: 100%; background: #111; border: 1px solid #333; color: white; padding: 12px; margin-bottom: 15px; font-family: inherit; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -134,7 +120,7 @@
         <div class="bar"></div><div class="bar"></div><div class="bar"></div>
     </div>
 
-    <div id="tech-snitch">> SYS: STANDBY</div>
+    <div id="tech-snitch">> SYS: ONLINE</div>
 
     <div id="tbt-hud">
         <span id="tbt-icon">⬆️</span> <span id="tbt-dist">-- m</span>
@@ -170,23 +156,22 @@
             <h3 style="color:var(--ktm); margin-top:0; font-size:1.3rem;">RADAR FUEL</h3>
             <div class="sort-bar">
                 <button id="sort-price" class="sort-btn active" onclick="APP.setSort('price')">PRIX</button>
-                <button id="sort-dist" class="sort-btn" onclick="APP.setSort('dist')">KM</button>
+                <button id="sort-dist" class="sort-btn" onclick="APP.setSort('dist')">DISTANCE</button>
             </div>
             <select id="fuel-type"><option value="gazole_prix">GAZOLE</option><option value="sp95_prix">SP95</option><option value="sp98_prix">SP98</option><option value="e10_prix">E10</option></select>
-            <button class="sort-btn active" style="width:100%; margin-bottom:15px;" onclick="APP.scanFuel()">LANCER LE SCAN LOCAL</button>
+            <button class="sort-btn active" style="width:100%; margin-bottom:15px;" onclick="APP.scanFuel()">SCANNER PROXIMITÉ (50KM)</button>
             <div id="station-list"></div>
         </div>
         <div id="p-search" class="pane">
             <h3 style="color:var(--ktm); margin-top:0; font-size:1.3rem;">GPS & TÉLÉMÉTRIE</h3>
             <input type="text" id="city-in" placeholder="Ex: Albi, Corte...">
-            <button class="sort-btn active" style="width:100%" onclick="APP.searchCity()">TRACER LA ROUTE</button>
-            <button class="btn-zero" style="width:100%; border-color:#444; margin-top:15px;" onclick="APP.clearNav()">EFFACER LA ROUTE</button>
+            <button class="sort-btn active" style="width:100%" onclick="APP.searchCity()">NAVIGUER</button>
+            <button class="btn-zero" style="width:100%; border-color:#444; margin-top:15px;" onclick="APP.clearNav()">STOP NAVIGATION</button>
         </div>
         <div id="p-settings" class="pane">
             <h3 style="color:var(--ktm); margin-top:0; font-size:1.3rem;">SYSTÈME</h3>
-            <button class="sort-btn active" style="width:100%; margin-bottom:15px; border-color:var(--NAV_BLUE); background:var(--NAV_BLUE);" onclick="APP.toggleFullScreen()">FORCER PLEIN ÉCRAN</button>
-            <button class="sort-btn active" style="width:100%; margin-bottom:20px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
-            
+            <button class="sort-btn active" style="width:100%; margin-bottom:15px;" onclick="APP.toggleFullScreen()">PLEIN ÉCRAN</button>
+            <button class="sort-btn active" style="width:100%; margin-bottom:15px;" onclick="APP.toggleTheme()">SWITCH JOUR / NUIT</button>
             <label style="display:block; margin-bottom:8px; color:#888; font-size:0.85rem;">ZOOM CARTE : <span id="zoom-val" style="color:white; font-weight:bold;">14</span></label>
             <input type="range" min="8" max="18" value="14" oninput="document.getElementById('zoom-val').innerText=this.value; APP.updateZoom(this.value)">
         </div>
@@ -211,51 +196,27 @@
         const APP = {
             map: null, userMarker: null, fuelLayer: null, navLine: null,
             isNight: false, sortMode: 'price', offset: 0, lastRaw: 0, lastWeatherUpdate: 0,
-            stationsData: [], lastLat: 43.76, lastLng: 1.99,
-            routeSteps: [], currentStepIdx: 0,
+            stationsData: [], lastLat: 43.76, lastLng: 1.99, routeSteps: [], currentStepIdx: 0,
             isRecording: false, trackData: [], currentSpeed: 0, currentLean: 0,
 
             init: function() {
                 this.map = L.map('map', { 
-                    zoomControl: false, attributionControl: false, 
-                    dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
+                    zoomControl: false, attributionControl: false, dragging: false, touchZoom: false, doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false
                 }).setView([this.lastLat, this.lastLng], CONFIG.DEFAULT_ZOOM); 
-                
                 L.tileLayer(CONFIG.MAP_DAY).addTo(this.map);
                 this.fuelLayer = L.layerGroup().addTo(this.map);
                 this.userMarker = L.circleMarker([0,0], {radius: 8, color: '#fff', fillColor: CONFIG.KTM_ORANGE, fillOpacity: 1}).addTo(this.map);
-                
-                this.drawCompass();
-                this.startSensors();
-                this.updateSnitch('> SYS: ONLINE | AERO HUD');
+                this.drawCompass(); this.startSensors();
+                this.updateSnitch('> SYS: ONLINE');
             },
 
             updateSnitch: function(msg) { document.getElementById('tech-snitch').innerText = msg; },
-            
-            updateZoom: function(val) {
-                if(this.map) { this.map.setZoom(val); this.updateSnitch('> SYS.MAP : ZOOM ' + val); }
-            },
-
-            toggleFullScreen: function() {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        alert(`Erreur plein écran: ${err.message}`);
-                    });
-                    this.updateSnitch('> SYS : PLEIN ÉCRAN FORCÉ');
-                } else {
-                    document.exitFullscreen();
-                    this.updateSnitch('> SYS : PLEIN ÉCRAN OFF');
-                }
-            },
-
-            openWeather: function() {
-                const url = `https://www.meteoblue.com/fr/meteo/semaine/index?lat=${this.lastLat}&lon=${this.lastLng}`;
-                window.open(url, '_blank');
-            },
+            updateZoom: function(val) { if(this.map) this.map.setZoom(val); },
+            toggleFullScreen: function() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); },
+            openWeather: function() { window.open(`https://www.meteoblue.com/fr/meteo/semaine/index?lat=${this.lastLat}&lon=${this.lastLng}`, '_blank'); },
 
             drawCompass: function() {
                 const g = document.getElementById('ticks-layer');
-                const pts = { 0:'N', 90:'E', 180:'S', 270:'W' };
                 for(let i=0; i<360; i+=10) {
                     let a = (i * Math.PI) / 180;
                     let x1 = 100 + 92 * Math.sin(a), y1 = 100 - 92 * Math.cos(a);
@@ -263,40 +224,13 @@
                     let l = document.createElementNS("http://www.w3.org/2000/svg", "line");
                     l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
                     l.setAttribute("class", "tick-line"); g.appendChild(l);
-                    if (pts[i] || i % 30 === 0) {
+                    if (i % 30 === 0) {
                         let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
                         t.setAttribute("x", 100 + 74 * Math.sin(a)); t.setAttribute("y", 100 - 74 * Math.cos(a));
-                        t.setAttribute("class", "azimut-text");
-                        t.setAttribute("fill", i % 90 === 0 ? CONFIG.KTM_ORANGE : "white");
-                        t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "middle");
-                        t.textContent = pts[i] || (i/10); g.appendChild(t);
+                        t.setAttribute("class", "azimut-text"); t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "middle");
+                        t.textContent = (i % 90 === 0) ? {0:'N',90:'E',180:'S',270:'W'}[i] : (i/10); g.appendChild(t);
                     }
                 }
-            },
-
-            getWeatherEmoji: function(code) {
-                if(code === 0) return '☀️'; if(code > 0 && code <= 3) return '⛅';
-                if(code >= 45 && code <= 48) return '🌫️'; if(code >= 51 && code <= 67) return '🌧️';
-                if(code >= 71 && code <= 77) return '❄️'; if(code >= 95) return '⛈️'; return '🌡️';
-            },
-
-            fetchWeatherAndStation: async function(lat, lng) {
-                const now = Date.now();
-                if(now - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return; 
-                this.lastWeatherUpdate = now;
-                try {
-                    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
-                    const weatherData = await weatherRes.json();
-                    const locRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                    const locData = await locRes.json();
-
-                    const temp = Math.round(weatherData.current_weather.temperature);
-                    const icon = this.getWeatherEmoji(weatherData.current_weather.weathercode);
-                    const stationName = locData.address.city || locData.address.town || locData.address.village || "LOCALE";
-
-                    document.getElementById('weather-val').innerText = `${temp}°C ${icon}`;
-                    document.getElementById('weather-loc').innerText = `${stationName}`;
-                } catch(e) {}
             },
 
             startSensors: function() {
@@ -307,20 +241,17 @@
                         this.userMarker.setLatLng(p);
                         if(!this.navLine) this.map.setView(p, this.map.getZoom()); 
                         this.fetchWeatherAndStation(p[0], p[1]);
-                        
                         this.currentSpeed = u.coords.speed ? Math.round(u.coords.speed * 3.6) : 0;
                         document.getElementById('speed-val').innerText = this.currentSpeed.toString().padStart(3, '0');
                         document.getElementById('alt-val').innerText = u.coords.altitude ? Math.round(u.coords.altitude) + 'm' : '---';
                         if(u.coords.heading) document.getElementById('azi-val').innerText = Math.round(u.coords.heading) + '°';
 
-                        if(this.isRecording) {
-                            this.trackData.push({ lat: p[0], lng: p[1], alt: u.coords.altitude || 0, speed: this.currentSpeed, lean: this.currentLean, time: Date.now() });
-                        }
+                        if(this.isRecording) this.trackData.push({ lat: p[0], lng: p[1], alt: u.coords.altitude || 0, speed: this.currentSpeed, lean: this.currentLean, time: Date.now() });
 
                         if(this.routeSteps.length > 0 && this.currentStepIdx < this.routeSteps.length) {
                             const step = this.routeSteps[this.currentStepIdx];
-                            const distToStep = this.map.distance(p, [step.maneuver.location[1], step.maneuver.location[0]]);
-                            if(distToStep < 25) { this.currentStepIdx++; } 
+                            const dist = this.map.distance(p, [step.maneuver.location[1], step.maneuver.location[0]]);
+                            if(dist < 30) this.currentStepIdx++; 
                             else {
                                 document.getElementById('tbt-hud').style.display = 'flex';
                                 let icon = '⬆️';
@@ -329,120 +260,45 @@
                                     else if(step.maneuver.modifier.includes('left')) icon = '↰';
                                 }
                                 document.getElementById('tbt-icon').innerText = icon;
-                                document.getElementById('tbt-dist').innerText = Math.round(distToStep) + 'm';
+                                document.getElementById('tbt-dist').innerText = Math.round(dist) + 'm';
                             }
                         } else { document.getElementById('tbt-hud').style.display = 'none'; }
-
                     }, null, { enableHighAccuracy: true });
                 }
                 
                 window.addEventListener('deviceorientation', e => {
-                    let screenAngle = window.orientation || 0;
-                    let raw = (Math.abs(screenAngle) === 90) ? e.beta : e.gamma;
-                    if (screenAngle === -90) raw = -raw;
+                    let sa = window.orientation || 0;
+                    let raw = (Math.abs(sa) === 90) ? e.beta : e.gamma;
+                    if (sa === -90) raw = -raw;
                     this.lastRaw = raw;
                     let lean = Math.round(raw - this.offset);
                     this.currentLean = Math.abs(lean);
-                    
                     document.getElementById('angle-val').innerText = this.currentLean;
                     document.getElementById('horizon-line').style.transform = `rotate(${lean}deg)`;
-                    
                     let col = this.currentLean > 42 ? CONFIG.DANGER_RED : (this.currentLean > 25 ? CONFIG.KTM_ORANGE : CONFIG.SAFE_WHITE);
                     document.documentElement.style.setProperty('--dynamic-hud', col);
                     document.querySelectorAll('.tick-line').forEach(l => l.style.stroke = col);
                 });
             },
 
-            toggleRec: function() {
-                this.isRecording = !this.isRecording;
-                const btn = document.getElementById('btn-rec');
-                if(this.isRecording) {
-                    this.trackData = [];
-                    btn.classList.add('active');
-                    this.updateSnitch('> SYS.GPX : ACQUISITION...');
-                } else {
-                    btn.classList.remove('active');
-                    this.exportGPX();
-                }
-            },
-
-            exportGPX: function() {
-                if(this.trackData.length === 0) { this.updateSnitch('> SYS.GPX : TRACE VIDE'); return; }
-                let gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="KTM Cockpit"><trk><name>KTM_Telemetry</name><trkseg>\n`;
-                this.trackData.forEach(pt => {
-                    gpx += `<trkpt lat="${pt.lat}" lon="${pt.lng}"><ele>${pt.alt}</ele><time>${new Date(pt.time).toISOString()}</time><extensions><speed>${pt.speed}</speed><lean>${pt.lean}</lean></extensions></trkpt>\n`;
-                });
-                gpx += `</trkseg></trk></gpx>`;
-                const blob = new Blob([gpx], {type: 'application/gpx+xml'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = `KTM_Trace_${Date.now()}.gpx`; a.click();
-                this.updateSnitch('> SYS.GPX : FICHIER SAUVEGARDÉ');
-            },
-
-            startNav: async function(lat, lng) {
-                const start = this.userMarker.getLatLng();
-                const url = `${CONFIG.ROUTING_API}${start.lng},${start.lat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
-                this.updateSnitch('> GPS: CALCUL ROUTE...');
-                try {
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    if (data.routes && data.routes.length > 0) {
-                        if(this.navLine) this.map.removeLayer(this.navLine);
-                        // PASSAGE DU TRAIT EN ORANGE KTM
-                        this.navLine = L.geoJSON(data.routes[0].geometry, {
-                            style: { color: CONFIG.NAV_COLOR, weight: 6, opacity: 0.9, dashArray: '1, 12' }
-                        }).addTo(this.map);
-                        this.map.fitBounds(this.navLine.getBounds(), {padding: [50, 50]});
-                        document.getElementById('mission-drawer').classList.remove('open');
-                        
-                        this.routeSteps = data.routes[0].legs[0].steps;
-                        this.currentStepIdx = 0;
-                        
-                        this.updateSnitch('> GPS: GUIDAGE ACTIF');
-                    }
-                } catch(e) { console.error(e); this.updateSnitch('> GPS: ERR ROUTAGE'); }
-            },
-
-            clearNav: function() {
-                if(this.navLine) { this.map.removeLayer(this.navLine); this.navLine = null; }
-                this.routeSteps = [];
-                document.getElementById('tbt-hud').style.display = 'none';
-                this.recenterMap();
-                this.updateSnitch('> GPS: ROUTE EFFACÉE');
-            },
-
-            searchCity: async function() {
-                const city = document.getElementById('city-in').value;
-                if(!city) return;
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`);
-                    const data = await res.json();
-                    if(data && data.length > 0) this.startNav(data[0].lat, data[0].lon);
-                    else { alert("Lieu introuvable."); this.updateSnitch('> SYS: ERR LIEU'); }
-                } catch(e) { console.error(e); }
-            },
-
             scanFuel: async function() {
-                const center = this.map.getCenter();
+                this.updateSnitch('> RADAR: SCAN PROXIMITÉ...');
+                // Utilisation de la position GPS réelle de l'utilisateur pour le centre du scan
+                const center = this.userMarker.getLatLng();
                 const type = document.getElementById('fuel-type').value;
-                this.updateSnitch('> RADAR: ASPIRATION DONNÉES...');
-                
-                // On aspire un grand rayon sans filtre stict via l'API pour forcer l'affichage de Graulhet
                 const api = `${CONFIG.FUEL_API}?where=within_distance(geom, geom'POINT(${center.lng} ${center.lat})', 50000m)&limit=100`;
                 
                 try {
                     const res = await fetch(api); const data = await res.json();
                     this.fuelLayer.clearLayers(); document.getElementById('station-list').innerHTML = "";
-                    
                     this.stationsData = data.results.map(st => {
                         const price = st[type] || null;
                         const d = (this.map.distance([center.lat, center.lng], [st.geom.lat, st.geom.lon]) / 1000);
                         return { ...st, price, distance: d };
                     }).filter(s => s.price !== null && s.price > 0); 
-                    
                     this.renderStations();
-                    this.updateSnitch('> RADAR: ' + this.stationsData.length + ' STATIONS TROUVÉES');
-                } catch(e) { console.error(e); this.updateSnitch('> SYS: ERR RADAR'); }
+                    this.updateSnitch(`> RADAR: ${this.stationsData.length} STATIONS`);
+                } catch(e) { this.updateSnitch('> SYS: ERR RADAR'); }
             },
 
             renderStations: function() {
@@ -452,48 +308,75 @@
                 this.stationsData.sort((a,b) => this.sortMode === 'price' ? a.price - b.price : a.distance - b.distance);
                 
                 this.stationsData.forEach(st => {
-                    const name = st.nom || st.adresse || "STATION";
                     const card = document.createElement('div'); card.className = "station-card";
                     card.innerHTML = `
                     <div class="st-header">
                         <div class="st-ville">${st.ville || "INCONNU"}</div>
                         <button class="sort-btn active" style="padding:6px 15px; margin:0; border-radius:3px;" onclick="APP.startNav(${st.geom.lat}, ${st.geom.lon})">GO</button>
                     </div>
-                    <div class="st-nom">${name.substring(0,35)}</div>
-                    <div class="st-prix">
-                        ${st.price.toFixed(2)}€ <span class="st-km">| ${st.distance.toFixed(1)} KM</span>
+                    <div class="st-nom">${(st.nom || st.adresse || "STATION").substring(0,35)}</div>
+                    <div class="st-data">
+                        <div class="st-prix">${st.price.toFixed(2)}€</div>
+                        <div class="st-km">${st.distance.toFixed(1)} KM</div>
                     </div>`;
                     list.appendChild(card);
-
-                    L.marker([st.geom.lat, st.geom.lon], {
-                        icon: L.divIcon({ className: '', html: `<div style="background:var(--ktm); color:black; padding:2px 5px; border-radius:3px; font-weight:900; border:1px solid white; font-size:0.8rem; box-shadow:0 0 5px black;">${st.price.toFixed(2)}</div>` })
-                    }).addTo(this.fuelLayer);
+                    L.marker([st.geom.lat, st.geom.lon], { icon: L.divIcon({ className: '', html: `<div style="background:var(--ktm); color:black; padding:2px 5px; border-radius:3px; font-weight:900; border:1px solid white; font-size:0.8rem; box-shadow:0 0 5px black;">${st.price.toFixed(2)}</div>` })}).addTo(this.fuelLayer);
                 });
             },
 
-            setSort: function(m) { 
-                this.sortMode = m; 
-                document.getElementById('sort-price').className = m=='price'?'sort-btn active':'sort-btn'; 
-                document.getElementById('sort-dist').className = m=='dist'?'sort-btn active':'sort-btn'; 
-                if(this.stationsData.length > 0) this.renderStations();
+            startNav: async function(lat, lng) {
+                const start = this.userMarker.getLatLng();
+                const url = `${CONFIG.ROUTING_API}${start.lng},${start.lat};${lng},${lat}?overview=full&geometries=geojson&steps=true`;
+                this.updateSnitch('> GPS: CALCUL ROUTE...');
+                try {
+                    const res = await fetch(url); const data = await res.json();
+                    if (data.routes && data.routes.length > 0) {
+                        if(this.navLine) this.map.removeLayer(this.navLine);
+                        this.navLine = L.geoJSON(data.routes[0].geometry, { style: { color: CONFIG.NAV_COLOR, weight: 6, opacity: 0.9, dashArray: '1, 10' }}).addTo(this.map);
+                        this.map.fitBounds(this.navLine.getBounds(), {padding: [50, 50]});
+                        document.getElementById('mission-drawer').classList.remove('open');
+                        this.routeSteps = data.routes[0].legs[0].steps; this.currentStepIdx = 0;
+                        this.updateSnitch('> GPS: GUIDAGE KTM ACTIF');
+                    }
+                } catch(e) { this.updateSnitch('> GPS: ERR ROUTE'); }
             },
 
-            toggleTheme: function() {
-                this.isNight = !this.isNight;
-                this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); });
-                L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map);
-                document.getElementById('map').style.filter = this.isNight ? "brightness(0.5) contrast(1.2)" : "brightness(0.9) contrast(1.1)";
+            clearNav: function() {
+                if(this.navLine) { this.map.removeLayer(this.navLine); this.navLine = null; }
+                this.routeSteps = []; document.getElementById('tbt-hud').style.display = 'none';
+                this.recenterMap(); this.updateSnitch('> GPS: STOP');
             },
+
+            searchCity: async function() {
+                const city = document.getElementById('city-in').value; if(!city) return;
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`);
+                    const data = await res.json();
+                    if(data && data.length > 0) this.startNav(data[0].lat, data[0].lon);
+                } catch(e) {}
+            },
+
+            fetchWeatherAndStation: async function(lat, lng) {
+                const now = Date.now(); if(now - this.lastWeatherUpdate < CONFIG.WEATHER_UPDATE_MS) return; this.lastWeatherUpdate = now;
+                try {
+                    const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
+                    const wd = await wr.json();
+                    const lr = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const ld = await lr.json();
+                    document.getElementById('weather-val').innerText = `${Math.round(wd.current_weather.temperature)}°C`;
+                    document.getElementById('weather-loc').innerText = ld.address.city || ld.address.town || "LOCALE";
+                } catch(e) {}
+            },
+
+            setSort: function(m) { this.sortMode = m; document.getElementById('sort-price').className = m=='price'?'sort-btn active':'sort-btn'; document.getElementById('sort-dist').className = m=='dist'?'sort-btn active':'sort-btn'; if(this.stationsData.length > 0) this.renderStations(); },
+            toggleTheme: function() { this.isNight = !this.isNight; this.map.eachLayer(l => { if(l._url) this.map.removeLayer(l); }); L.tileLayer(this.isNight ? CONFIG.MAP_NIGHT : CONFIG.MAP_DAY).addTo(this.map); },
             toggleDrawer: function() { document.getElementById('mission-drawer').classList.toggle('open'); },
-            showPane: function(id, btn) {
-                document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById(id).classList.add('active'); btn.classList.add('active');
-            },
+            showPane: function(id, btn) { document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); btn.classList.add('active'); },
             recenterMap: function() { this.map.setView(this.userMarker.getLatLng(), this.map.getZoom()); document.getElementById('mission-drawer').classList.remove('open'); },
-            resetGyro: function() { this.offset = this.lastRaw; this.updateSnitch('> SYS: GYRO CALIBRÉ'); }
+            resetGyro: function() { this.offset = this.lastRaw; },
+            toggleRec: function() { this.isRecording = !this.isRecording; const b = document.getElementById('btn-rec'); if(this.isRecording) { this.trackData=[]; b.classList.add('active'); } else { b.classList.remove('active'); this.exportGPX(); }},
+            exportGPX: function() { if(this.trackData.length===0) return; let g = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>`; this.trackData.forEach(p => { g += `<trkpt lat="${p.lat}" lon="${p.lng}"><ele>${p.alt}</ele><time>${new Date(p.time).toISOString()}</time></trkpt>`; }); g += `</trkseg></trk></gpx>`; const blob = new Blob([g], {type: 'application/gpx+xml'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `KTM_${Date.now()}.gpx`; a.click(); }
         };
-
         window.onload = () => APP.init();
     </script>
 </body>
