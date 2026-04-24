@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>ENERGY CONCEPT - COCKPIT V7.1</title>
+  <title>ENERGY CONCEPT - COCKPIT V7.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   
@@ -35,13 +35,16 @@
     .left{background:linear-gradient(to right,rgba(0,0,0,.98),rgba(0,0,0,.7),transparent)}
     .right{background:linear-gradient(to left,rgba(0,0,0,.98),rgba(0,0,0,.7),transparent);align-items:flex-end}
     .center{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:14px;pointer-events:none}
-    .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#cfcfcf;font-weight:700;margin-bottom:4px}
+    .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#cfcfcf;font-weight:700;margin-bottom:4px; text-shadow: 0 1px 3px #000;}
     .big{font-size:5.4rem;line-height:1;font-weight:900;color:var(--ktm);text-shadow:0 0 20px rgba(0,0,0,.75)}
     .right .big{text-align:right;color:#fff}
     .left .big{text-align:left}
     .tele{margin-top:8px;border-top:1px solid rgba(255,255,255,.13);padding-top:8px}
     .row{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:4px;font-weight:700}
-    .val{font-size:13px;color:#fff}
+    
+    /* MODIFICATION : Indicateurs Max/Moyenne en orange avec ombre portée pour la lisibilité sur la carte */
+    .val{font-size:14px;color:var(--ktm);font-weight:900;text-shadow:0 1px 4px #000;}
+    
     .btn{background:rgba(8,8,8,.95);border:1px solid #555;color:#fff;padding:10px 16px;border-radius:5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;cursor:pointer;pointer-events:auto}
     .btn:active{transform:scale(.99)}
     .btnRec{display:flex;align-items:center;gap:8px}
@@ -206,9 +209,8 @@
 // LOGIQUE MÉTIER & CALCULS
 // ==========================================
 
-// Coordonnées par défaut (ex: Graulhet)
 let userPos = {lat: 43.761, lng: 1.99}; 
-let smoothPos = {lat: 43.761, lng: 1.99}; // Position lissée pour la mire
+let smoothPos = {lat: 43.761, lng: 1.99}; 
 
 let map, marker;
 let angleOffset = 0, currentBeta = 0, isRecording = false, track = [];
@@ -216,7 +218,7 @@ let stats = {speed:{max:0,sum:0,count:0}, angle:{max:0,sum:0,count:0}};
 let stations = [], stationMarkers = [];
 let searchTimer = null, lastSearch = 0;
 let lastFix = null;
-let lastMapUpdate = 0; // Pour limiter le lag
+let lastMapUpdate = 0; 
 
 const SYS = {
   init(){
@@ -227,7 +229,6 @@ const SYS = {
     this.weather(userPos.lat, userPos.lng);
     this.setDisplay(CONFIG.DISPLAY);
     
-    // Démarrage de la boucle d'animation fluide pour la mire (Lerp)
     requestAnimationFrame(this.renderLoop.bind(this));
   },
   lockLandscape(){
@@ -244,7 +245,6 @@ const SYS = {
     });
     map.addControl(new maplibregl.NavigationControl({showCompass:false}), "bottom-right");
     
-    // Création de la mire
     const el = document.createElement("div");
     el.style.width="22px"; el.style.height="22px"; el.style.borderRadius="50%"; 
     el.style.background="#00ccff"; el.style.border="3px solid #fff"; el.style.boxShadow="0 0 10px #00ccff";
@@ -263,21 +263,15 @@ const SYS = {
       badge.innerText = "MODE AUTO";
     }
   },
-  
-  // Boucle d'animation visuelle fluide
   renderLoop() {
-    // Lissage de la position (Lerp) pour éviter les sauts hors-piste
     smoothPos.lat += (userPos.lat - smoothPos.lat) * CONFIG.LISSAGE_GPS;
     smoothPos.lng += (userPos.lng - smoothPos.lng) * CONFIG.LISSAGE_GPS;
-    
     if(marker) marker.setLngLat([smoothPos.lng, smoothPos.lat]);
     requestAnimationFrame(this.renderLoop.bind(this));
   },
-
   sensors(){
     if(navigator.geolocation){
       navigator.geolocation.watchPosition(p=>{
-        // Mise à jour de la cible brute
         userPos = {lat:p.coords.latitude, lng:p.coords.longitude};
         lastFix = p;
         
@@ -295,38 +289,20 @@ const SYS = {
         
         if(isRecording) track.push({lat:userPos.lat, lng:userPos.lng});
 
-        // Gestion du mouvement de la carte (Temporisé pour supprimer le LAG)
         const now = Date.now();
         if(now - lastMapUpdate > CONFIG.FREQ_CARTE) {
           if(document.getElementById("nav-box").classList.contains("on")){
-            map.easeTo({
-              center: [smoothPos.lng, smoothPos.lat],
-              bearing: p.coords.heading || map.getBearing(),
-              pitch: CONFIG.PITCH,
-              zoom: CONFIG.ZOOMNAV,
-              duration: CONFIG.FREQ_CARTE, // Transition fluide calée sur la fréquence
-              easing: t => t // Linéaire
-            });
+            map.easeTo({ center: [smoothPos.lng, smoothPos.lat], bearing: p.coords.heading || map.getBearing(), pitch: CONFIG.PITCH, zoom: CONFIG.ZOOMNAV, duration: CONFIG.FREQ_CARTE, easing: t => t });
           } else {
-            map.easeTo({
-              center: [smoothPos.lng, smoothPos.lat], 
-              duration: CONFIG.FREQ_CARTE,
-              easing: t => t
-            });
+            map.easeTo({ center: [smoothPos.lng, smoothPos.lat], duration: CONFIG.FREQ_CARTE, easing: t => t });
           }
           lastMapUpdate = now;
         }
-        
         UI.setDiag("GPS", "OK");
       }, 
-      (err)=>{
-        UI.setDiag("GPS", "Signal perdu");
-      }, 
+      ()=>UI.setDiag("GPS", "Signal perdu"), 
       {enableHighAccuracy:true, timeout:10000, maximumAge:3000});
-    } else {
-      alert("Votre appareil ne supporte pas la géolocalisation native.");
-      UI.setDiag("GPS", "Non supporté");
-    }
+    } else UI.setDiag("GPS", "Non supporté");
 
     window.addEventListener("deviceorientation", e=>{
       if(e.beta == null) return;
@@ -346,14 +322,11 @@ const SYS = {
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
       .then(r=>r.json())
       .then(d=>{
-        if(!d.current_weather) throw new Error("Format inattendu");
+        if(!d.current_weather) return;
         document.getElementById("temp-val").innerText = Math.round(d.current_weather.temperature) + " °C";
         document.getElementById("wind-val").innerText = "Vent " + Math.round(d.current_weather.windspeed) + " km/h";
         UI.setDiag("Météo", "OK");
-      }).catch(err=>{
-        console.warn("Erreur météo:", err);
-        UI.setDiag("Météo", "Indisponible");
-      });
+      }).catch(()=>UI.setDiag("Météo", "Indisponible"));
   }
 };
 
@@ -391,10 +364,7 @@ const MOTO = {
       const url = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true&bearings=${Math.round(bearing)},60;0,0`;
       const r = await fetch(url);
       const d = await r.json();
-      if(!d.routes || !d.routes.length) {
-         alert("Aucun itinéraire routier trouvé vers cette destination.");
-         return;
-      }
+      if(!d.routes || !d.routes.length) { alert("Aucun itinéraire routier trouvé."); return; }
       if(map.getSource("route")){ map.removeLayer("route-layer"); map.removeSource("route"); }
       map.addSource("route", {type:"geojson", data:d.routes[0].geometry});
       map.addLayer({id:"route-layer", type:"line", source:"route", paint:{"line-color":CONFIG.ACCENT, "line-width":8}});
@@ -403,14 +373,9 @@ const MOTO = {
       document.getElementById("nav-dist").innerText = Math.round(step.distance) + " m";
       document.getElementById("nav-text").innerText = "Vers " + (name || full || "destination");
       document.getElementById("nav-box").classList.add("on");
-      
-      // Focus initial vers la navigation
       map.easeTo({center:[userPos.lng,userPos.lat], pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV, duration:650});
       UI.setDiag("Navigation", "Active");
-    }catch(e){
-      alert("Erreur réseau lors du calcul d’itinéraire.");
-      UI.setDiag("Navigation", "Erreur réseau");
-    }
+    }catch(e){ alert("Erreur réseau (Itinéraire)."); UI.setDiag("Navigation", "Erreur réseau"); }
   },
   stopNav(){
     document.getElementById("nav-box").classList.remove("on");
@@ -420,26 +385,17 @@ const MOTO = {
   },
   fuelFieldName(fuel){
     const f = String(fuel || "").toLowerCase();
-    const mapFields = {
-      "gazole":["prix_gazole","prix_gasoil","gazole","gasoil"],
-      "sp95":["prix_sp95","sp95"],
-      "sp98":["prix_sp98","sp98"],
-      "e10":["prix_e10","e10"],
-      "e85":["prix_e85","e85"],
-      "gplc":["prix_gplc","gplc","prix_gpl"]
-    };
+    const mapFields = { "gazole":["prix_gazole","prix_gasoil","gazole","gasoil"], "sp95":["prix_sp95","sp95"], "sp98":["prix_sp98","sp98"], "e10":["prix_e10","e10"], "e85":["prix_e85","e85"], "gplc":["prix_gplc","gplc","prix_gpl"] };
     return mapFields[f] || [`prix_${f}`];
   },
   extractFuelPrice(s){
     const keys = this.fuelFieldName(CONFIG.FUEL);
-    // Recherche direct dans les clés JSON plates
     for(const k of keys){
       if(s[k] != null && s[k] !== ""){
         const v = parseFloat(String(s[k]).replace(",", "."));
         if(!Number.isNaN(v)) return v;
       }
     }
-    // Recherche si les prix sont imbriqués sous forme de tableau (format alternatif API)
     if(Array.isArray(s.prix)){
       const f = String(CONFIG.FUEL).toLowerCase();
       const found = s.prix.find(x => String(x.nom || x.id || "").toLowerCase().includes(f));
@@ -454,16 +410,19 @@ const MOTO = {
     UI.closeAll();
     document.getElementById("fuel-drawer").classList.add("open");
     const list = document.getElementById("fuel-list-content");
-    list.innerHTML = '<div style="padding:12px;text-align:center;color:#fff">Recherche stations dans un rayon de '+CONFIG.RAYON+'km...</div>';
+    list.innerHTML = `<div style="padding:12px;text-align:center;color:#fff">Recherche dans un rayon de ${CONFIG.RAYON}km...</div>`;
+    
     try{
-      // CORRECTION : Filtrage spatial natif pour forcer la recherche AUTOUR du GPS utilisateur, pas au hasard en France
-      const radiusMeters = CONFIG.RAYON * 1000;
-      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=50&where=within_distance(geom, GEOMETRY'POINT(${userPos.lng} ${userPos.lat})', ${radiusMeters})`;
+      // CORRECTION API : Ajout de l'unité "km" essentielle pour que le serveur accepte la requête géospatiale
+      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=50&where=within_distance(geom, GEOMETRY'POINT(${userPos.lng} ${userPos.lat})', ${CONFIG.RAYON}km)`;
       
       const r = await fetch(url);
-      if(!r.ok) throw new Error("Erreur HTTP " + r.status);
-      const d = await r.json();
+      if(!r.ok) {
+        console.error("Détail de l'erreur API : ", await r.text());
+        throw new Error("Erreur HTTP " + r.status);
+      }
       
+      const d = await r.json();
       stationMarkers.forEach(m=>m.remove());
       stationMarkers = [];
       stations = [];
@@ -488,16 +447,15 @@ const MOTO = {
       });
 
       if(stations.length === 0){
-        list.innerHTML = `<div style="padding:12px;text-align:center;color:#bbb">Aucune station avec ${CONFIG.FUEL} trouvée dans un rayon de ${CONFIG.RAYON}km.</div>`;
+        list.innerHTML = `<div style="padding:12px;text-align:center;color:#bbb">Aucune station trouvée à moins de ${CONFIG.RAYON}km.</div>`;
         UI.setDiag("Carburants", "Aucune station");
       } else {
         MOTO.sortStations(document.getElementById("sort-mode").value || "dist");
         UI.setDiag("Carburants", stations.length + " stations");
       }
     }catch(e){
-      console.warn("Erreur API Carburant:", e);
-      alert("Impossible de contacter le serveur gouvernemental des carburants.");
-      list.innerHTML = '<div style="padding:12px;text-align:center;color:#ff6666">Erreur de connexion au serveur data.gouv</div>';
+      console.warn(e);
+      list.innerHTML = '<div style="padding:12px;text-align:center;color:#ff6666">Erreur du serveur gouvernemental.</div>';
       UI.setDiag("Carburants", "Erreur réseau");
     }
   },
@@ -544,10 +502,7 @@ const UI = {
     if(isRecording){ track = []; b.classList.add("on"); }
     else{
       b.classList.remove("on");
-      if(!track.length) {
-         alert("Aucune donnée enregistrée.");
-         return;
-      }
+      if(!track.length) return;
       if(!confirm("Sauvegarder la trace GPX ?")) return;
       const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="EnergyConceptMotoGPS"><trk><name>Rando Moto</name><trkseg>${track.map(p=>`<trkpt lat="${p.lat}" lon="${p.lng}"></trkpt>`).join("")}</trkseg></trk></gpx>`;
       const a = document.createElement("a");
