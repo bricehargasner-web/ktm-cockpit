@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - COCKPIT V28</title>
+    <title>ENERGY CONCEPT - COCKPIT V29</title>
 
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
@@ -36,7 +36,8 @@
         .panel-left { background: linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); }
         .panel-right { background: linear-gradient(to left, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); align-items: center; }
         
-        .panel-center { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px; position: relative; }
+        /* CENTRE - Modifié pour s'aligner vers le HAUT (flex-start) */
+        .panel-center { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 20px; position: relative; gap: 15px; }
 
         /* INSTRUMENTS */
         .val-giant { font-size: 5.5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
@@ -61,23 +62,27 @@
         .rec-active::before { animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
-        /* NAVIGATION */
-        .nav-instruction { background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); border-radius: 8px; padding: 15px 25px; display: flex; align-items: center; gap: 15px; opacity: 0; transition: 0.3s; pointer-events: auto; margin-bottom: 10px; min-width: 300px; }
+        /* NAVIGATION - Modifié pour une lisibilité en haut */
+        .nav-instruction { background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); border-radius: 8px; padding: 15px 25px; display: flex; align-items: center; gap: 15px; opacity: 0; transition: 0.3s; pointer-events: auto; min-width: 300px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         .nav-instruction.active { opacity: 1; }
 
         /* DRAPEAUX CARTE */
         .station-flag { background: rgba(15, 15, 15, 0.95); border: 2px solid var(--ktm); color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px; position: relative; cursor: pointer; display: inline-block !important; white-space: nowrap !important; width: max-content !important; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
         .station-flag::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-width: 8px 6px 0; border-style: solid; border-color: var(--ktm) transparent transparent transparent; }
 
-        /* MENU ⋮ */
-        .drawer { position: fixed; background: rgba(10,10,10,0.98); z-index: 2000; transition: 0.4s; padding: 25px; border: 1px solid #333; pointer-events: auto; }
+        /* MENUS LATÉRAUX */
+        .drawer { position: fixed; background: rgba(10,10,10,0.98); z-index: 2000; transition: 0.4s; padding: 25px; border: 1px solid #333; pointer-events: auto; display: flex; flex-direction: column; }
+        
         #settings-drawer { top: 0; right: -340px; width: 320px; height: 100%; border-left: 3px solid var(--ktm); }
         #settings-drawer.open { right: 0; }
         
-        .menu-row { margin-bottom: 20px; }
-        .search-input { width: 100%; background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; margin-bottom: 10px; }
+        .menu-row { margin-bottom: 20px; flex-shrink: 0; }
+        .search-input { width: 100%; background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; margin-bottom: 10px; outline: none; }
         
-        #fuel-drawer { bottom: -80%; left: 10%; right: 10%; height: 70%; border-top: 3px solid var(--ktm); border-radius: 10px 10px 0 0; display: flex; flex-direction: column; }
+        /* SCROLL VERROUILLÉ POUR LES RÉSULTATS DE RECHERCHE */
+        #search-results { position: relative; width: 100%; top: 5px; display: none; background: #111; max-height: 160px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; }
+        
+        #fuel-drawer { bottom: -80%; left: 10%; right: 10%; height: 70%; border-top: 3px solid var(--ktm); border-radius: 10px 10px 0 0; }
         #fuel-drawer.open { bottom: 0; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #222; background: #151515; margin-bottom: 5px; border-radius: 4px; }
     </style>
@@ -108,15 +113,13 @@
         <div class="panel-center">
             <button class="btn-ktm-ui rec-active" id="btn-rec" onclick="UI.toggleREC()">REC</button>
             
-            <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;">
-                <div class="nav-instruction" id="nav-instruction">
-                    <div id="nav-arrow" style="font-size: 40px; color: var(--ktm);">➔</div>
-                    <div style="flex-grow: 1;">
-                        <div id="nav-dist" style="font-size: 24px; font-weight: 900;">-- m</div>
-                        <div id="nav-text" style="color: #fff; font-size: 15px;">Calcul...</div>
-                    </div>
-                    <button onclick="MOTO_LOGIC.stopNav()" style="background:none; border:none; color:#555; font-size:20px;">✖</button>
+            <div class="nav-instruction" id="nav-instruction">
+                <div id="nav-arrow" style="font-size: 40px; color: var(--ktm);">➔</div>
+                <div style="flex-grow: 1;">
+                    <div id="nav-dist" style="font-size: 24px; font-weight: 900;">-- m</div>
+                    <div id="nav-text" style="color: #fff; font-size: 15px;">Calcul...</div>
                 </div>
+                <button onclick="MOTO_LOGIC.stopNav()" style="background:none; border:none; color:#555; font-size:20px;">✖</button>
             </div>
 
             <div style="position: absolute; top: 20px; right: 20px; pointer-events: auto;">
@@ -143,17 +146,18 @@
     </div>
 
     <div id="settings-drawer" class="drawer">
-        <h2 style="color: var(--ktm); margin-bottom: 20px;">SYSTEM HUB</h2>
+        <h2 style="color: var(--ktm); margin-bottom: 20px; flex-shrink: 0;">SYSTEM HUB</h2>
         
         <div class="menu-row">
             <div class="val-label" style="text-align:left;">Recherche Destination</div>
             <input type="text" id="search-input" class="search-input" placeholder="Ville, adresse...">
-            <button class="btn-ktm-ui" style="width:100%; background:var(--ktm); color:black;" onclick="MOTO_LOGIC.searchLocation()">LANCER NAVIGATION</button>
-            <div id="search-results" style="position:relative; width:100%; top:5px; display:none; background:#111;"></div>
+            <button class="btn-ktm-ui" style="width:100%; background:var(--ktm); color:black;" onclick="MOTO_LOGIC.searchLocation()">CHERCHER</button>
+            
+            <div id="search-results"></div>
         </div>
 
         <div class="menu-row" style="border-top: 1px solid #333; padding-top:20px;">
-            <button class="btn-ktm-ui" style="width:100%;" onclick="MOTO_LOGIC.scanFuel()">⛽ SCAN CARBURANTS (50km)</button>
+            <button class="btn-ktm-ui" style="width:100%;" onclick="MOTO_LOGIC.scanFuel()">⛽ SCAN CARBURANTS</button>
         </div>
 
         <div class="menu-row" style="border-top: 1px solid #333; padding-top:20px;">
@@ -161,27 +165,24 @@
             <input type="range" min="1" max="50" value="50" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
         </div>
 
-        <button class="btn-ktm-ui" style="width: 100%; margin-top: 20px; border-color:#555;" onclick="UI.toggleSettings()">RETOUR CARTE</button>
+        <button class="btn-ktm-ui" style="width: 100%; margin-top: auto; border-color:#555; flex-shrink: 0;" onclick="UI.toggleSettings()">RETOUR CARTE</button>
     </div>
 
     <div id="fuel-drawer" class="drawer">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
             <h3 style="color: var(--ktm);">STATIONS PROCHES</h3>
             <div style="display:flex; align-items:center; gap:10px; font-size:12px; color:#888;">
                 DRAPEAUX <label class="switch"><input type="checkbox" id="toggle-flags" checked onchange="MOTO_LOGIC.toggleMarkers()"><span class="slider"></span></label>
             </div>
         </div>
-        <div id="fuel-list-content" style="overflow-y: auto;"></div>
+        <div id="fuel-list-content" style="overflow-y: auto; flex-grow: 1;"></div>
     </div>
 
     <script>
         var map, userMarker;
         var userPos = { lat: 43.761, lng: 1.990 }; 
         var angleOffset = 0, currentBeta = 0;
-        var stats = { 
-            speed: { max: 0, sum: 0, count: 0 }, 
-            angle: { max: 0, sum: 0, count: 0 } 
-        };
+        var stats = { speed: { max: 0, sum: 0, count: 0 }, angle: { max: 0, sum: 0, count: 0 } };
         var isRecording = false, recordedTrack = [], stationsData = [], markers = [];
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -262,17 +263,17 @@
                 var q = document.getElementById('search-input').value;
                 if(q.length < 3) return;
                 var resBox = document.getElementById('search-results');
-                resBox.style.display = 'block'; resBox.innerHTML = "Recherche...";
+                resBox.style.display = 'block'; resBox.innerHTML = "<div style='padding:10px; color:#fff;'>Recherche...</div>";
                 try {
                     var r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`);
                     var d = await r.json();
-                    resBox.innerHTML = d.map(p => `<div style="padding:10px; border-bottom:1px solid #333;" onclick="MOTO_LOGIC.startRouting(${p.lat}, ${p.lon}, '${p.display_name.split(',')[0]}')">📍 ${p.display_name}</div>`).join('');
+                    if(d.length === 0) { resBox.innerHTML = "<div style='padding:10px; color:red;'>Aucun résultat.</div>"; return; }
+                    resBox.innerHTML = d.map(p => `<div style="padding:15px; border-bottom:1px solid #333; cursor:pointer;" onclick="MOTO_LOGIC.startRouting(${p.lat}, ${p.lon}, '${p.display_name.split(',')[0]}')">📍 ${p.display_name}</div>`).join('');
                 } catch(e) { resBox.style.display = 'none'; }
             },
 
             startRouting: async function(lat, lon, name) {
                 UI.toggleSettings();
-                document.getElementById('search-results').style.display = 'none';
                 try {
                     var r = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true`);
                     var d = await r.json();
@@ -287,7 +288,7 @@
                     document.getElementById('nav-dist').innerText = Math.round(step.distance) + " m";
                     document.getElementById('nav-text').innerText = "Vers " + name;
                     map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
-                } catch(e) { alert("Erreur GPS."); }
+                } catch(e) { alert("Erreur de calcul d'itinéraire."); }
             },
 
             stopNav: function() { document.getElementById('nav-instruction').classList.remove('active'); if(map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); } },
@@ -295,7 +296,7 @@
             scanFuel: async function() {
                 UI.toggleSettings(); UI.toggleFuel();
                 var list = document.getElementById('fuel-list-content');
-                list.innerHTML = "Recherche stations...";
+                list.innerHTML = "<div style='padding:20px; text-align:center;'>Recherche stations...</div>";
                 try {
                     var r = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=40`);
                     var d = await r.json();
@@ -309,15 +310,15 @@
                         return { ville: s.ville, prix: p || 999, dist: getDistance(userPos.lat, userPos.lng, s.geom.lat, s.geom.lon), lat: s.geom.lat, lon: s.geom.lon };
                     });
                     MOTO_LOGIC.sortStations('dist');
-                } catch(e) { list.innerHTML = "Erreur API."; }
+                } catch(e) { list.innerHTML = "<div style='padding:20px; color:red; text-align:center;'>Erreur serveur.</div>"; }
             },
 
             sortStations: function(mode) {
                 stationsData.sort((a,b) => mode === 'dist' ? a.dist - b.dist : a.prix - b.prix);
                 document.getElementById('fuel-list-content').innerHTML = stationsData.map(s => `
                     <div class="station-item">
-                        <div><b>${s.ville}</b><br><small>${s.dist} km</small></div>
-                        <div style="font-size:18px; color:var(--ktm)">${s.prix === 999 ? 'N.C' : s.prix+'€'}</div>
+                        <div><b style="color:white; font-size:16px;">${s.ville}</b><br><small style="color:#aaa;">${s.dist} km</small></div>
+                        <div style="font-size:20px; font-weight:bold; color:${s.prix === 999 ? '#666' : 'var(--ktm)'}">${s.prix === 999 ? 'N.C' : s.prix+'€'}</div>
                         <button class="btn-ktm-ui" onclick="MOTO_LOGIC.startRouting(${s.lat}, ${s.lon}, '${s.ville}')">GO</button>
                     </div>`).join('');
             },
@@ -335,14 +336,22 @@
         };
 
         var UI = {
-            toggleSettings: function() { document.getElementById('settings-drawer').classList.toggle('open'); },
+            toggleSettings: function() { 
+                var drawer = document.getElementById('settings-drawer');
+                drawer.classList.toggle('open'); 
+                // Nettoyage automatique du champ de recherche à la fermeture
+                if(!drawer.classList.contains('open')) {
+                    document.getElementById('search-input').value = "";
+                    document.getElementById('search-results').style.display = "none";
+                }
+            },
             toggleFuel: function() { document.getElementById('fuel-drawer').classList.toggle('open'); },
             toggleREC: function() {
                 isRecording = !isRecording; var btn = document.getElementById('btn-rec');
                 if(isRecording) { btn.classList.add('rec-active'); recordedTrack = []; }
                 else {
                     btn.classList.remove('rec-active');
-                    if(recordedTrack.length > 0 && confirm("Sauvegarder GPX ?")) {
+                    if(recordedTrack.length > 0 && confirm("Sauvegarder la trace GPX ?")) {
                         var gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>' + recordedTrack.map(p => `<trkpt lat="${p.lat}" lon="${p.lng}"></trkpt>`).join('') + '</trkseg></trk></gpx>';
                         var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([gpx], {type:"application/gpx+xml"}));
                         a.download = "Rando_KTM.gpx"; a.click();
