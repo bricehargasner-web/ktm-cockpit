@@ -3,255 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept - GPS Moto KTM</title>
+    <title>Energy Concept - GPS Moto</title>
     
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         const CONFIG_KTM = {
-            VERSION: "3.0.0",
-            NOM_UTILISATEUR: "Brice CARDONA",
-            COULEUR_ACCENT: "#FF6600", // Orange KTM
-            UNIT_SPEED: "km/h",
-            CARBURANT_PREF: "E10",    // E5, E10, Gazole, LPG
-            RAYON_RECHERCHE: 15,      // km
-            FILTRE_CORSE: false,      // false = affiche les N.C (Recommandé)
-            ANGLE_ALERTE_ROUGE: 45,   // Déclenche le visuel d'alerte
-            MODE_AUTO_NUIT: true,
-            REFRESH_METEO: 900000     // 15 min en ms
+            VERSION: "4.0.0",
+            COULEUR_ACCENT: "#FF6600",
+            CARBURANT_PREF: "E10",    
+            RAYON_RECHERCHE: 15,      
+            FILTRE_CORSE: false,      
+            ANGLE_ALERTE_ROUGE: 45,
+            START_LAT: 41.926,        // Ajaccio par défaut
+            START_LNG: 8.736
         };
     </script>
 
     <style>
-        /* 2. STRUCTURE VISUELLE (CSS Étanche)
-          Ce bloc gère l'aspect clinique et technique.
-        */
+        /* 2. STRUCTURE VISUELLE (CSS Étanche) */
         :root {
             --orange: #FF6600;
-            --bg-dark: rgba(20, 20, 20, 0.85);
-            --glass: rgba(0, 0, 0, 0.6);
+            --bg-dark: rgba(15, 15, 15, 0.85);
+            --glass: rgba(0, 0, 0, 0.65);
             --border: 1px solid rgba(255, 102, 0, 0.3);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background: #111; color: white; overflow: hidden; height: 100vh; width: 100vw; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        body { background: #000; color: white; overflow: hidden; height: 100vh; width: 100vw; }
 
-        /* Simuler le mode paysage forcé */
-        #app-container {
-            display: grid;
-            grid-template-columns: 220px 1fr 220px;
-            grid-template-rows: 60px 1fr 80px;
-            height: 100vh;
-            background: url('https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&q=80&w=2070') center center/cover;
+        /* Le fond de carte en plein écran */
+        #map {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
         }
 
-        /* HUD GAUCHE : Vitesse et Météo */
+        /* Surcouche UI */
+        .ui-layer { position: absolute; z-index: 10; pointer-events: none; width: 100%; height: 100%; }
+        .pointer-auto { pointer-events: auto; }
+
+        /* HUD GAUCHE */
         .sidebar-left {
-            grid-row: 1 / 4;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            border-right: var(--border);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            position: absolute; left: 0; top: 0; bottom: 0; width: 220px;
+            background: var(--glass); backdrop-filter: blur(8px);
+            border-right: var(--border); padding: 20px;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
+        .speed-value { font-size: 72px; font-weight: 800; color: var(--orange); line-height: 1; text-align: center; margin-top: 20px;}
+        .speed-unit { font-size: 16px; color: #888; text-align: center; }
+        .meteo-box { border-top: 1px solid #333; padding-top: 15px; cursor: pointer; }
 
-        .speed-display { text-align: center; margin-top: 40px; }
-        .speed-value { font-size: 72px; font-weight: 800; color: var(--orange); line-height: 1; }
-        .speed-unit { font-size: 18px; color: #888; }
-
-        .meteo-box { border-top: 1px solid #333; padding-top: 20px; cursor: pointer; }
-
-        /* HUD DROIT : Angle et Capteurs */
+        /* HUD DROIT */
         .sidebar-right {
-            grid-row: 1 / 4;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            border-left: var(--border);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            position: absolute; right: 0; top: 0; bottom: 0; width: 220px;
+            background: var(--glass); backdrop-filter: blur(8px);
+            border-left: var(--border); padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
         }
+        .lean-gauge-container { height: 200px; width: 10px; background: #222; border-radius: 5px; position: relative; margin-top: 15px; }
+        .lean-fill { position: absolute; bottom: 50%; width: 100%; background: var(--orange); transition: height 0.1s ease; }
+        .btn-zero { margin-top: 20px; background: transparent; border: 1px solid #555; color: white; padding: 5px 15px; border-radius: 4px; font-size: 10px; cursor: pointer;}
 
-        .lean-gauge-container {
-            height: 300px; width: 10px; background: #222;
-            border-radius: 5px; position: relative; margin-top: 20px;
+        /* BOUTONS FLOTTANTS (Centre) */
+        .top-controls {
+            position: absolute; top: 20px; left: 240px; right: 240px;
+            display: flex; justify-content: space-between; align-items: flex-start;
         }
-        .lean-fill {
-            position: absolute; bottom: 50%; width: 100%;
-            background: var(--orange); transition: height 0.1s ease;
-        }
-        .btn-zero {
-            margin-top: 20px; background: transparent; border: 1px solid #555;
-            color: white; padding: 5px 15px; border-radius: 4px; font-size: 10px;
-        }
+        .btn-main { background: var(--bg-dark); border: var(--border); color: white; padding: 12px 24px; border-radius: 5px; font-weight: bold; cursor: pointer; backdrop-filter: blur(5px); }
+        .btn-icon { background: var(--bg-dark); border: var(--border); color: var(--orange); padding: 12px; border-radius: 5px; cursor: pointer; font-size: 18px; }
 
-        /* BANDEAU BAS : Navigation */
-        .nav-bar {
-            grid-column: 2; grid-row: 3;
-            background: var(--bg-dark);
-            margin: 0 10px 10px 10px; border-radius: 8px;
-            display: flex; align-items: center; padding: 0 20px;
-            border: var(--border);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        /* MENU RÉGLAGES (Tiroir) */
+        #settings-modal {
+            position: absolute; top: 70px; right: 240px; width: 300px;
+            background: var(--bg-dark); border: var(--border); border-radius: 8px;
+            padding: 20px; transform: translateY(-20px); opacity: 0;
+            transition: all 0.3s ease; visibility: hidden; backdrop-filter: blur(10px);
         }
-        .nav-bar.hidden { transform: translateY(120%); }
-
+        #settings-modal.active { transform: translateY(0); opacity: 1; visibility: visible; }
+        .setting-group { margin-bottom: 15px; }
+        .setting-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; text-transform: uppercase; }
+        .setting-group select, .setting-group input[type="range"] { width: 100%; background: #111; color: white; border: 1px solid #333; padding: 8px; border-radius: 4px; }
+        
         /* TIROIR STATIONS */
         #station-drawer {
-            position: fixed; bottom: 0; left: 230px; right: 230px;
-            height: 40%; background: #000; border-radius: 15px 15px 0 0;
-            border: 1px solid var(--orange);
-            transform: translateY(100%); transition: transform 0.4s ease;
-            z-index: 100; padding: 20px;
+            position: absolute; bottom: 0; left: 240px; right: 240px; height: 50%;
+            background: rgba(0,0,0,0.9); border-radius: 15px 15px 0 0;
+            border: 1px solid var(--orange); border-bottom: none;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 20px; overflow-y: auto;
         }
         #station-drawer.open { transform: translateY(0); }
-        .station-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px; border-bottom: 1px solid #222;
-        }
-        .btn-go { background: var(--orange); color: black; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; }
+        .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #222; }
+        .btn-go { background: var(--orange); color: black; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer;}
 
-        /* MOUCHARD TECHNIQUE */
-        .debug-overlay {
-            position: fixed; top: 10px; right: 240px; font-family: monospace;
-            font-size: 9px; color: #444; text-transform: uppercase;
+        /* BANDEAU NAVIGATION BAS */
+        .nav-bar {
+            position: absolute; bottom: 20px; left: 240px; right: 240px;
+            background: var(--bg-dark); border-radius: 8px; padding: 15px 20px;
+            border: var(--border); display: flex; align-items: center;
+            transform: translateY(150%); transition: transform 0.4s ease; backdrop-filter: blur(5px);
         }
+        .nav-bar.active { transform: translateY(0); }
+
+        /* Override Leaflet styles for Dark UI */
+        .leaflet-control-zoom { border: var(--border) !important; background: var(--bg-dark) !important; }
+        .leaflet-control-zoom a { background: transparent !important; color: var(--orange) !important; border-bottom: 1px solid #333 !important; }
     </style>
 </head>
 <body>
 
-    <div id="app-container">
-        <div class="sidebar-left">
-            <div class="speed-display">
-                <div id="current-speed" class="speed-value">0</div>
+    <div id="map"></div>
+
+    <div class="ui-layer">
+        
+        <div class="sidebar-left pointer-auto">
+            <div>
+                <div class="speed-value" id="current-speed">0</div>
                 <div class="speed-unit">KM/H</div>
             </div>
             <div class="meteo-box" onclick="MOTO_LOGIC.openWeather()">
-                <div style="color: var(--orange); font-weight: bold;">AJACCIO</div>
-                <div id="temp-val">22°C</div>
-                <div style="font-size: 12px; color: #888;">Vent : 15 km/h</div>
+                <div style="color: var(--orange); font-weight: bold; font-size: 14px;">GRAULHET</div>
+                <div id="temp-val" style="font-size: 24px;">18°C</div>
+                <div style="font-size: 12px; color: #888;">Vent : 10 km/h</div>
             </div>
         </div>
 
-        <div class="center-view">
-            <div class="debug-overlay">SYS_LINK: ACTIVE | API_FUEL: OK | GPS: 4G+</div>
-        </div>
-
-        <div class="sidebar-right">
+        <div class="sidebar-right pointer-auto">
             <div style="font-size: 10px; letter-spacing: 2px;">INCLINAISON</div>
             <div id="angle-val" style="font-size: 32px; font-weight: bold; margin-top: 10px;">0°</div>
             <div class="lean-gauge-container">
                 <div id="lean-fill" class="lean-fill"></div>
             </div>
-            <button class="btn-zero" onclick="MOTO_LOGIC.calibrateAngle()">ZÉRO</button>
+            <button class="btn-zero pointer-auto" onclick="MOTO_LOGIC.calibrateAngle()">ZÉRO</button>
         </div>
 
-        <div id="nav-info" class="nav-bar">
+        <div class="top-controls pointer-auto">
+            <button class="btn-main" onclick="UI_CONTROLLER.toggleFuelList()">⛽ TROUVER CARBURANT</button>
+            <button class="btn-icon" onclick="UI_CONTROLLER.toggleSettings()">⚙️</button>
+        </div>
+
+        <div id="settings-modal" class="pointer-auto">
+            <h4 style="color: var(--orange); margin-bottom: 15px;">RÉGLAGES GPS</h4>
+            <div class="setting-group">
+                <label>Carburant recherché</label>
+                <select id="set-carburant" onchange="MOTO_LOGIC.updateConfig('CARBURANT_PREF', this.value)">
+                    <option value="E10">Sans Plomb 95-E10</option>
+                    <option value="E5">Sans Plomb 98-E5</option>
+                    <option value="Gazole">Gazole</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Rayon de recherche : <span id="rayon-val">15</span> km</label>
+                <input type="range" id="set-rayon" min="1" max="20" value="15" oninput="document.getElementById('rayon-val').innerText = this.value; MOTO_LOGIC.updateConfig('RAYON_RECHERCHE', this.value)">
+            </div>
+            <button class="btn-main" style="width:100%; margin-top: 10px;" onclick="UI_CONTROLLER.toggleSettings()">FERMER</button>
+        </div>
+
+        <div id="station-drawer" class="pointer-auto">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <h3 style="color: var(--orange);">RÉSULTATS (<span id="ui-fuel-type">E10</span>)</h3>
+                <button onclick="UI_CONTROLLER.toggleFuelList()" style="color: white; background: none; border: none; cursor: pointer;">[ X ]</button>
+            </div>
+            <div id="fuel-list-content"></div>
+        </div>
+
+        <div id="nav-info" class="nav-bar pointer-auto">
             <div style="font-size: 24px; color: var(--orange); margin-right: 15px;">➔</div>
-            <div>
-                <div style="font-weight: bold;">Rond-point à 250m</div>
-                <div style="font-size: 12px; color: #888;">Sortie D21 direction Betchdorf</div>
+            <div style="flex-grow: 1;">
+                <div id="nav-direction" style="font-weight: bold; font-size: 18px;">En attente de destination...</div>
+                <div id="nav-distance" style="font-size: 12px; color: #aaa;">--</div>
             </div>
-            <button onclick="UI_CONTROLLER.toggleNav()" style="margin-left: auto; background: none; border: none; color: #444;">HIDE</button>
+            <button onclick="UI_CONTROLLER.stopNav()" style="background: none; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer;">STOP</button>
         </div>
-    </div>
 
-    <div id="station-drawer">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="color: var(--orange);">STATIONS À PROXIMITÉ</h3>
-            <button onclick="UI_CONTROLLER.toggleFuelList()" style="color: white; background: none; border: none;">[ FERMER ]</button>
-        </div>
-        <div id="fuel-list-content">
-            </div>
     </div>
 
     <script>
-        /**
-         * MOTO_LOGIC : Gestion des calculs et données (La cervelle)
-         * Si une donnée ne s'affiche pas, le problème est ici.
-         */
+        // Initialisation de la carte Leaflet
+        let map;
+        let routeLine;
+        let destMarker;
+
         const MOTO_LOGIC = {
             currentAngle: 0,
             angleOffset: 0,
-            
-            calibrateAngle() {
-                this.angleOffset = this.currentAngle;
-                UI_CONTROLLER.notify("CALIBRAGE OK");
+
+            initMap() {
+                // Fond de carte sombre CartoDB
+                map = L.map('map', { zoomControl: false }).setView([CONFIG_KTM.START_LAT, CONFIG_KTM.START_LNG], 13);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                // Position actuelle (Simulée au centre)
+                L.circleMarker([CONFIG_KTM.START_LAT, CONFIG_KTM.START_LNG], {
+                    color: CONFIG_KTM.COULEUR_ACCENT, fillColor: CONFIG_KTM.COULEUR_ACCENT,
+                    fillOpacity: 0.8, radius: 8
+                }).addTo(map);
+                
+                L.control.zoom({ position: 'topright' }).addTo(map);
             },
 
-            getFuelPrices() {
-                // Simulation d'appel API
+            updateConfig(key, value) {
+                CONFIG_KTM[key] = value;
+                if(key === 'CARBURANT_PREF') document.getElementById('ui-fuel-type').innerText = value;
+                // Si le tiroir est ouvert, on rafraîchit la recherche
+                if(document.getElementById('station-drawer').classList.contains('open')) {
+                    UI_CONTROLLER.renderFuel();
+                }
+            },
+
+            calibrateAngle() {
+                this.angleOffset = this.currentAngle;
+            },
+
+            searchStations() {
+                // Simulation API filtrée par Rayon et Carburant (Génère des coordonnées factices autour du point de départ)
+                const lat = CONFIG_KTM.START_LAT;
+                const lng = CONFIG_KTM.START_LNG;
                 return [
-                    { name: "Station Bastia", price: "N.C", dist: "2.4km" },
-                    { name: "Total Ajaccio", price: "1.95€", dist: "5.1km" },
-                    { name: "Esso Corte", price: "1.89€", dist: "12km" }
+                    { name: "Station Indépendante", price: "N.C", dist: "2 km", coords: [lat + 0.01, lng + 0.01] },
+                    { name: "TotalEnergies", price: "1.85€", dist: "5 km", coords: [lat - 0.02, lng + 0.03] },
+                    { name: "Esso Express", price: "1.82€", dist: "12 km", coords: [lat + 0.04, lng - 0.02] }
                 ];
             },
 
-            openWeather() {
-                window.open("https://meteofrance.com/", "_blank");
+            setDestination(station) {
+                if(destMarker) map.removeLayer(destMarker);
+                if(routeLine) map.removeLayer(routeLine);
+
+                // Crée le marqueur de destination
+                destMarker = L.marker(station.coords).addTo(map)
+                    .bindPopup(`<b>${station.name}</b><br>Prix: ${station.price}`).openPopup();
+
+                // Trace une ligne droite (pour le monobloc, on simule le guidage)
+                routeLine = L.polyline([[CONFIG_KTM.START_LAT, CONFIG_KTM.START_LNG], station.coords], {
+                    color: CONFIG_KTM.COULEUR_ACCENT, weight: 4, dashArray: '10, 10'
+                }).addTo(map);
+
+                map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
             }
         };
 
-        /**
-         * UI_CONTROLLER : Gestion de l'interface (Les muscles)
-         * Si un bouton ne bouge pas, le problème est ici.
-         */
         const UI_CONTROLLER = {
+            toggleSettings() {
+                document.getElementById('settings-modal').classList.toggle('active');
+                document.getElementById('station-drawer').classList.remove('open');
+            },
+
             toggleFuelList() {
                 const drawer = document.getElementById('station-drawer');
                 drawer.classList.toggle('open');
+                document.getElementById('settings-modal').classList.remove('active');
                 if(drawer.classList.contains('open')) this.renderFuel();
             },
 
             renderFuel() {
                 const list = document.getElementById('fuel-list-content');
-                const data = MOTO_LOGIC.getFuelPrices();
-                list.innerHTML = data.map(st => `
+                const data = MOTO_LOGIC.searchStations();
+                list.innerHTML = data.map((st, index) => `
                     <div class="station-item">
                         <div>
-                            <div style="font-weight:bold">${st.name}</div>
-                            <div style="font-size:12px; color: #888">${st.dist} - ${CONFIG_KTM.CARBURANT_PREF}</div>
+                            <div style="font-weight:bold; font-size: 16px;">${st.name}</div>
+                            <div style="font-size:12px; color: #aaa">Distance: ${st.dist} dans le rayon de ${CONFIG_KTM.RAYON_RECHERCHE}km</div>
                         </div>
-                        <div style="color: var(--orange); font-weight:bold">${st.price}</div>
-                        <button class="btn-go" onclick="UI_CONTROLLER.startNav('${st.name}')">GO</button>
+                        <div style="color: var(--orange); font-weight:bold; font-size: 18px;">${st.price}</div>
+                        <button class="btn-go pointer-auto" onclick='UI_CONTROLLER.startNav(${JSON.stringify(st)})'>GO</button>
                     </div>
                 `).join('');
             },
 
-            startNav(name) {
-                this.toggleFuelList();
-                this.notify("GUIDAGE : " + name);
+            startNav(station) {
+                this.toggleFuelList(); // Ferme le tiroir
+                MOTO_LOGIC.setDestination(station); // Trace sur la carte
+                
+                // Affiche le bandeau GPS
+                document.getElementById('nav-direction').innerText = `Guidage vers ${station.name}`;
+                document.getElementById('nav-distance').innerText = `Distance estimée : ${station.dist} - Carburant : ${CONFIG_KTM.CARBURANT_PREF}`;
+                document.getElementById('nav-info').classList.add('active');
             },
 
-            toggleNav() {
-                document.getElementById('nav-info').classList.toggle('hidden');
-            },
-
-            notify(msg) {
-                console.log("[KTM-SYS]", msg);
-                // Option : ajouter une notification visuelle temporaire
+            stopNav() {
+                document.getElementById('nav-info').classList.remove('active');
+                if(destMarker) map.removeLayer(destMarker);
+                if(routeLine) map.removeLayer(routeLine);
+                map.setView([CONFIG_KTM.START_LAT, CONFIG_KTM.START_LNG], 13);
             },
 
             updateSensors() {
-                // Simulation de mouvement pour l'exemple
-                const simAngle = Math.floor(Math.sin(Date.now() / 1000) * 30);
+                // Simulation gyroscopique/vitesse pour le rendu visuel
+                const simAngle = Math.floor(Math.sin(Date.now() / 1500) * 48); 
                 document.getElementById('angle-val').innerText = Math.abs(simAngle) + "°";
-                document.getElementById('lean-fill').style.height = Math.abs(simAngle) * 2 + "px";
-                document.getElementById('current-speed').innerText = Math.floor(65 + Math.random() * 5);
+                
+                const fill = document.getElementById('lean-fill');
+                fill.style.height = Math.abs(simAngle) * 2 + "px";
+                fill.style.background = Math.abs(simAngle) > CONFIG_KTM.ANGLE_ALERTE_ROUGE ? "red" : "var(--orange)";
+
+                document.getElementById('current-speed').innerText = Math.floor(65 + Math.random() * 3);
             }
         };
 
-        // Initialisation de la boucle système
-        setInterval(() => UI_CONTROLLER.updateSensors(), 100);
-        
-        // Ajout d'un bouton de test pour le tiroir dans la vue centrale
-        const testBtn = document.createElement('button');
-        testBtn.innerText = "TROUVER CARBURANT";
-        testBtn.style = "position:absolute; top:20px; left:250px; background:rgba(0,0,0,0.5); border:1px solid var(--orange); color:white; padding:10px;";
-        testBtn.onclick = () => UI_CONTROLLER.toggleFuelList();
-        document.querySelector('.center-view').appendChild(testBtn);
+        // Lancement au chargement
+        window.onload = () => {
+            MOTO_LOGIC.initMap();
+            setInterval(() => UI_CONTROLLER.updateSensors(), 100);
+            
+            // Applique les valeurs initiales au menu visuel
+            document.getElementById('set-carburant').value = CONFIG_KTM.CARBURANT_PREF;
+            document.getElementById('set-rayon').value = CONFIG_KTM.RAYON_RECHERCHE;
+        };
 
     </script>
 </body>
