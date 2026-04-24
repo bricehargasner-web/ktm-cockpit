@@ -8,13 +8,12 @@
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
         var CONFIG_KTM = {
-            THEME_CARTE: "jour",         // "jour" (clair) ou "nuit" (sombre)
             COULEUR_ACCENT: "#FF6600",
             CARBURANT_PREF: "Gazole",       
-            RAYON_RECHERCHE: 15,         
+            RAYON_RECHERCHE: 50,         // Étendu à 50 km par défaut
             ANGLE_ALERTE_ROUGE: 45,      
             PITCH_3D: 60,                
-            ZOOM_NAV: 17                 
+            ZOOM_NAV: 16                 // Zoom légèrement reculé pour voir plus loin
         };
     </script>
 
@@ -30,28 +29,37 @@
         #map { position: absolute; inset: 0; z-index: 1; }
         .pointer-auto { pointer-events: auto; }
 
-        .ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: grid; grid-template-columns: 220px 1fr 220px; grid-template-rows: 60px 1fr 100px; padding: 15px; gap: 10px; }
-        .case { background: var(--bg); border-left: 4px solid var(--ktm); padding: 10px; backdrop-filter: blur(5px); border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        /* SURCOUCHE UI (Pleine largeur) */
+        .ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; }
+        .case { background: var(--bg); border-left: 4px solid var(--ktm); padding: 10px; backdrop-filter: blur(5px); border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
 
-        /* BARRE HAUTE */
-        .top-bar { grid-column: 1 / 4; grid-row: 1; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
-        .search-box { display: flex; background: var(--bg); border: 1px solid #444; border-radius: 4px; overflow: hidden; width: 400px; backdrop-filter: blur(5px); }
-        .search-box input { background: transparent; border: none; color: white; padding: 10px 15px; width: 100%; outline: none; }
-        .search-box input::placeholder { color: #888; }
+        /* BARRE HAUTE (Refondue pour mieux séparer le REC) */
+        .top-bar { display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; width: 100%; gap: 10px; }
+        .search-box { display: flex; background: var(--bg); border: 1px solid #444; border-radius: 4px; overflow: hidden; flex-grow: 1; max-width: 400px; backdrop-filter: blur(5px); }
+        .search-box input { background: transparent; border: none; color: white; padding: 12px 15px; width: 100%; outline: none; font-size: 16px; }
         .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 15px; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
         
-        #search-results { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 400px; background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; border-radius: 4px; }
-        .search-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; font-size: 14px; color: white; }
-        .search-item:hover { background: #333; color: var(--ktm); }
+        /* BOUTON REC - MIS EN ÉVIDENCE */
+        #btn-rec { background: var(--bg); border: 2px solid #555; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; backdrop-filter: blur(5px); display: flex; align-items: center; gap: 8px; }
+        #btn-rec::before { content: ''; display: inline-block; width: 12px; height: 12px; background: red; border-radius: 50%; }
+        .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 15px rgba(255,0,0,0.5); }
+        .rec-active::before { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* HUD GAUCHE & DROIT */
-        .hud-left { grid-column: 1; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; }
-        .speed-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-        .hud-right { grid-column: 3; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
-        .gauge-wrap { width: 100px; height: 100px; border: 4px solid #333; border-top-color: var(--ktm); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.1s; margin: 0 auto; background: rgba(0,0,0,0.4); }
+        .actions-right { display: flex; gap: 10px; align-items: center; }
+
+        #search-results { position: absolute; top: 70px; left: 15px; width: calc(100% - 30px); max-width: 400px; background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; border-radius: 4px; }
+        .search-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; font-size: 16px; color: white; }
+
+        /* SECTION CENTRALE (Vitesse / Angle) */
+        .mid-section { display: flex; justify-content: space-between; align-items: flex-end; flex-grow: 1; padding-bottom: 20px; }
         
+        .hud-left, .hud-right { display: flex; flex-direction: column; gap: 15px; }
+        .speed-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .gauge-wrap { width: 100px; height: 100px; border: 4px solid #333; border-top-color: var(--ktm); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.1s; margin: 0 auto; background: rgba(0,0,0,0.4); }
+
         /* GUIDAGE BAS */
-        .nav-block { grid-column: 2; grid-row: 3; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+        .nav-block { display: flex; justify-content: center; width: 100%; }
         .nav-instruction { background: var(--bg); border: 2px solid var(--ktm); border-radius: 8px; padding: 15px 30px; display: flex; align-items: center; gap: 20px; opacity: 0; transition: 0.3s; backdrop-filter: blur(10px); }
         .nav-instruction.active { opacity: 1; }
 
@@ -59,13 +67,19 @@
         .drawer { position: fixed; background: rgba(15,15,15,0.98); z-index: 2000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; border: 1px solid #333; backdrop-filter: blur(15px); }
         #settings-drawer { top: 0; right: -320px; width: 300px; height: 100%; border-left: 4px solid var(--ktm); }
         #settings-drawer.open { right: 0; }
-        #fuel-drawer { bottom: -50%; left: 240px; right: 240px; height: 45%; border-top: 4px solid var(--ktm); border-radius: 10px 10px 0 0; overflow-y: auto; }
+        
+        #fuel-drawer { bottom: -70%; left: 10%; right: 10%; height: 60%; border-top: 4px solid var(--ktm); border-radius: 10px 10px 0 0; display: flex; flex-direction: column; }
         #fuel-drawer.open { bottom: 0; }
 
-        select, input[type="range"] { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 5px; border-radius: 4px; }
+        select, input[type="range"] { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 12px; margin-top: 5px; border-radius: 4px; font-size: 16px; }
+        
+        /* LISTE CARBURANT */
+        .sort-bar { display: flex; gap: 10px; margin-bottom: 10px; background: #222; padding: 10px; border-radius: 4px; }
+        .btn-sort { flex-grow: 1; background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-sort.active { background: var(--ktm); color: black; border-color: var(--ktm); }
+        
+        #fuel-list-content { overflow-y: auto; flex-grow: 1; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #333; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; }
-        #btn-rec { background: var(--bg); border: 2px solid #555; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; backdrop-filter: blur(5px); }
-        .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 10px red; }
     </style>
 </head>
 <body>
@@ -76,27 +90,39 @@
         <div class="top-bar">
             <div class="search-box pointer-auto">
                 <input type="text" id="search-input" placeholder="Où allons-nous ?">
-                <button class="btn-ktm" onclick="MOTO_LOGIC.searchLocation()">CHERCHER</button>
+                <button class="btn-ktm" onclick="MOTO_LOGIC.searchLocation()">GO</button>
             </div>
-            <div id="search-results" class="pointer-auto"></div>
-
-            <div style="display: flex; gap: 15px;" class="pointer-auto">
+            
+            <div class="actions-right pointer-auto">
                 <button id="btn-rec" onclick="UI.toggleREC()">REC</button>
-                <button class="btn-ktm" onclick="MOTO_LOGIC.scanFuel()">⛽ CARBURANT</button>
-                <div style="color: var(--ktm); font-size: 35px; cursor: pointer; padding: 0 10px; background: var(--bg); border-radius: 4px; text-align: center; line-height: 40px; height: 42px; width: 42px; border: 1px solid #444;" onclick="UI.toggleSettings()">⋮</div>
+                <button class="btn-ktm" style="display:flex; align-items:center; gap:5px;" onclick="MOTO_LOGIC.scanFuel()">⛽ <span class="hide-mobile">CARBURANT</span></button>
+                <div style="color: var(--ktm); font-size: 28px; cursor: pointer; background: var(--bg); border-radius: 4px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border: 1px solid #444;" onclick="UI.toggleSettings()">⋮</div>
             </div>
         </div>
+        <div id="search-results" class="pointer-auto"></div>
 
-        <div class="hud-left pointer-auto">
-            <div class="case" style="width: 160px; text-align: center;">
-                <div class="speed-val" id="speed-val">0</div>
-                <div style="color: #aaa; font-size: 14px; font-weight: bold;">KM/H</div>
-                <div id="alt-val" style="border-top: 1px solid #444; margin-top: 10px; padding-top: 5px; font-size: 12px; color: #ccc;">ALT: -- m</div>
+        <div class="mid-section">
+            <div class="hud-left pointer-auto">
+                <div class="case" style="width: 140px; text-align: center;">
+                    <div class="speed-val" id="speed-val">0</div>
+                    <div style="color: #aaa; font-size: 14px; font-weight: bold;">KM/H</div>
+                    <div id="alt-val" style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; font-size: 12px; color: #ccc;">ALT: -- m</div>
+                </div>
+                <div class="case" style="width: 140px; cursor: pointer;" onclick="window.open('https://meteofrance.com/', '_blank')">
+                    <div style="color: var(--ktm); font-weight: bold; font-size: 12px;">MÉTÉO LOCALE</div>
+                    <div id="temp-val" style="font-size: 20px; font-weight: bold;">--°C</div>
+                    <div id="wind-val" style="font-size: 12px; color: #aaa;">Vent: -- km/h</div>
+                </div>
             </div>
-            <div class="case" style="width: 160px; cursor: pointer;" onclick="window.open('https://meteofrance.com/', '_blank')">
-                <div style="color: var(--ktm); font-weight: bold; font-size: 12px;">MÉTÉO LOCALE</div>
-                <div id="temp-val" style="font-size: 24px; font-weight: bold;">--°C</div>
-                <div id="wind-val" style="font-size: 12px; color: #aaa;">Vent: -- km/h</div>
+
+            <div class="hud-right pointer-auto">
+                <div class="case" style="width: 140px; text-align: center;">
+                    <div style="font-size: 10px; color: #aaa; letter-spacing: 2px;">INCLINAISON</div>
+                    <div class="gauge-wrap" id="gauge-visual">
+                        <span id="angle-val" style="font-size: 32px; font-weight: bold;">0°</span>
+                    </div>
+                    <button onclick="MOTO_LOGIC.setZero()" style="background: #222; border: 1px solid #555; color: white; padding: 8px 15px; margin-top: 15px; font-size: 12px; font-weight:bold; border-radius: 4px; cursor: pointer; width: 100%;">ZÉRO</button>
+                </div>
             </div>
         </div>
 
@@ -107,24 +133,14 @@
                     <div id="nav-dist" style="font-size: 24px; font-weight: bold;">-- km</div>
                     <div id="nav-text" style="color: #ccc; font-size: 14px;">En attente...</div>
                 </div>
-                <button onclick="MOTO_LOGIC.stopNav()" style="background: none; border: 1px solid #666; color: white; padding: 5px 10px; border-radius: 4px; margin-left: 20px; cursor: pointer;">STOP</button>
-            </div>
-        </div>
-
-        <div class="hud-right pointer-auto">
-            <div class="case" style="width: 160px; text-align: center;">
-                <div style="font-size: 10px; color: #aaa; letter-spacing: 2px;">INCLINAISON</div>
-                <div class="gauge-wrap" id="gauge-visual">
-                    <span id="angle-val" style="font-size: 32px; font-weight: bold;">0°</span>
-                </div>
-                <button onclick="MOTO_LOGIC.setZero()" style="background: transparent; border: 1px solid #666; color: white; padding: 4px 15px; margin-top: 15px; font-size: 10px; border-radius: 4px; cursor: pointer;">ZÉRO</button>
+                <button onclick="MOTO_LOGIC.stopNav()" style="background: none; border: 1px solid #666; color: white; padding: 5px 15px; border-radius: 4px; margin-left: 20px; cursor: pointer; font-weight: bold;">STOP</button>
             </div>
         </div>
     </div>
 
     <div id="settings-drawer" class="drawer pointer-auto">
         <h3 style="color: var(--ktm); margin-bottom: 20px;">RÉGLAGES GPS</h3>
-        <label style="font-size: 12px; color: #aaa;">CARBURANT</label>
+        <label style="font-size: 12px; color: #aaa;">CARBURANT RECHERCHÉ</label>
         <select onchange="CONFIG_KTM.CARBURANT_PREF = this.value">
             <option value="Gazole">Gazole</option>
             <option value="E10">E10</option>
@@ -132,16 +148,22 @@
             <option value="SP98">SP98</option>
             <option value="E85">E85</option>
         </select>
-        <label style="font-size: 12px; color: #aaa; margin-top: 15px; display: block;">RAYON : <span id="rad-disp">15</span> km</label>
-        <input type="range" min="1" max="20" value="15" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
-        <button class="btn-ktm" style="width: 100%; margin-top: 30px;" onclick="UI.toggleSettings()">FERMER</button>
+        <label style="font-size: 12px; color: #aaa; margin-top: 20px; display: block;">RAYON : <span id="rad-disp">50</span> km</label>
+        <input type="range" min="1" max="50" value="50" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
+        <button class="btn-ktm" style="width: 100%; margin-top: 30px; font-size: 16px;" onclick="UI.toggleSettings()">FERMER</button>
     </div>
 
     <div id="fuel-drawer" class="drawer pointer-auto">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-            <h3 style="color: var(--ktm);">STATIONS PROCHES</h3>
-            <button onclick="UI.toggleFuelDrawer()" style="background: none; border: none; color: white; cursor: pointer; font-weight: bold;">[ X ]</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="color: var(--ktm); margin: 0;">STATIONS <span id="fuel-type-title"></span></h3>
+            <button onclick="UI.toggleFuelDrawer()" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px;">✖</button>
         </div>
+        
+        <div class="sort-bar">
+            <button id="sort-dist" class="btn-sort active" onclick="MOTO_LOGIC.sortStations('dist')">Trier par Distance</button>
+            <button id="sort-prix" class="btn-sort" onclick="MOTO_LOGIC.sortStations('prix')">Trier par Prix</button>
+        </div>
+
         <div id="fuel-list-content"></div>
     </div>
 
@@ -149,27 +171,32 @@
         var map, userMarker;
         var userPos = { lat: 43.761, lng: 1.990 }; 
         var angleOffset = 0, isRecording = false;
+        var stationsData = []; // Stockage temporaire pour le tri
+
+        // Fonction Mathématique : Calcul Distance Vol d'oiseau (Haversine)
+        function getDistance(lat1, lon1, lat2, lon2) {
+            var p = 0.017453292519943295;
+            var c = Math.cos;
+            var a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            return (12742 * Math.asin(Math.sqrt(a))).toFixed(1); 
+        }
 
         var MOTO_LOGIC = {
             initSystem: function() {
-                // Gestion dynamique du fond de carte (Jour / Nuit)
-                var mapTileUrl = CONFIG_KTM.THEME_CARTE === "jour" 
-                    ? 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'  // Carte claire et contrastée
-                    : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';           // Carte très sombre
-
+                // Carte OpenStreetMap Classique (Très lumineuse, fort contraste)
                 map = new maplibregl.Map({
                     container: 'map',
                     style: {
                         version: 8,
                         sources: {
-                            'carto-tiles': {
+                            'osm-tiles': {
                                 type: 'raster',
-                                tiles: [mapTileUrl],
+                                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
                                 tileSize: 256,
-                                attribution: '&copy; OpenStreetMap & CartoDB'
+                                attribution: '&copy; OpenStreetMap'
                             }
                         },
-                        layers: [{ id: 'carto-layer', type: 'raster', source: 'carto-tiles', minzoom: 0, maxzoom: 22 }]
+                        layers: [{ id: 'osm-layer', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
                     },
                     center: [userPos.lng, userPos.lat],
                     zoom: 15,
@@ -178,7 +205,7 @@
                 });
 
                 var el = document.createElement('div');
-                el.style.width = '24px'; el.style.height = '24px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid white'; el.style.boxShadow = '0 0 15px #00ccff';
+                el.style.width = '24px'; el.style.height = '24px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid #111'; el.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
                 userMarker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
 
                 this.startSensors();
@@ -198,7 +225,7 @@
                         map.panTo([userPos.lng, userPos.lat]);
                     }
                     MOTO_LOGIC.updateWeather(userPos.lat, userPos.lng);
-                }, function(e) { console.log("GPS Attente..."); }, { enableHighAccuracy: true });
+                }, function(e) { console.log("Recherche Signal GPS..."); }, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', function(e) {
                     if(e.beta === null) return;
@@ -215,7 +242,7 @@
                 if(query.length < 3) return;
                 
                 document.getElementById('search-results').style.display = 'block';
-                document.getElementById('search-results').innerHTML = "<div class='search-item'>Recherche de : " + query + "...</div>";
+                document.getElementById('search-results').innerHTML = "<div class='search-item'>Recherche en cours...</div>";
 
                 try {
                     var res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5`);
@@ -230,7 +257,7 @@
                         var cleanName = place.display_name.split(',')[0].replace(/['"]/g, " ");
                         return `<div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${cleanName}')">📍 ${place.display_name}</div>`;
                     }).join('');
-                } catch(e) { alert("Erreur de recherche: " + e.message); }
+                } catch(e) { alert("Erreur réseau OpenStreetMap."); }
             },
 
             startRouting: async function(destLat, destLon, destName) {
@@ -245,7 +272,7 @@
                     var resOSRM = await fetch(urlOSRM);
                     var dataOSRM = await resOSRM.json();
                     
-                    if (dataOSRM.code !== 'Ok') throw new Error("Le serveur GPS a refusé le calcul.");
+                    if (dataOSRM.code !== 'Ok') throw new Error("Échec du routage public.");
 
                     var routeGeoJSON = dataOSRM.routes[0].geometry;
                     var routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
@@ -268,7 +295,7 @@
                     map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
 
                 } catch (e) {
-                    alert("ERREUR GPS : " + e.message + "\nVérifiez votre connexion 4G.");
+                    alert("ALERTE : Impossible de tracer la route. Vérifiez la couverture 4G.");
                 }
             },
 
@@ -280,34 +307,70 @@
 
             scanFuel: async function() {
                 UI.toggleFuelDrawer();
-                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Recherche des stations...</div>";
+                document.getElementById('fuel-type-title').innerText = " (" + CONFIG_KTM.CARBURANT_PREF + ")";
+                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; text-align:center;'>Scan des prix à " + CONFIG_KTM.RAYON_RECHERCHE + " km...</div>";
                 
-                var url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=20`;
+                var url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=40`;
                 
                 try {
                     var res = await fetch(url);
                     var data = await res.json();
+                    
                     if(!data.results || data.results.length === 0) {
-                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée à moins de " + CONFIG_KTM.RAYON_RECHERCHE + "km.</div>";
+                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; text-align:center;'>Aucune station trouvée.</div>";
                         return;
                     }
-                    document.getElementById('fuel-list-content').innerHTML = data.results.map(function(s) {
-                        if(!s.geom) return ''; 
-                        var prixRaw = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
-                        var prixAffiche = prixRaw ? prixRaw + ' €' : '<span style="color:var(--ktm)">N.C</span>';
-                        var cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
-                        
-                        return `
-                            <div class="station-item">
-                                <div><div style="font-weight:bold; font-size: 16px;">${s.ville || 'Station'}</div><div style="font-size:12px; color:#aaa;">${s.adresse || ''}</div></div>
-                                <div style="font-size:20px; font-weight:bold; margin-right:15px;">${prixAffiche}</div>
-                                <button class="btn-ktm" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${cleanName}')">GO</button>
-                            </div>
-                        `;
-                    }).join('');
+
+                    // On structure la donnée pour pouvoir la trier
+                    stationsData = data.results.map(function(s) {
+                        if(!s.geom) return null;
+                        var prixVal = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
+                        return {
+                            ville: s.ville ? s.ville.replace(/['"]/g, " ") : "Station",
+                            adresse: s.adresse || "",
+                            prixRaw: prixVal ? parseFloat(prixVal) : 999, // 999 = N.C pour le tri
+                            prixAffiche: prixVal ? prixVal + ' €' : '<span style="color:var(--ktm)">N.C</span>',
+                            distance: getDistance(userPos.lat, userPos.lng, s.geom.lat, s.geom.lon),
+                            lat: s.geom.lat,
+                            lon: s.geom.lon
+                        };
+                    }).filter(s => s !== null);
+
+                    // Tri par défaut : Distance
+                    MOTO_LOGIC.sortStations('dist');
+
                 } catch(e) { 
-                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants Gouvernemental.</div>"; 
+                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red; text-align:center;'>Erreur Data Gouvernementale.</div>"; 
                 }
+            },
+
+            // Fonction de Tri (Prix ou Distance)
+            sortStations: function(mode) {
+                // Gestion UI des boutons
+                document.getElementById('sort-dist').classList.remove('active');
+                document.getElementById('sort-prix').classList.remove('active');
+                document.getElementById('sort-' + mode).classList.add('active');
+
+                // Logique de tri
+                if(mode === 'dist') {
+                    stationsData.sort(function(a, b) { return a.distance - b.distance; });
+                } else if (mode === 'prix') {
+                    stationsData.sort(function(a, b) { return a.prixRaw - b.prixRaw; });
+                }
+
+                // Rendu HTML
+                document.getElementById('fuel-list-content').innerHTML = stationsData.map(function(s) {
+                    return `
+                        <div class="station-item">
+                            <div style="flex-grow:1; padding-right:10px;">
+                                <div style="font-weight:bold; font-size: 16px;">${s.ville} <span style="color:var(--ktm); font-size:14px;">(${s.distance} km)</span></div>
+                                <div style="font-size:12px; color:#aaa;">${s.adresse}</div>
+                            </div>
+                            <div style="font-size:20px; font-weight:bold; margin-right:15px; min-width:70px; text-align:right;">${s.prixAffiche}</div>
+                            <button class="btn-ktm" onclick="MOTO_LOGIC.startRouting(${s.lat}, ${s.lon}, 'Station ${s.ville}')">GO</button>
+                        </div>
+                    `;
+                }).join('');
             },
 
             updateWeather: async function(lat, lon) {
@@ -327,9 +390,15 @@
             toggleREC: function() {
                 isRecording = !isRecording;
                 var btn = document.getElementById('btn-rec');
-                btn.classList.toggle('rec-active');
-                if(isRecording) { alert("C'est parti ! L'enregistrement est lancé."); btn.innerText = "REC 🔴"; } 
-                else { confirm("Voulez-vous enregistrer votre course ?"); btn.innerText = "REC"; }
+                if(isRecording) {
+                    btn.classList.add('rec-active');
+                    btn.innerText = "REC";
+                    alert("C'est parti ! Enregistrement GPX activé.");
+                } else {
+                    btn.classList.remove('rec-active');
+                    btn.innerText = "REC";
+                    confirm("Voulez-vous sauvegarder votre course ?");
+                }
             }
         };
 
