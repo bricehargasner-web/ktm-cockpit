@@ -7,6 +7,7 @@
 
     <script>
         const CONFIG_KTM = {
+            // Remplacez par une clé valide si possible, sinon le système utilisera le secours
             MAPBOX_KEY: "pk.eyJ1IjoiYnJpY2VjYXJkb25hIiwiYSI6Y20yeGZ6Z3I0MDBrNDJpczByYmdyeXpxOSJ9.7_o5U8fS5kY8X7V8X7V8X7",
             COULEUR_ACCENT: "#FF6600",
             CARBURANT_PREF: "E10",       
@@ -28,27 +29,24 @@
         #map { position: absolute; inset: 0; z-index: 1; }
         .pointer-auto { pointer-events: auto; }
 
-        /* HUD SURCOUCHE */
         .ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: grid; grid-template-columns: 220px 1fr 220px; grid-template-rows: 60px 1fr 100px; padding: 15px; gap: 10px; }
-
         .case { background: var(--bg); border-left: 4px solid var(--ktm); padding: 10px; backdrop-filter: blur(5px); border-radius: 2px; }
 
-        /* BARRE HAUTE : RECHERCHE & CONTRÔLES */
+        /* BARRE HAUTE */
         .top-bar { grid-column: 1 / 4; grid-row: 1; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
         .search-box { display: flex; background: #111; border: 1px solid #333; border-radius: 4px; overflow: hidden; width: 400px; }
         .search-box input { background: transparent; border: none; color: white; padding: 10px 15px; width: 100%; outline: none; }
         .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 20px; cursor: pointer; text-transform: uppercase; }
         
-        /* RÉSULTATS PREDICTIFS */
         #search-results { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 400px; background: rgba(0,0,0,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; }
         .search-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; font-size: 14px; }
         .search-item:hover { background: #222; }
 
-        /* HUD GAUCHE : Vitesse & Météo */
+        /* HUD GAUCHE */
         .hud-left { grid-column: 1; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; }
         .speed-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 5px #000; }
         
-        /* HUD DROIT : Angle & Actions */
+        /* HUD DROIT */
         .hud-right { grid-column: 3; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
         .gauge-wrap { width: 100px; height: 100px; border: 4px solid #222; border-top-color: var(--ktm); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.1s; margin: 0 auto; }
         
@@ -57,18 +55,15 @@
         .nav-instruction { background: var(--bg); border: 2px solid var(--ktm); border-radius: 8px; padding: 15px 30px; display: flex; align-items: center; gap: 20px; opacity: 0; transition: 0.3s; }
         .nav-instruction.active { opacity: 1; }
 
-        /* TIROIRS (PARAMÈTRES & CARBURANTS) */
+        /* TIROIRS */
         .drawer { position: fixed; background: #050505; z-index: 2000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; border: 1px solid #333; }
-        
         #settings-drawer { top: 0; right: -320px; width: 300px; height: 100%; border-left: 4px solid var(--ktm); }
         #settings-drawer.open { right: 0; }
-        
         #fuel-drawer { bottom: -50%; left: 240px; right: 240px; height: 45%; border-top: 4px solid var(--ktm); border-radius: 10px 10px 0 0; overflow-y: auto; }
         #fuel-drawer.open { bottom: 0; }
 
         select, input[type="range"] { width: 100%; background: #111; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 5px; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
-        
         #btn-rec { background: #111; border: 2px solid #444; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; }
         .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 10px red; }
     </style>
@@ -82,9 +77,7 @@
             <div class="search-box pointer-auto">
                 <input type="text" id="search-input" placeholder="Où allons-nous ?" onkeyup="MOTO_LOGIC.searchLocation(this.value)">
             </div>
-            
             <div id="search-results" class="pointer-auto"></div>
-
             <div style="display: flex; gap: 15px;" class="pointer-auto">
                 <button id="btn-rec" onclick="UI.toggleREC()">REC</button>
                 <button class="btn-ktm" onclick="MOTO_LOGIC.scanFuel()">⛽ CARBURANT</button>
@@ -152,7 +145,7 @@
 
     <script>
         let map, userMarker;
-        let userPos = { lat: 43.761, lng: 1.990 }; // Init. Graulhet
+        let userPos = { lat: 43.761, lng: 1.990 }; 
         let angleOffset = 0, isRecording = false, searchTimeout = null;
 
         const MOTO_LOGIC = {
@@ -200,7 +193,6 @@
                 });
             },
 
-            // RECHERCHE PRÉDICTIVE (Délai anti-spam)
             searchLocation(query) {
                 clearTimeout(searchTimeout);
                 if(query.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
@@ -213,7 +205,6 @@
                         box.style.display = 'block';
                         
                         box.innerHTML = data.map(place => {
-                            // Nettoyage des apostrophes pour ne pas casser le code HTML
                             let cleanName = place.display_name.split(',')[0].replace(/['"]/g, " ");
                             return `<div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${cleanName}')">📍 ${place.display_name}</div>`;
                         }).join('');
@@ -221,51 +212,77 @@
                 }, 500);
             },
 
-            // CALCUL D'ITINÉRAIRE (Mapbox Directions API)
+            /* MOTEUR DE ROUTAGE TRIPLE SÉCURITÉ */
             async startRouting(destLat, destLon, destName) {
                 document.getElementById('search-results').style.display = 'none';
                 document.getElementById('search-input').value = "";
                 if(document.getElementById('fuel-drawer').classList.contains('open')) UI.toggleFuelDrawer();
 
-                // On utilise la clé Mapbox du profil utilisateur pour une stabilité 100%
-                const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?geometries=geojson&access_token=${CONFIG_KTM.MAPBOX_KEY}`;
-                
+                destLat = parseFloat(destLat);
+                destLon = parseFloat(destLon);
+                let routeGeoJSON = null;
+                let routeDistanceKm = 0;
+
                 try {
-                    const res = await fetch(url);
-                    const data = await res.json();
+                    // TENTATIVE 1 : MAPBOX API
+                    const urlMB = `https://api.mapbox.com/directions/v5/mapbox/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?geometries=geojson&access_token=${CONFIG_KTM.MAPBOX_KEY}`;
+                    const resMB = await fetch(urlMB);
+                    const dataMB = await resMB.json();
                     
-                    if(data.code !== 'Ok') throw new Error("Route impossible");
-                    const route = data.routes[0];
+                    if (dataMB.code === 'Ok') {
+                        routeGeoJSON = dataMB.routes[0].geometry;
+                        routeDistanceKm = (dataMB.routes[0].distance / 1000).toFixed(1);
+                    } else { throw new Error("Mapbox Refusé"); }
 
-                    if (map.getSource('route')) {
-                        map.removeLayer('route-layer');
-                        map.removeSource('route');
+                } catch (e1) {
+                    try {
+                        // TENTATIVE 2 : OSRM PUBLIC (Secours)
+                        console.log("Mapbox échoué, passage sur OSRM...");
+                        const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+                        const resOSRM = await fetch(urlOSRM);
+                        const dataOSRM = await resOSRM.json();
+                        
+                        if (dataOSRM.code === 'Ok') {
+                            routeGeoJSON = dataOSRM.routes[0].geometry;
+                            routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
+                        } else { throw new Error("OSRM Refusé"); }
+
+                    } catch (e2) {
+                        // TENTATIVE 3 : MODE BOUSSOLE / LIGNE DROITE
+                        alert("Mode Dégradé : Guidage à vol d'oiseau (Boussole) activé.");
+                        routeGeoJSON = { type: "LineString", coordinates: [ [userPos.lng, userPos.lat], [destLon, destLat] ] };
+                        
+                        // Calcul mathématique simple (Haversine)
+                        const R = 6371; 
+                        const dLat = (destLat - userPos.lat) * Math.PI/180;
+                        const dLon = (destLon - userPos.lng) * Math.PI/180;
+                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(userPos.lat*Math.PI/180) * Math.cos(destLat*Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+                        routeDistanceKm = (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
                     }
-                    
-                    map.addSource('route', { type: 'geojson', data: route.geometry });
-                    map.addLayer({
-                        id: 'route-layer', type: 'line', source: 'route',
-                        layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8, 'line-opacity': 0.8 }
-                    });
-
-                    document.getElementById('nav-instruction').classList.add('active');
-                    document.getElementById('nav-text').innerText = `Vers: ${destName}`;
-                    document.getElementById('nav-dist').innerText = (route.distance / 1000).toFixed(1) + " km";
-                    map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
-
-                } catch(e) { 
-                    alert("ALERTE SYSTÈME : Calcul d'itinéraire échoué. Vérifiez votre connexion."); 
-                    console.error("Routing Error:", e);
                 }
-            },
 
-            stopNav() {
-                document.getElementById('nav-instruction').classList.remove('active');
+                // Affichage final sur la carte
                 if (map.getSource('route')) {
                     map.removeLayer('route-layer');
                     map.removeSource('route');
                 }
+                
+                map.addSource('route', { type: 'geojson', data: routeGeoJSON });
+                map.addLayer({
+                    id: 'route-layer', type: 'line', source: 'route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8, 'line-opacity': 0.8 }
+                });
+
+                document.getElementById('nav-instruction').classList.add('active');
+                document.getElementById('nav-text').innerText = `Vers: ${destName}`;
+                document.getElementById('nav-dist').innerText = routeDistanceKm + " km";
+                map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
+            },
+
+            stopNav() {
+                document.getElementById('nav-instruction').classList.remove('active');
+                if (map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); }
                 map.easeTo({ pitch: 0, zoom: 15 });
             },
 
@@ -278,32 +295,25 @@
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
-                    
                     if(!data.results || data.results.length === 0) {
                         document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée.</div>";
                         return;
                     }
-
                     document.getElementById('fuel-list-content').innerHTML = data.results.map(s => {
-                        if(!s.geom) return ''; // Évite les erreurs si coordonnées absentes
+                        if(!s.geom) return ''; 
                         const prixRaw = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
                         const prixAffiche = prixRaw ? prixRaw + ' €' : '<span style="color:var(--ktm)">N.C</span>';
                         let cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
                         
                         return `
                             <div class="station-item">
-                                <div>
-                                    <div style="font-weight:bold">${s.ville || 'Station'}</div>
-                                    <div style="font-size:12px; color:#888">${s.adresse || ''}</div>
-                                </div>
+                                <div><div style="font-weight:bold">${s.ville || 'Station'}</div><div style="font-size:12px; color:#888">${s.adresse || ''}</div></div>
                                 <div style="font-size:18px; font-weight:bold; margin-right:15px;">${prixAffiche}</div>
                                 <button class="btn-ktm" style="padding: 8px 15px;" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${cleanName}')">GO</button>
                             </div>
                         `;
                     }).join('');
-                } catch(e) { 
-                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants.</div>"; 
-                }
+                } catch(e) { document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants.</div>"; }
             },
 
             async updateWeather(lat, lon) {
@@ -314,7 +324,6 @@
                     document.getElementById('wind-val').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
                 } catch(e) {}
             },
-
             setZero() { angleOffset = 0; }
         };
 
