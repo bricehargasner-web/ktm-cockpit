@@ -3,161 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIAGNOSTIC FUEL - ENERGY CONCEPT</title>
+    <title>LABO TEST - ENERGY CONCEPT</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; color: #333; }
-        .box { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ccc; }
-        .error { color: red; font-weight: bold; background: #ffdada; padding: 10px; border-radius: 5px; margin: 10px 0; }
-        .station { border-bottom: 1px solid #eee; padding: 10px 0; }
-        .nc { color: #888; font-style: italic; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        select, input { width: 100%; padding: 10px; margin: 5px 0 15px 0; box-sizing: border-box; }
-        label { font-weight: bold; font-size: 0.9em; }
+        body { font-family: monospace; background: #eee; padding: 10px; font-size: 12px; }
+        .tiroir { background: white; border: 2px solid #333; margin-bottom: 10px; padding: 10px; }
+        .label { font-weight: bold; color: #FF6600; text-decoration: underline; }
+        .data { background: #000; color: #0f0; padding: 5px; margin: 5px 0; }
+        .error { color: white; background: red; padding: 5px; font-weight: bold; }
+        button { padding: 10px; margin: 5px 0; width: 100%; cursor: pointer; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <h2>🛠 Diagnostic Stations-Service</h2>
+    <h2>🛠 LABO DE VALIDATION TECHNIQUE</h2>
 
-    <div class="box">
-        <strong>1. Statut GPS :</strong>
-        <div id="gps-status">Recherche de votre position...</div>
+    <div class="tiroir">
+        <span class="label">[CORE-SYSTEM]</span>
+        <div id="orientation-status">Vérification orientation...</div>
+        <div id="gps-status" class="data">GPS : Recherche...</div>
+        <button onclick="requestPermissions()">1. ACTIVER TOUS LES CAPTEURS</button>
     </div>
 
-    <div class="box">
-        <label>Type de Carburant :</label>
-        <select id="fuel-type">
+    <div class="tiroir">
+        <span class="label">[MOTO-SENSORS]</span>
+        <div>Vitesse : <span id="val-speed" class="data">0</span> km/h</div>
+        <div>Altitude : <span id="val-alt" class="data">--</span> m</div>
+        <div style="margin-top:10px;">
+            Angle (Tranche Gauche) : <span id="val-angle" class="data">0</span>°
+            <br>Max Session : <span id="val-angle-max">0</span>°
+            <button onclick="resetAngle()" style="background:#ddd; width:auto; padding:2px 10px;">ZÉRO ANGLE</button>
+        </div>
+    </div>
+
+    <div class="tiroir">
+        <span class="label">[FUEL-API]</span>
+        <select id="fuel-choice">
             <option value="Gazole">Gazole</option>
             <option value="SP95">SP95</option>
             <option value="SP98">SP98</option>
-            <option value="E10">E10 (SP95-E10)</option>
+            <option value="E10">E10</option>
             <option value="E85">E85</option>
-            <option value="GPLc">GPLc</option>
         </select>
-
-        <label>Rayon (1 à 20 km) :</label>
-        <input type="range" id="radius" min="1" max="20" value="10" oninput="this.nextElementSibling.value = this.value + ' km'">
-        <output>10 km</output>
-
-        <label style="display:block; margin-top:15px;">Trier par :</label>
-        <select id="sort-by">
-            <option value="dist">Distance (Le plus proche)</option>
-            <option value="prix">Prix (Le moins cher)</option>
-        </select>
-
-        <button onclick="fetchStations()">LANCER LA RECHERCHE</button>
+         Rayon : <input type="range" id="fuel-radius" min="1" max="20" value="10" oninput="this.nextElementSibling.value = this.value + 'km'"> <output>10km</output>
+        <button onclick="testFuelAPI()" style="background:#28a745; color:white;">TESTER RECHERCHE STATIONS</button>
+        <div id="fuel-results" style="max-height:150px; overflow-y:auto; font-size:10px;"></div>
     </div>
 
-    <div id="error-log"></div>
-    <div class="box">
-        <strong>2. Résultats de l'API :</strong>
-        <div id="results-count">0 station(s) trouvée(s)</div>
-        <div id="results-list"></div>
+    <div class="tiroir">
+        <span class="label">[GPX-REC]</span>
+        <div id="rec-status" class="data">Enregistrement : OFF</div>
+        <button id="btn-rec" onclick="toggleREC()" style="background:red; color:white;">DÉMARRER REC ("C'est parti")</button>
+    </div>
+
+    <div class="tiroir">
+        <span class="label">[WEATHER]</span>
+        <div id="weather-data">--°C / Vent: --km/h</div>
+        <button onclick="testWeather()">TESTER MÉTÉO</button>
     </div>
 
     <script>
-        let userLat = null;
-        let userLon = null;
+        let isRecording = false;
+        let gpxLogs = [];
+        let angleZero = 0;
+        let maxAngle = 0;
+        let coords = { lat: null, lon: null };
 
-        // Récupération automatique du GPS au chargement
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    userLat = pos.coords.latitude;
-                    userLon = pos.coords.longitude;
-                    document.getElementById('gps-status').innerHTML = 
-                        `✅ Position fixée : ${userLat.toFixed(4)}, ${userLon.toFixed(4)}`;
-                },
-                (err) => {
-                    document.getElementById('gps-status').innerHTML = 
-                        `❌ Erreur GPS : ${err.message}. Vérifiez que la localisation est activée.`;
-                },
-                { enableHighAccuracy: true }
-            );
+        // [MOTO-SENSORS] Logique Tranche Gauche
+        function handleOrientation(e) {
+            // En paysage, tranche gauche en haut, l'inclinaison est gérée par e.beta
+            let raw = e.beta; 
+            let currentAngle = Math.abs(raw - angleZero);
+            currentAngle = Math.min(60, Math.round(currentAngle));
+            
+            document.getElementById('val-angle').innerText = currentAngle;
+            if(currentAngle > maxAngle) {
+                maxAngle = currentAngle;
+                document.getElementById('val-angle-max').innerText = maxAngle;
+            }
+            window.lastRaw = raw;
         }
 
-        async function fetchStations() {
-            const listDiv = document.getElementById('results-list');
-            const errorDiv = document.getElementById('error-log');
-            const countDiv = document.getElementById('results-count');
-            const fuel = document.getElementById('fuel-type').value;
-            const radius = document.getElementById('radius').value;
-            const sortBy = document.getElementById('sort-by').value;
+        function resetAngle() { angleZero = window.lastRaw || 0; maxAngle = 0; }
 
-            listDiv.innerHTML = "Chargement des données...";
-            errorDiv.innerHTML = "";
+        function requestPermissions() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(s => {
+                    if(s === 'granted') window.addEventListener('deviceorientation', handleOrientation);
+                });
+            } else { window.addEventListener('deviceorientation', handleOrientation); }
             
-            if (!userLat || !userLon) {
-                errorDiv.innerHTML = `<div class="error">ERREUR : Impossible de chercher sans position GPS fixe.</div>`;
-                return;
-            }
+            navigator.geolocation.watchPosition(p => {
+                coords.lat = p.coords.latitude;
+                coords.lon = p.coords.longitude;
+                document.getElementById('gps-status').innerText = `GPS OK: ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`;
+                document.getElementById('val-speed').innerText = Math.round(p.coords.speed * 3.6) || 0;
+                document.getElementById('val-alt').innerText = Math.round(p.coords.altitude) || "--";
+                
+                if(isRecording) {
+                    gpxLogs.push({ t: new Date().toISOString(), lat: coords.lat, lon: coords.lon, s: Math.round(p.coords.speed*3.6), a: Math.round(p.coords.altitude) });
+                }
+            }, e => console.error(e), { enableHighAccuracy: true });
+        }
 
-            // API Gouvernementale (OpenData Economie)
-            // Utilisation de la version 2.1 de l'API pour plus de stabilité
-            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-fichier-instantane-test-public-copy/records?where=within_distance(geom%2C%20geom'POINT(${userLon}%20${userLat})'%2C%20${radius}km)&limit=50`;
+        // [FUEL-API] Correction 404 (Utilisation API Explore V2.1 stable)
+        async function testFuelAPI() {
+            const list = document.getElementById('fuel-results');
+            const fuel = document.getElementById('fuel-choice').value.toLowerCase() + "_prix";
+            const rad = document.getElementById('fuel-radius').value;
+            list.innerHTML = "Recherche...";
+
+            if(!coords.lat) return list.innerHTML = "<span class='error'>GPS REQUIS</span>";
+
+            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-fichier-instantane-test-public-copy/records?where=within_distance(geom%2C%20geom'POINT(${coords.lon}%20${coords.lat})'%2C%20${rad}km)&limit=20`;
 
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Serveur indisponible (Code ${response.status})`);
+                const res = await fetch(url);
+                const data = await res.json();
+                const items = data.results || [];
                 
-                const data = await response.json();
-                const records = data.results || [];
-
-                countDiv.innerHTML = `${records.length} station(s) dans un rayon de ${radius}km.`;
-
-                if (records.length === 0) {
-                    listDiv.innerHTML = "Aucune station trouvée dans ce périmètre.";
-                    return;
-                }
-
-                // Formatage des données
-                let results = records.map(reg => {
-                    // On cherche le prix correspondant au carburant choisi
-                    // Les noms de champs dans l'API sont par ex: gazole_prix
-                    const fieldName = fuel.toLowerCase() + "_prix";
-                    const prixRaw = reg[fieldName];
-                    
-                    return {
-                        nom: reg.adresse || "Station sans nom",
-                        ville: reg.ville || "Ville inconnue",
-                        prix: prixRaw ? parseFloat(prixRaw).toFixed(3) + " €" : "N.C",
-                        prixValue: prixRaw ? parseFloat(prixRaw) : 999, // Pour le tri
-                        distance: calculateDistance(userLat, userLon, reg.geom.lat, reg.geom.lon)
-                    };
-                });
-
-                // Tri
-                if (sortBy === 'prix') {
-                    results.sort((a, b) => a.prixValue - b.prixValue);
-                } else {
-                    results.sort((a, b) => a.distance - b.distance);
-                }
-
-                // Affichage
-                listDiv.innerHTML = results.map(s => `
-                    <div class="station">
-                        <strong>${s.nom.toUpperCase()}</strong> (${s.ville})<br>
-                        Distance : <b>${s.distance.toFixed(2)} km</b><br>
-                        Prix ${fuel} : <b style="color:${s.prix === 'N.C' ? 'red' : 'green'}">${s.prix}</b>
+                list.innerHTML = items.map(s => `
+                    <div style="border-bottom:1px solid #ccc">
+                        ${s.ville.toUpperCase()} : ${s[fuel] ? s[fuel]+"€" : "<b style='color:red'>N.C</b>"}
                     </div>
                 `).join('');
+            } catch(e) { list.innerHTML = "<span class='error'>ERREUR API (Vérifiez Internet)</span>"; }
+        }
 
-            } catch (err) {
-                errorDiv.innerHTML = `<div class="error">ERREUR API : ${err.message}</div>`;
-                listDiv.innerHTML = "Échec de la récupération.";
+        function toggleREC() {
+            isRecording = !isRecording;
+            const btn = document.getElementById('btn-rec');
+            if(isRecording) {
+                gpxLogs = [];
+                alert("C'est parti !");
+                btn.innerText = "ARRÊTER ET ENREGISTRER";
+                document.getElementById('rec-status').innerText = "Enregistrement : ON";
+            } else {
+                alert("Fin du trajet. " + gpxLogs.length + " points enregistrés.");
+                btn.innerText = "DÉMARRER REC";
+                document.getElementById('rec-status').innerText = "Enregistrement : OFF";
+                console.log("Données GPX :", gpxLogs);
             }
         }
 
-        // Calcul de distance à vol d'oiseau (Formule Haversine)
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+        function testWeather() {
+            if(!coords.lat) return alert("GPS REQUIS");
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-data').innerText = `${d.current_weather.temperature}°C / Vent: ${d.current_weather.windspeed}km/h`;
+                });
         }
     </script>
 </body>
