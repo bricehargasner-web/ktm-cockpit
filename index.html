@@ -1,395 +1,537 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - COCKPIT V31</title>
+  <meta charset="UTF-8">
+  <title>ENERGY CONCEPT - COCKPIT V4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
 
-    <script>
-        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
-        var CONFIG_KTM = {
-            THEME_CARTE: "jour",         
-            COULEUR_ACCENT: "#FF6600",
-            CARBURANT_PREF: "Gazole",       
-            RAYON_RECHERCHE: 50,         
-            ANGLE_ALERTE_ROUGE: 45,      
-            PITCH_3D: 75,                
-            ZOOM_NAV: 18.5               
-        };
-    </script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
 
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-
-    <style>
-        :root { --ktm: #FF6600; }
-        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; user-select: none; margin: 0; padding: 0; }
-        body { background: #000; color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
-        
-        #map { position: absolute; inset: 0; z-index: 1; }
-        .pointer-auto { pointer-events: auto; }
-
-        /* HUD LAYOUT */
-        .hud-container { position: absolute; inset: 0; display: flex; justify-content: space-between; pointer-events: none; z-index: 10; }
-        
-        .side-panel { width: 240px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 25px 20px; pointer-events: auto; }
-        .panel-left { background: linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); }
-        .panel-right { background: linear-gradient(to left, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); align-items: center; }
-        
-        .panel-center { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 20px; position: relative; gap: 15px; }
-
-        /* INSTRUMENTS */
-        .val-giant { font-size: 5.5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
-        .val-label { font-size: 12px; color: #888; font-weight: bold; text-align: center; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
-        
-        /* TÉLÉMÉTRIE & MICRO BOUTON ZÉRO */
-        .telemetry-box { width: 100%; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }
-        .tele-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 4px; font-weight: bold; }
-        .tele-val { color: #fff; font-size: 13px; }
-        .micro-btn { background: transparent; border: 1px solid #333; color: #555; font-size: 9px; padding: 4px 10px; border-radius: 2px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; transition: 0.2s; }
-        .micro-btn:active { background: #333; color: white; }
-
-        /* BOUTONS GENERAUX */
-        .btn-ktm-ui { background: rgba(15,15,15,0.8); border: 1px solid #444; color: white; padding: 10px 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; backdrop-filter: blur(5px); transition: 0.2s; }
-        .btn-ktm-ui:active { border-color: var(--ktm); color: var(--ktm); }
-        
-        #btn-rec { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
-        #btn-rec::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #666; border-radius: 50%; transition: 0.3s; }
-        .rec-active { border-color: red !important; box-shadow: 0 0 15px rgba(255,0,0,0.3); }
-        .rec-active::before { background: red !important; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-
-        /* NAVIGATION */
-        .nav-instruction { background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); border-radius: 8px; padding: 15px 25px; display: flex; align-items: center; gap: 15px; opacity: 0; transition: 0.3s; pointer-events: auto; min-width: 300px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
-        .nav-instruction.active { opacity: 1; }
-
-        /* DRAPEAUX CARTE */
-        .station-flag { background: rgba(15, 15, 15, 0.95); border: 2px solid var(--ktm); color: white; font-weight: bold; font-size: 13px; padding: 4px 8px; border-radius: 4px; position: relative; cursor: pointer; display: inline-block !important; white-space: nowrap !important; width: max-content !important; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        .station-flag::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-width: 8px 6px 0; border-style: solid; border-color: var(--ktm) transparent transparent transparent; }
-
-        /* MENUS LATÉRAUX */
-        .drawer { position: fixed; background: rgba(10,10,10,0.98); z-index: 2000; transition: 0.4s; padding: 25px; border: 1px solid #333; pointer-events: auto; display: flex; flex-direction: column; }
-        
-        #settings-drawer { top: 0; right: -340px; width: 320px; height: 100%; border-left: 3px solid var(--ktm); }
-        #settings-drawer.open { right: 0; }
-        
-        .menu-row { margin-bottom: 20px; flex-shrink: 0; }
-        .search-input { width: 100%; background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 4px; margin-bottom: 10px; outline: none; }
-        
-        #search-results { position: relative; width: 100%; top: 5px; display: none; background: #111; max-height: 160px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; }
-        
-        #fuel-drawer { bottom: -80%; left: 10%; right: 10%; height: 70%; border-top: 3px solid var(--ktm); border-radius: 10px 10px 0 0; }
-        #fuel-drawer.open { bottom: 0; }
-        .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #222; background: #151515; margin-bottom: 5px; border-radius: 4px; }
-        
-        /* Switch Drapeaux */
-        .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--ktm); }
-        input:checked + .slider:before { transform: translateX(16px); }
-    </style>
+  <style>
+    :root{
+      --ktm:#ff6600;
+      --bg:#020202;
+      --panel:rgba(4,4,4,.94);
+      --panel2:rgba(12,12,12,.88);
+      --txt:#fff;
+      --muted:#b9b9b9;
+      --danger:#ff3b3b;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,system-ui,sans-serif;user-select:none}
+    html,body{width:100%;height:100%;overflow:hidden;background:#000;color:var(--txt)}
+    body{position:fixed;inset:0}
+    #map{position:absolute;inset:0;z-index:1}
+    .hud{position:absolute;inset:0;z-index:10;display:flex;justify-content:space-between;pointer-events:none}
+    .side{width:280px;padding:18px 14px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:auto}
+    .left{background:linear-gradient(to right,rgba(0,0,0,.98),rgba(0,0,0,.7),transparent)}
+    .right{background:linear-gradient(to left,rgba(0,0,0,.98),rgba(0,0,0,.7),transparent);align-items:flex-end}
+    .center{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:14px;pointer-events:none}
+    .label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#cfcfcf;font-weight:700;margin-bottom:4px}
+    .big{font-size:5.4rem;line-height:1;font-weight:900;color:var(--ktm);text-shadow:0 0 20px rgba(0,0,0,.75)}
+    .right .big{text-align:right;color:#fff}
+    .left .big{text-align:left}
+    .tele{margin-top:8px;border-top:1px solid rgba(255,255,255,.13);padding-top:8px}
+    .row{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:4px;font-weight:700}
+    .val{font-size:13px;color:#fff}
+    .btn{background:rgba(8,8,8,.95);border:1px solid #555;color:#fff;padding:10px 16px;border-radius:5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;cursor:pointer;pointer-events:auto}
+    .btn:active{transform:scale(.99)}
+    .btnRec{display:flex;align-items:center;gap:8px}
+    .btnRec::before{content:"";width:12px;height:12px;border-radius:50%;background:#666;display:inline-block}
+    .btnRec.on{border-color:var(--danger);box-shadow:0 0 16px rgba(255,0,0,.25)}
+    .btnRec.on::before{background:var(--danger);animation:blink 1s infinite}
+    @keyframes blink{50%{opacity:.2}}
+    .nav{
+      min-width:300px;max-width:420px;
+      background:rgba(0,0,0,.95);
+      border:1px solid var(--ktm);
+      border-radius:10px;
+      padding:12px 16px;
+      box-shadow:0 10px 24px rgba(0,0,0,.65);
+      opacity:0;transform:translateY(-8px);transition:.25s;
+      pointer-events:auto;
+    }
+    .nav.on{opacity:1;transform:translateY(0)}
+    .navTop{display:flex;align-items:center;gap:12px}
+    .arrow{font-size:40px;color:var(--ktm);line-height:1}
+    .navDist{font-size:25px;font-weight:900}
+    .navTxt{font-size:14px;color:#fff;margin-top:2px}
+    .weather{cursor:pointer}
+    .weather .temp{font-size:27px;font-weight:900}
+    .weather .wind{font-size:13px;color:#bcbcbc}
+    .settingsIcon{
+      position:absolute;top:14px;right:18px;z-index:20;pointer-events:auto;
+      font-size:30px;color:var(--ktm);cursor:pointer;text-shadow:0 0 10px #000
+    }
+    .drawer{
+      position:fixed;z-index:2000;background:var(--panel);border:1px solid #333;
+      padding:18px;display:flex;flex-direction:column;pointer-events:auto;transition:.3s
+    }
+    #settings-drawer{top:0;right:-340px;width:320px;height:100%;border-left:3px solid var(--ktm)}
+    #settings-drawer.open{right:0}
+    #fuel-drawer{left:10px;right:10px;bottom:-110px;height:100px;border-top:3px solid var(--ktm);border-radius:12px 12px 0 0}
+    #fuel-drawer.open{bottom:0}
+    .menuRow{margin-bottom:18px}
+    .input,.select{
+      width:100%;background:#181818;border:1px solid #444;color:#fff;
+      padding:10px 12px;border-radius:5px;outline:none;font-size:14px
+    }
+    .results{margin-top:6px;background:#111;border:1px solid #444;border-radius:5px;max-height:170px;overflow:auto;display:none}
+    .resItem{padding:10px;border-bottom:1px solid #222;cursor:pointer;font-size:13px}
+    .resItem:hover{background:#262626}
+    .stationItem{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:5px;background:#181818;border:1px solid #333;border-radius:5px}
+    .switch{position:relative;display:inline-block;width:42px;height:24px}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:#333;border-radius:24px;cursor:pointer;transition:.25s}
+    .slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
+    .switch input:checked + .slider{background:var(--ktm)}
+    .switch input:checked + .slider:before{transform:translateX(18px)}
+    .flag{
+      background:rgba(10,10,10,.96);border:2px solid var(--ktm);color:#fff;font-size:12px;
+      font-weight:800;padding:4px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 4px 8px rgba(0,0,0,.55)
+    }
+    .flag::after{
+      content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+      border-width:8px 6px 0;border-style:solid;border-color:var(--ktm) transparent transparent
+    }
+    .osmAttrib{
+      position:absolute;left:6px;bottom:5px;z-index:15;font-size:10px;color:#ddd;
+      background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px
+    }
+    .diag{font-size:11px;line-height:1.4;color:#bbb}
+    .sunmode{
+      position:absolute;left:50%;top:12px;transform:translateX(-50%);
+      z-index:18;background:rgba(0,0,0,.82);border:1px solid #444;color:#fff;
+      padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;pointer-events:auto
+    }
+  </style>
 </head>
 <body>
+  <div id="map"></div>
+  <div class="osmAttrib">© OpenStreetMap contributors</div>
+  <div class="sunmode" id="sunmode">MODE AUTO</div>
 
-    <div id="map"></div>
-
-    <div class="hud-container">
-        
-        <div class="side-panel panel-left">
-            <div>
-                <div class="val-label">Vitesse</div>
-                <div class="val-giant" id="speed-val">0</div>
-                <div class="telemetry-box">
-                    <div class="tele-row">MAX <span class="tele-val" id="speed-max">0</span></div>
-                    <div class="tele-row">MOY <span class="tele-val" id="speed-avg">0</span></div>
-                    <button class="micro-btn" onclick="MOTO_LOGIC.resetSpeed()">ZÉRO</button>
-                </div>
-            </div>
-            
-            <div style="cursor: pointer;" onclick="window.open('https://meteofrance.com/', '_blank')">
-                <div id="temp-val" style="font-size: 26px; font-weight: 900; color: #fff;">--°C</div>
-                <div id="wind-val" style="font-size: 13px; color: #888;">Vent: -- km/h</div>
-            </div>
+  <div class="hud">
+    <div class="side left">
+      <div>
+        <div class="label">Vitesse</div>
+        <div class="big" id="speed-val">0</div>
+        <div class="tele">
+          <div class="row"><span>MAX</span><span class="val" id="speed-max">0</span></div>
+          <div class="row"><span>MOY</span><span class="val" id="speed-avg">0</span></div>
+          <button class="btn" style="width:100%;margin-top:6px;font-size:10px;padding:5px 8px" onclick="MOTO.resetSpeed()">Zéro vitesse</button>
         </div>
-
-        <div class="panel-center">
-            <button class="btn-ktm-ui" id="btn-rec" onclick="UI.toggleREC()">REC</button>
-            
-            <div class="nav-instruction" id="nav-instruction">
-                <div id="nav-arrow" style="font-size: 40px; color: var(--ktm);">➔</div>
-                <div style="flex-grow: 1;">
-                    <div id="nav-dist" style="font-size: 24px; font-weight: 900;">-- m</div>
-                    <div id="nav-text" style="color: #fff; font-size: 15px;">Calcul...</div>
-                </div>
-                <button onclick="MOTO_LOGIC.stopNav()" style="background:none; border:none; color:#555; font-size:20px;">✖</button>
-            </div>
-
-            <div style="position: absolute; top: 20px; right: 20px; pointer-events: auto;">
-                <div style="color: var(--ktm); font-size: 32px; cursor: pointer; text-shadow: 0 0 10px #000;" onclick="UI.toggleSettings()">⋮</div>
-            </div>
+      </div>
+      <div>
+        <div class="weather" onclick="window.open('https://meteofrance.com','_blank')">
+          <div class="label">Météo locale</div>
+          <div class="temp" id="temp-val">-- °C</div>
+          <div class="wind" id="wind-val">Vent -- km/h</div>
         </div>
-
-        <div class="side-panel panel-right">
-            <div style="width:100%;">
-                <div class="val-label">Inclinaison</div>
-                <div class="val-giant" style="color:#fff;" id="angle-val">0°</div>
-                <div class="telemetry-box">
-                    <div class="tele-row">MAX <span class="tele-val" id="angle-max">0°</span></div>
-                    <div class="tele-row">MOY <span class="tele-val" id="angle-avg">0°</span></div>
-                    <button class="micro-btn" onclick="MOTO_LOGIC.resetAngle()">ZÉRO</button>
-                </div>
-            </div>
-        </div>
+        <button id="btn-rec" class="btn btnRec" style="width:100%;margin-top:14px" onclick="UI.toggleREC()">REC</button>
+        <button class="btn" style="width:100%;margin-top:10px" onclick="MOTO.stopNav()">Stop nav</button>
+      </div>
     </div>
 
-    <div id="settings-drawer" class="drawer">
-        <h2 style="color: var(--ktm); margin-bottom: 20px; flex-shrink: 0;">SYSTEM HUB</h2>
-        
-        <div class="menu-row">
-            <div class="val-label" style="text-align:left;">Recherche Destination</div>
-            <input type="text" id="search-input" class="search-input" placeholder="Ville, adresse...">
-            <button class="btn-ktm-ui" style="width:100%; background:var(--ktm); color:black;" onclick="MOTO_LOGIC.searchLocation()">CHERCHER</button>
-            <div id="search-results"></div>
-        </div>
+    <div class="center">
+      <div class="settingsIcon" onclick="UI.toggleSettings()">☰</div>
 
-        <div class="menu-row" style="border-top: 1px solid #333; padding-top:20px;">
-            <button class="btn-ktm-ui" style="width:100%;" onclick="MOTO_LOGIC.scanFuel()">⛽ SCAN CARBURANTS</button>
+      <div class="nav" id="nav-box">
+        <div class="navTop">
+          <div class="arrow" id="nav-arrow">➤</div>
+          <div style="flex:1">
+            <div class="navDist" id="nav-dist">-- m</div>
+            <div class="navTxt" id="nav-text">Aucune navigation</div>
+          </div>
+          <button style="background:none;border:none;color:#777;font-size:20px;cursor:pointer" onclick="MOTO.stopNav()">✕</button>
         </div>
-
-        <div class="menu-row" style="border-top: 1px solid #333; padding-top:20px;">
-            <div class="val-label" style="text-align:left;">Rayon : <span id="rad-disp">50</span> km</div>
-            <input type="range" min="1" max="50" value="50" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
-        </div>
-
-        <button class="btn-ktm-ui" style="width: 100%; margin-top: auto; border-color:#555; flex-shrink: 0;" onclick="UI.closeAllDrawers()">RETOUR CARTE</button>
+      </div>
     </div>
 
-    <div id="fuel-drawer" class="drawer">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
-            <h3 style="color: var(--ktm);">STATIONS PROCHES</h3>
-            <div style="display:flex; align-items:center; gap:10px; font-size:12px; color:#888;">
-                DRAPEAUX <label class="switch"><input type="checkbox" id="toggle-flags" checked onchange="MOTO_LOGIC.toggleMarkers()"><span class="slider"></span></label>
-            </div>
+    <div class="side right">
+      <div style="width:100%">
+        <div class="label" style="text-align:right">Inclinaison</div>
+        <div class="big" id="angle-val" style="text-align:right;color:#fff">0</div>
+        <div class="tele">
+          <div class="row"><span>MAX</span><span class="val" id="angle-max">0</span></div>
+          <div class="row"><span>MOY</span><span class="val" id="angle-avg">0</span></div>
+          <button class="btn" style="width:100%;margin-top:6px;font-size:10px;padding:5px 8px" onclick="MOTO.resetAngle()">Zéro angle</button>
         </div>
-        <div id="fuel-list-content" style="overflow-y: auto; flex-grow: 1;"></div>
+      </div>
+      <div style="width:100%;margin-top:14px">
+        <div class="label" style="text-align:right">Altitude</div>
+        <div class="tele">
+          <div class="row"><span>ALT</span><span class="val" id="alt-val">-- m</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-drawer" class="drawer">
+    <h2 style="color:var(--ktm);margin-bottom:14px">SYSTEM HUB</h2>
+
+    <div class="menuRow">
+      <div class="label" style="text-align:left">Recherche destination</div>
+      <input id="search-input" class="input" placeholder="Ville, adresse..." oninput="MOTO.debounceSearch()">
+      <div id="search-results" class="results"></div>
     </div>
 
-    <script>
-        var map, userMarker;
-        var userPos = { lat: 43.761, lng: 1.990 }; // Démarrage par défaut (Graulhet)
-        var angleOffset = 0, currentBeta = 0;
-        var stats = { speed: { max: 0, sum: 0, count: 0 }, angle: { max: 0, sum: 0, count: 0 } };
-        var isRecording = false, recordedTrack = [], stationsData = [], markers = [];
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <button class="btn" style="width:100%" onclick="MOTO.scanFuel()">Scan carburants</button>
+    </div>
 
-        function getDistance(lat1, lon1, lat2, lon2) {
-            var p = 0.01745;
-            var a = 0.5 - Math.cos((lat2 - lat1) * p)/2 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lon2 - lon1) * p))/2;
-            return (12742 * Math.asin(Math.sqrt(a))).toFixed(1);
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <div class="label" style="text-align:left">Rayon <span id="rad-disp">20</span> km</div>
+      <input type="range" min="1" max="50" value="20" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG.RAYON=this.value;">
+    </div>
+
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <div class="label" style="text-align:left">Mode jour / nuit</div>
+      <select class="select" id="mode-select" onchange="SYS.setDisplay(this.value)">
+        <option value="auto">Auto</option>
+        <option value="jour">Jour forcé</option>
+        <option value="nuit">Nuit forcée</option>
+      </select>
+    </div>
+
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <div class="label" style="text-align:left">Diagnostic</div>
+      <div class="diag" id="diag-console">GPS: --<br>Gyro: --<br>Météo: --<br>Carburants: --</div>
+    </div>
+
+    <button class="btn" style="width:100%;margin-top:auto" onclick="UI.closeAll()">Retour carte</button>
+  </div>
+
+  <div id="fuel-drawer" class="drawer">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="color:var(--ktm)">Stations proches</h3>
+      <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:#bbb">
+        Drapeaux
+        <label class="switch">
+          <input type="checkbox" id="toggle-flags" checked onchange="MOTO.toggleMarkers()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    <div id="fuel-list-content" style="overflow:auto;flex:1;margin-top:10px"></div>
+  </div>
+
+<script>
+const CONFIG = {
+  ACCENT: "#ff6600",
+  RAYON: 20,
+  ANGLE_ROUGE: 45,
+  PITCH: 75,
+  ZOOMNAV: 18.5,
+  SEARCH_DELAY: 600,
+  DISPLAY: "auto"
+};
+
+let map, marker, userPos = {lat: 43.761, lng: 1.99};
+let angleOffset = 0, currentBeta = 0, isRecording = false, track = [];
+let stats = {speed:{max:0,sum:0,count:0}, angle:{max:0,sum:0,count:0}};
+let stations = [], stationMarkers = [];
+let searchTimer = null, lastSearch = 0;
+
+const SYS = {
+  init(){
+    this.lockLandscape();
+    this.initMap();
+    this.sensors();
+    this.weather(userPos.lat, userPos.lng);
+    this.setDisplay("auto");
+  },
+  lockLandscape(){
+    if(screen.orientation && screen.orientation.lock){
+      screen.orientation.lock("landscape").catch(()=>{});
+    }
+  },
+  initMap(){
+    map = new maplibregl.Map({
+      container: "map",
+      style: "https://tiles.openfreemap.org/styles/liberty",
+      center: [userPos.lng, userPos.lat],
+      zoom: 15,
+      pitch: CONFIG.PITCH,
+      antialias: true
+    });
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}), "bottom-right");
+    const el = document.createElement("div");
+    el.style.width = "22px";
+    el.style.height = "22px";
+    el.style.borderRadius = "50%";
+    el.style.background = "#00ccff";
+    el.style.border = "3px solid #fff";
+    el.style.boxShadow = "0 0 10px #00ccff";
+    marker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
+    map.on("click", ()=>UI.closeAll());
+    map.on("load", ()=>UI.setDiag("GPS", "OK"));
+  },
+  setDisplay(mode){
+    CONFIG.DISPLAY = mode;
+    const b = document.body, badge = document.getElementById("sunmode");
+    if(mode === "jour"){
+      b.style.filter = "brightness(1.2) contrast(1.15)";
+      badge.innerText = "MODE JOUR";
+    } else if(mode === "nuit"){
+      b.style.filter = "brightness(0.75) contrast(1.05)";
+      badge.innerText = "MODE NUIT";
+    } else {
+      const h = new Date().getHours();
+      const day = h >= 7 && h <= 19;
+      b.style.filter = day ? "brightness(1.2) contrast(1.15)" : "brightness(0.75) contrast(1.05)";
+      badge.innerText = "MODE AUTO";
+    }
+  },
+  sensors(){
+    if(navigator.geolocation){
+      navigator.geolocation.watchPosition(p=>{
+        userPos = {lat:p.coords.latitude, lng:p.coords.longitude};
+        const speed = Math.max(0, Math.round((p.coords.speed || 0) * 3.6));
+        const alt = p.coords.altitude;
+        document.getElementById("speed-val").innerText = speed;
+        document.getElementById("alt-val").innerText = alt != null ? Math.round(alt) + " m" : "-- m";
+        if(speed > 0){
+          stats.speed.max = Math.max(stats.speed.max, speed);
+          stats.speed.sum += speed;
+          stats.speed.count++;
+          document.getElementById("speed-max").innerText = stats.speed.max;
+          document.getElementById("speed-avg").innerText = Math.round(stats.speed.sum / stats.speed.count);
         }
+        marker.setLngLat([userPos.lng, userPos.lat]);
+        if(isRecording) track.push({lat:userPos.lat, lng:userPos.lng});
+        if(document.getElementById("nav-box").classList.contains("on")){
+          map.easeTo({center:[userPos.lng,userPos.lat], bearing:p.coords.heading || 0, pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV});
+        } else {
+          map.panTo([userPos.lng,userPos.lat]);
+        }
+        UI.setDiag("GPS", "OK");
+      }, ()=>UI.setDiag("GPS", "Erreur"), {enableHighAccuracy:true, timeout:10000, maximumAge:3000});
+    } else UI.setDiag("GPS", "Non supporté");
 
-        var MOTO_LOGIC = {
-            initSystem: function() {
-                map = new maplibregl.Map({
-                    container: 'map',
-                    style: {
-                        version: 8,
-                        sources: { 'osm': { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 } },
-                        layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
-                    },
-                    center: [userPos.lng, userPos.lat], zoom: 15, pitch: CONFIG_KTM.PITCH_3D, antialias: true
-                });
+    window.addEventListener("deviceorientation", e=>{
+      if(e.beta == null) return;
+      currentBeta = e.beta;
+      let lean = Math.abs(Math.round(currentBeta - angleOffset));
+      lean = Math.min(60, lean);
+      stats.angle.max = Math.max(stats.angle.max, lean);
+      stats.angle.sum += lean;
+      stats.angle.count++;
+      document.getElementById("angle-val").innerText = lean;
+      document.getElementById("angle-max").innerText = stats.angle.max;
+      document.getElementById("angle-avg").innerText = Math.round(stats.angle.sum / stats.angle.count);
+      document.getElementById("angle-val").style.color = lean >= CONFIG.ANGLE_ROUGE ? "#ff3b3b" : "#fff";
+      UI.setDiag("Gyro", "OK");
+    }, true);
+  },
+  weather(lat, lon){
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+      .then(r=>r.json())
+      .then(d=>{
+        document.getElementById("temp-val").innerText = Math.round(d.current_weather.temperature) + " °C";
+        document.getElementById("wind-val").innerText = "Vent " + Math.round(d.current_weather.windspeed) + " km/h";
+        UI.setDiag("Météo", "OK");
+      }).catch(()=>UI.setDiag("Météo", "Erreur"));
+  }
+};
 
-                var el = document.createElement('div');
-                el.style = "width:20px; height:20px; background:#00ccff; border-radius:50%; border:3px solid #fff; box-shadow:0 0 10px #00ccff;";
-                userMarker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
+const MOTO = {
+  resetSpeed(){
+    stats.speed = {max:0,sum:0,count:0};
+    document.getElementById("speed-max").innerText = 0;
+    document.getElementById("speed-avg").innerText = 0;
+  },
+  resetAngle(){
+    angleOffset = currentBeta;
+    stats.angle = {max:0,sum:0,count:0};
+    document.getElementById("angle-max").innerText = 0;
+    document.getElementById("angle-avg").innerText = 0;
+    document.getElementById("angle-val").innerText = 0;
+  },
+  debounceSearch(){
+    const now = Date.now();
+    clearTimeout(searchTimer);
+    if(now - lastSearch < CONFIG.SEARCH_DELAY){
+      searchTimer = setTimeout(()=>this.search(), CONFIG.SEARCH_DELAY);
+    } else this.search();
+    lastSearch = now;
+  },
+  async search(){
+    const q = document.getElementById("search-input").value.trim();
+    const box = document.getElementById("search-results");
+    if(q.length < 3){ box.style.display = "none"; box.innerHTML = ""; return; }
+    box.style.display = "block";
+    box.innerHTML = '<div style="padding:10px;color:#fff">Recherche...</div>';
+    try{
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, {
+        headers: {"Accept-Language":"fr"}
+      });
+      const d = await r.json();
+      if(!d.length){
+        box.innerHTML = '<div style="padding:10px;color:#ff6666">Aucun résultat</div>';
+        return;
+      }
+      box.innerHTML = d.map(p => {
+        const name = (p.display_name || "").split(",")[0].replace(/'/g,"\\'");
+        const disp = (p.display_name || "").replace(/'/g,"\\'");
+        return `<div class="resItem" onclick="MOTO.route(${p.lat}, ${p.lon}, '${disp}', '${name}')">${name}</div>`;
+      }).join("");
+    }catch(e){
+      box.style.display = "none";
+    }
+  },
+  async route(lat, lon, full, name){
+    UI.closeAll();
+    try{
+      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true`);
+      const d = await r.json();
+      if(!d.routes || !d.routes.length) return;
+      if(map.getSource("route")){
+        map.removeLayer("route-layer");
+        map.removeSource("route");
+      }
+      map.addSource("route", {type:"geojson", data:d.routes[0].geometry});
+      map.addLayer({id:"route-layer", type:"line", source:"route", paint:{"line-color":CONFIG.ACCENT, "line-width":8}});
+      const step = d.routes[0].legs[0].steps[1] || d.routes[0].legs[0].steps[0];
+      document.getElementById("nav-dist").innerText = Math.round(step.distance) + " m";
+      document.getElementById("nav-text").innerText = "Vers " + (name || full || "destination");
+      document.getElementById("nav-box").classList.add("on");
+      map.easeTo({center:[userPos.lng,userPos.lat], pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV});
+      UI.setDiag("Navigation", "OK");
+    }catch(e){
+      alert("Erreur de calcul d’itinéraire.");
+      UI.setDiag("Navigation", "Erreur");
+    }
+  },
+  stopNav(){
+    document.getElementById("nav-box").classList.remove("on");
+    document.getElementById("nav-text").innerText = "Aucune navigation";
+    if(map && map.getSource("route")){
+      map.removeLayer("route-layer");
+      map.removeSource("route");
+    }
+  },
+  async scanFuel(){
+    UI.closeAll();
+    const drawer = document.getElementById("fuel-drawer");
+    drawer.classList.add("open");
+    const list = document.getElementById("fuel-list-content");
+    list.innerHTML = '<div style="padding:12px;text-align:center;color:#fff">Recherche stations...</div>';
+    try{
+      const where = encodeURIComponent(`within_distance(geom, ge_point(${userPos.lng}, ${userPos.lat}), ${CONFIG.RAYON * 1000})`);
+      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=${where}&limit=40`;
+      const r = await fetch(url);
+      const d = await r.json();
 
-                // Fermeture des menus au clic sur la carte
-                map.on('click', function() { UI.closeAllDrawers(); });
+      stationMarkers.forEach(m=>m.remove());
+      stationMarkers = [];
+      stations = [];
 
-                // Initialisation forcée de la météo au démarrage
-                this.updateWeather(userPos.lat, userPos.lng);
+      (d.results || []).forEach(s=>{
+        const lat = s.geom.lat, lon = s.geom.lon;
+        const prix = (s[`prix_${(CONFIG.CARBURANT || "Gazole").toLowerCase()}`] || null);
+        const dist = MOTO.distance(userPos.lat, userPos.lng, lat, lon);
+        stations.push({
+          ville: s.ville || "Station",
+          prix: prix ? parseFloat(prix) : 999,
+          dist, lat, lon
+        });
 
-                this.startSensors();
-            },
+        const el = document.createElement("div");
+        el.className = "flag";
+        el.innerText = prix ? (parseFloat(prix).toFixed(3) + " €") : "N.C";
+        el.onclick = ()=>MOTO.route(lat, lon, s.ville || "Station", s.ville || "Station");
+        const mk = new maplibregl.Marker(el).setLngLat([lon, lat]);
+        if(document.getElementById("toggle-flags").checked) mk.addTo(map);
+        stationMarkers.push(mk);
+      });
 
-            startSensors: function() {
-                navigator.geolocation.watchPosition(function(p) {
-                    userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
-                    var s = Math.round(p.coords.speed * 3.6) || 0;
-                    document.getElementById('speed-val').innerText = s;
-                    
-                    if(s > 0) {
-                        stats.speed.max = Math.max(stats.speed.max, s);
-                        stats.speed.sum += s; stats.speed.count++;
-                        document.getElementById('speed-max').innerText = stats.speed.max;
-                        document.getElementById('speed-avg').innerText = Math.round(stats.speed.sum/stats.speed.count);
-                    }
+      MOTO.sortStations("dist");
+      UI.setDiag("Carburants", "OK");
+    }catch(e){
+      list.innerHTML = '<div style="padding:12px;text-align:center;color:#ff6666">Erreur serveur carburants</div>';
+      UI.setDiag("Carburants", "Erreur");
+    }
+  },
+  sortStations(mode){
+    stations.sort((a,b)=> mode === "dist" ? a.dist - b.dist : a.prix - b.prix);
+    document.getElementById("fuel-list-content").innerHTML = stations.map(s=>{
+      const p = s.prix === 999 ? "N.C" : s.prix.toFixed(3) + " €";
+      const c = s.prix === 999 ? "#666" : "var(--ktm)";
+      return `
+        <div class="stationItem">
+          <div>
+            <b style="font-size:15px;color:#fff">${s.ville}</b><br>
+            <small style="color:#aaa">${s.dist.toFixed(1)} km</small>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:900;color:${c}">${p}</div>
+            <button class="btn" style="margin-top:4px;font-size:10px;padding:4px 10px" onclick="MOTO.route(${s.lat}, ${s.lon}, '${s.ville.replace(/'/g,"\\'")}', '${s.ville.replace(/'/g,"\\'")}')">GO</button>
+          </div>
+        </div>`;
+    }).join("");
+  },
+  toggleMarkers(){
+    const on = document.getElementById("toggle-flags").checked;
+    stationMarkers.forEach(m=> on ? m.addTo(map) : m.remove());
+  },
+  distance(lat1, lon1, lat2, lon2){
+    const p = 0.017453292519943295;
+    const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
+    return 12742 * Math.asin(Math.sqrt(a));
+  }
+};
 
-                    userMarker.setLngLat([userPos.lng, userPos.lat]);
-                    if(isRecording) recordedTrack.push(userPos);
-                    
-                    if(document.getElementById('nav-instruction').classList.contains('active')) {
-                        map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
-                    } else { map.panTo([userPos.lng, userPos.lat]); }
-                    
-                    MOTO_LOGIC.updateWeather(userPos.lat, userPos.lng);
-                }, null, { enableHighAccuracy: true });
+const UI = {
+  toggleSettings(){
+    const d = document.getElementById("settings-drawer");
+    if(d.classList.contains("open")) this.closeAll();
+    else { this.closeAll(); d.classList.add("open"); }
+  },
+  closeAll(){
+    const s = document.getElementById("settings-drawer");
+    const f = document.getElementById("fuel-drawer");
+    if(s.classList.contains("open")){
+      s.classList.remove("open");
+      document.getElementById("search-input").value = "";
+      document.getElementById("search-results").style.display = "none";
+    }
+    if(f.classList.contains("open")) f.classList.remove("open");
+  },
+  toggleREC(){
+    isRecording = !isRecording;
+    const b = document.getElementById("btn-rec");
+    if(isRecording){
+      track = [];
+      b.classList.add("on");
+    }else{
+      b.classList.remove("on");
+      if(!track.length) return;
+      if(!confirm("Sauvegarder la trace GPX ?")) return;
+      const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="EnergyConceptMotoGPS"><trk><name>Rando Moto</name><trkseg>${track.map(p=>`<trkpt lat="${p.lat}" lon="${p.lng}"></trkpt>`).join("")}</trkseg></trk></gpx>`;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([gpx], {type:"application/gpx+xml"}));
+      a.download = "RandoMoto.gpx";
+      a.click();
+    }
+  },
+  setDiag(k,v){
+    const el = document.getElementById("diag-console");
+    const lines = el.innerHTML.split("<br>").filter(Boolean);
+    const obj = {};
+    lines.forEach(l=>{
+      const i = l.indexOf(":");
+      if(i > -1) obj[l.slice(0,i)] = l.slice(i+1).trim();
+    });
+    obj[k] = v;
+    el.innerHTML = Object.entries(obj).map(([a,b])=>`${a}: ${b}`).join("<br>");
+  }
+};
 
-                window.addEventListener('deviceorientation', function(e) {
-                    if(!e.beta) return;
-                    currentBeta = e.beta; // Enregistrement de la position physique brute
-                    
-                    var lean = Math.abs(Math.round(e.beta - angleOffset));
-                    lean = Math.min(60, lean);
-                    
-                    stats.angle.max = Math.max(stats.angle.max, lean);
-                    stats.angle.sum += lean; stats.angle.count++;
-
-                    document.getElementById('angle-val').innerText = lean + "°";
-                    document.getElementById('angle-max').innerText = stats.angle.max + "°";
-                    document.getElementById('angle-avg').innerText = Math.round(stats.angle.sum/stats.angle.count) + "°";
-                    
-                    if(lean >= CONFIG_KTM.ANGLE_ALERTE_ROUGE) document.getElementById('angle-val').style.color = "red";
-                    else document.getElementById('angle-val').style.color = "#fff";
-                });
-            },
-
-            // Reset complet Vitesse
-            resetSpeed: function() { 
-                stats.speed = { max:0, sum:0, count:0 }; 
-                document.getElementById('speed-max').innerText = "0"; 
-                document.getElementById('speed-avg').innerText = "0"; 
-            },
-            
-            // Reset complet Angle (Tare physique + remise à zéro des stats)
-            resetAngle: function() { 
-                angleOffset = currentBeta; 
-                stats.angle = { max:0, sum:0, count:0 };
-                document.getElementById('angle-max').innerText = "0°"; 
-                document.getElementById('angle-avg').innerText = "0°";
-                document.getElementById('angle-val').innerText = "0°";
-            },
-
-            searchLocation: async function() {
-                var q = document.getElementById('search-input').value;
-                if(q.length < 3) return;
-                var resBox = document.getElementById('search-results');
-                resBox.style.display = 'block'; resBox.innerHTML = "<div style='padding:10px; color:#fff;'>Recherche...</div>";
-                try {
-                    var r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`);
-                    var d = await r.json();
-                    if(d.length === 0) { resBox.innerHTML = "<div style='padding:10px; color:red;'>Aucun résultat.</div>"; return; }
-                    resBox.innerHTML = d.map(p => `<div style="padding:15px; border-bottom:1px solid #333; cursor:pointer;" onclick="MOTO_LOGIC.startRouting(${p.lat}, ${p.lon}, '${p.display_name.split(',')[0]}')">📍 ${p.display_name}</div>`).join('');
-                } catch(e) { resBox.style.display = 'none'; }
-            },
-
-            startRouting: async function(lat, lon, name) {
-                UI.closeAllDrawers();
-                try {
-                    var r = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true`);
-                    var d = await r.json();
-                    if(d.code !== 'Ok') return;
-                    
-                    if(map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); }
-                    map.addSource('route', { type: 'geojson', data: d.routes[0].geometry });
-                    map.addLayer({ id: 'route-layer', type: 'line', source: 'route', paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8 } });
-
-                    var step = d.routes[0].legs[0].steps[1] || d.routes[0].legs[0].steps[0];
-                    document.getElementById('nav-instruction').classList.add('active');
-                    document.getElementById('nav-dist').innerText = Math.round(step.distance) + " m";
-                    document.getElementById('nav-text').innerText = "Vers " + name;
-                    map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
-                } catch(e) { alert("Erreur de calcul d'itinéraire."); }
-            },
-
-            stopNav: function() { document.getElementById('nav-instruction').classList.remove('active'); if(map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); } },
-
-            scanFuel: async function() {
-                UI.closeAllDrawers();
-                document.getElementById('fuel-drawer').classList.add('open');
-                var list = document.getElementById('fuel-list-content');
-                list.innerHTML = "<div style='padding:20px; text-align:center;'>Recherche stations...</div>";
-                try {
-                    var r = await fetch(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=40`);
-                    var d = await r.json();
-                    markers.forEach(m => m.remove()); markers = [];
-                    stationsData = d.results.map(s => {
-                        var p = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
-                        var el = document.createElement('div'); el.className = 'station-flag'; el.innerHTML = p ? p+'€' : 'N.C';
-                        el.onclick = () => MOTO_LOGIC.startRouting(s.geom.lat, s.geom.lon, s.ville);
-                        var marker = new maplibregl.Marker(el).setLngLat([s.geom.lon, s.geom.lat]);
-                        markers.push(marker); if(document.getElementById('toggle-flags').checked) marker.addTo(map);
-                        return { ville: s.ville, prix: p || 999, dist: getDistance(userPos.lat, userPos.lng, s.geom.lat, s.geom.lon), lat: s.geom.lat, lon: s.geom.lon };
-                    });
-                    MOTO_LOGIC.sortStations('dist');
-                } catch(e) { list.innerHTML = "<div style='padding:20px; color:red; text-align:center;'>Erreur serveur.</div>"; }
-            },
-
-            sortStations: function(mode) {
-                stationsData.sort((a,b) => mode === 'dist' ? a.dist - b.dist : a.prix - b.prix);
-                document.getElementById('fuel-list-content').innerHTML = stationsData.map(s => `
-                    <div class="station-item">
-                        <div><b style="color:white; font-size:16px;">${s.ville}</b><br><small style="color:#aaa;">${s.dist} km</small></div>
-                        <div style="font-size:20px; font-weight:bold; color:${s.prix === 999 ? '#666' : 'var(--ktm)'}">${s.prix === 999 ? 'N.C' : s.prix+'€'}</div>
-                        <button class="btn-ktm-ui" onclick="MOTO_LOGIC.startRouting(${s.lat}, ${s.lon}, '${s.ville}')">GO</button>
-                    </div>`).join('');
-            },
-
-            toggleMarkers: function() { var on = document.getElementById('toggle-flags').checked; markers.forEach(m => on ? m.addTo(map) : m.remove()); },
-
-            // Modifié pour forcer la position
-            updateWeather: async function(lat, lon) {
-                if(!lat || !lon) return;
-                try {
-                    var r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-                    var d = await r.json();
-                    document.getElementById('temp-val').innerText = Math.round(d.current_weather.temperature) + "°C";
-                    document.getElementById('wind-val').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
-                } catch(e) {}
-            }
-        };
-
-        var UI = {
-            toggleSettings: function() { 
-                var drawer = document.getElementById('settings-drawer');
-                if(drawer.classList.contains('open')) {
-                    this.closeAllDrawers();
-                } else {
-                    this.closeAllDrawers();
-                    drawer.classList.add('open');
-                }
-            },
-            
-            closeAllDrawers: function() {
-                var sDrawer = document.getElementById('settings-drawer');
-                var fDrawer = document.getElementById('fuel-drawer');
-                if(sDrawer.classList.contains('open')) {
-                    sDrawer.classList.remove('open');
-                    document.getElementById('search-input').value = "";
-                    document.getElementById('search-results').style.display = "none";
-                }
-                if(fDrawer.classList.contains('open')) fDrawer.classList.remove('open');
-            },
-
-            toggleREC: function() {
-                isRecording = !isRecording; var btn = document.getElementById('btn-rec');
-                if(isRecording) { 
-                    btn.classList.add('rec-active'); 
-                    recordedTrack = []; 
-                } else {
-                    btn.classList.remove('rec-active');
-                    if(recordedTrack.length > 0 && confirm("Sauvegarder la trace GPX ?")) {
-                        var gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>' + recordedTrack.map(p => `<trkpt lat="${p.lat}" lon="${p.lng}"></trkpt>`).join('') + '</trkseg></trk></gpx>';
-                        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([gpx], {type:"application/gpx+xml"}));
-                        a.download = "Rando_KTM.gpx"; a.click();
-                    }
-                }
-            }
-        };
-
-        window.onload = function() { MOTO_LOGIC.initSystem(); };
-    </script>
+window.onload = ()=>SYS.init();
+</script>
 </body>
 </html>
