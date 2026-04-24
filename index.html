@@ -3,129 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept - KTM My Ride GPS</title>
+    <title>KTM MY RIDE - V5 CLINIQUE</title>
 
     <script>
         const CONFIG_KTM = {
-            COULEUR: "#FF6600",           // Orange KTM
-            RAYON_DEFAULT: 10,            // Rayon initial en km
-            MODE_TRI: "prix",             // "prix" ou "distance"
-            THEME: "nuit",                // "jour", "nuit", "auto"
-            API_FUEL: "https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-carburants-fichier-instantane-test-public-copy",
-            FREQUENCE_REC: 1000           // Log GPX chaque seconde
+            ORANGE: "#FF6600",
+            GRIS_FONCE: "#1a1a1a",
+            RAYON_DEFAULT: 10,
+            MODE_TRI: "prix", // 'prix' ou 'distance'
+            REC_INTERVAL: 1000, 
+            CORSE_NC_DISPLAY: true // Affiche N.C si prix absent
         };
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* 2. TIROIR [VISUAL-KTM] : Structure Étanche et Design Clinique */
-        :root { --ktm: #FF6600; --bg: #050505; --panel: rgba(15,15,15,0.95); --border: #333; }
-        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        /* [TIROIR VISUAL-KTM] - DESIGN & THEMES */
+        :root { --ktm: #FF6600; --bg: #050505; --panel: rgba(10,10,10,0.92); --txt: #ffffff; }
         
-        #map { position: absolute; top:0; left:0; width:100%; height:100%; z-index:1; filter: brightness(0.6) contrast(1.2); }
-        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events: none; padding: 12px; display: grid; grid-template-columns: 220px 1fr 220px; grid-template-rows: auto 1fr auto; gap: 10px; }
+        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; background: var(--bg); color: var(--txt); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        /* Lock Screen Paysage */
+        #lock-screen { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; visibility: hidden; }
+        #lock-screen h1 { color: var(--ktm); font-size: 2.5rem; margin: 0; }
+        @media (orientation: portrait) { #lock-screen { visibility: visible; } }
+
+        #map { position: absolute; inset: 0; z-index: 1; }
+        .nuit #map { filter: invert(1) hue-rotate(180deg) brightness(0.5) contrast(1.2); }
+
+        .overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; padding: 12px; display: grid; grid-template-columns: 200px 1fr 200px; grid-template-rows: auto 1fr auto; gap: 10px; }
         .overlay * { pointer-events: auto; }
 
-        .case { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--ktm); border-radius: 2px; padding: 8px; }
+        .case { background: var(--panel); border: 1px solid #333; border-left: 3px solid var(--ktm); border-radius: 2px; padding: 8px; }
         
         /* Recherche Mini */
-        .search-zone { grid-column: 2; display: flex; justify-content: center; align-items: flex-start; gap: 5px; }
-        #search-input { width: 220px; background: #111; border: 1px solid #444; color: white; padding: 8px 12px; border-radius: 20px; font-size: 0.85rem; outline: none; }
-        #search-input:focus { border-color: var(--ktm); }
-        .btn-go { background: var(--ktm); border: none; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
+        .search-zone { grid-column: 2; display: flex; justify-content: center; align-items: flex-start; gap: 6px; }
+        #search-input { width: 180px; background: #111; border: 1px solid #444; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; outline: none; }
+        .btn-go { background: var(--ktm); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
 
-        /* Tiroir Paramètres */
-        #settings-drawer { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--panel); z-index: 100; transition: 0.3s; border-right: 2px solid var(--ktm); padding: 20px; box-sizing: border-box; pointer-events: auto; }
-        #settings-drawer.open { left: 0; }
-        
+        /* Tiroir Réglages (Trois points) */
+        .dots-btn { position: absolute; top: 12px; right: 12px; cursor: pointer; font-size: 22px; color: var(--ktm); z-index: 1001; text-shadow: 0 0 5px #000; }
+        #settings-drawer { position: fixed; top: 0; right: -280px; width: 260px; height: 100%; background: var(--panel); z-index: 1000; transition: 0.3s; border-left: 2px solid var(--ktm); padding: 20px; box-sizing: border-box; }
+        #settings-drawer.open { right: 0; }
+
         /* Télémétrie */
-        .vitesse-box { text-align: right; }
-        .vitesse-val { font-size: 3rem; font-weight: bold; line-height: 1; }
-        .gauge-angle { width: 60px; height: 60px; border-radius: 50%; border: 4px solid #222; display: inline-flex; align-items: center; justify-content: center; margin: 10px 0; border-top-color: var(--ktm); transition: transform 0.1s; }
-        #zero-btn { width: 18px; height: 4px; background: var(--ktm); margin: 2px auto; opacity: 0.4; cursor: pointer; border-radius: 2px; }
+        .vitesse-val { font-size: 2.8rem; font-weight: bold; line-height: 1; }
+        .gauge-angle { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #222; display: inline-flex; align-items: center; justify-content: center; border-top-color: var(--ktm); position: relative; }
+        #zero-btn { width: 15px; height: 3px; background: var(--ktm); margin: 4px auto 0; border-radius: 2px; cursor: pointer; opacity: 0.5; }
 
         /* Bouton REC */
-        #rec-btn { width: 40px; height: 40px; border-radius: 50%; background: #111; border: 1px solid #444; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .rec-dot { width: 14px; height: 14px; background: #333; border-radius: 50%; }
+        #rec-btn { position: absolute; bottom: 20px; right: 20px; width: 45px; height: 45px; border-radius: 50%; background: var(--panel); border: 1px solid #444; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; }
+        .rec-dot { width: 14px; height: 14px; background: #444; border-radius: 50%; }
         .rec-active { background: #ff0000; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.3; } }
+        @keyframes blink { 50% { opacity: 0.2; } }
 
-        input[type=range] { width: 100%; accent-color: var(--ktm); }
-        .station-item { border-bottom: 1px solid #222; padding: 5px 0; font-size: 0.75rem; }
+        .btn-ktm { background: #222; color: #fff; border: 1px solid #444; padding: 5px 10px; font-size: 0.7rem; cursor: pointer; margin-top: 10px; width: 100%; }
+        .station-card { border-bottom: 1px solid #222; padding: 4px 0; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
+    <div id="lock-screen">
+        <h1>LOCK KTM</h1>
+        <p>PASSER EN MODE PAYSAGE</p>
+    </div>
+
     <div id="map"></div>
 
+    <div class="dots-btn" onclick="toggleSettings()">⋮</div>
     <div id="settings-drawer">
-        <h3 style="color:var(--ktm); border-bottom: 1px solid #333;">REGLAGES</h3>
-        <label style="font-size:0.8rem;">Rayon Recherche: <span id="rayon-val">10</span>km</label>
-        <input type="range" min="1" max="20" value="10" oninput="updateRayon(this.value)">
-        
-        <div style="margin-top:20px;">
-            <label style="font-size:0.8rem;">Mode Affichage</label><br>
-            <button onclick="setTheme('jour')" style="font-size:0.7rem;">JOUR</button>
-            <button onclick="setTheme('nuit')" style="font-size:0.7rem;">NUIT</button>
-            <button onclick="setTheme('auto')" style="font-size:0.7rem;">AUTO</button>
+        <h3 style="color:var(--ktm); border-bottom: 1px solid #333; padding-bottom: 10px;">RÉGLAGES</h3>
+        <p style="font-size:0.8rem;">AFFICHAGE :</p>
+        <div style="display:flex; gap:5px;">
+            <button class="btn-ktm" onclick="changeTheme('jour')">JOUR</button>
+            <button class="btn-ktm" onclick="changeTheme('nuit')">NUIT</button>
+            <button class="btn-ktm" onclick="changeTheme('auto')">AUTO</button>
         </div>
+        <p style="font-size:0.8rem; margin-top:20px;">RAYON : <span id="radius-val">10</span> km</p>
+        <input type="range" min="1" max="20" value="10" style="width:100%; accent-color:var(--ktm);" oninput="updateRadius(this.value)">
+        <button class="btn-ktm" style="background:var(--ktm); margin-top:30px;" onclick="initAngle()">ACTIVER CAPTEURS</button>
+    </div>
 
-        <div style="margin-top:20px;">
-            <button onclick="requestSensors()" style="background:var(--ktm); color:white; border:none; padding:10px; width:100%; cursor:pointer;">ACTIVER CAPTEURS ANGLE</button>
-        </div>
+    <div id="rec-btn" onclick="toggleRecording()">
+        <div class="rec-dot" id="rec-status"></div>
     </div>
 
     <div class="overlay">
         <div style="grid-column: 1; display:flex; flex-direction:column; gap:8px;">
             <div class="case">
-                <div style="color:var(--ktm); font-size:0.65rem; font-weight:bold;">GUIDAGE GPS</div>
-                <div id="nav-instr" style="font-size:0.9rem; font-weight:bold; margin-top:5px;">En attente de destination...</div>
-                <div id="nav-dist" style="font-size:0.8rem; color:var(--ktm);">-- m</div>
+                <div style="color:var(--ktm); font-size:0.6rem; font-weight:bold;">NAVIGATION</div>
+                <div id="nav-target" style="font-size:0.85rem; font-weight:bold; margin-top:4px;">Prêt à rouler</div>
+                <div id="nav-info" style="font-size:0.7rem; color:var(--ktm);">-- m</div>
             </div>
 
             <div class="case" style="flex-grow:1; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:var(--ktm); font-size:0.65rem; font-weight:bold;">STATIONS</span>
-                    <button onclick="searchFuel()" style="font-size:0.6rem; background:#222; border:1px solid #444; color:white; padding:2px 6px;">ACTIVER</button>
+                    <span style="color:var(--ktm); font-size:0.6rem; font-weight:bold;">STATIONS</span>
+                    <button class="btn-ktm" style="width:auto; margin:0;" onclick="findFuel()">RECHERCHER</button>
                 </div>
-                <div id="fuel-results" style="overflow-y:auto; margin-top:5px; flex-grow:1;">
-                    <span style="color:#666; font-size:0.7rem;">Cliquez sur Activer pour chercher</span>
-                </div>
-            </div>
-
-            <div style="display:flex; gap:10px; align-items:center;">
-                <div style="cursor:pointer; font-size:1.5rem;" onclick="toggleSettings()">⚙️</div>
-                <div id="rec-btn" onclick="toggleRec()">
-                    <div class="rec-dot" id="rec-status"></div>
-                </div>
+                <div id="fuel-list" style="overflow-y:auto; margin-top:6px; flex-grow:1;"></div>
             </div>
         </div>
 
         <div class="search-zone">
-            <input type="text" id="search-input" placeholder="Rechercher un POI...">
-            <button class="btn-go" onclick="launchNav()">GO</button>
+            <input type="text" id="search-input" placeholder="Où aller ?">
+            <button class="btn-go" onclick="setNav()">GO</button>
         </div>
 
         <div style="grid-column: 3; text-align: right; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-            <div class="case vitesse-box" style="width:140px;">
+            <div class="case" style="width:130px;">
                 <div class="vitesse-val" id="speed">0</div>
-                <div style="color:var(--ktm); font-size:0.65rem; font-weight:bold; margin-top:-5px;">KM/H</div>
-                <div id="alt-txt" style="font-size:0.8rem; border-top:1px solid #222; margin-top:5px; padding-top:3px;">Alt: -- m</div>
+                <div style="color:var(--ktm); font-size:0.65rem; margin-top:-4px;">KM/H</div>
+                <div id="alt-val" style="font-size:0.8rem; border-top:1px solid #333; margin-top:6px; padding-top:4px;">Alt: -- m</div>
             </div>
 
-            <div class="case" style="width:140px; text-align:center;">
-                <div class="gauge-angle" id="gauge-ui">
-                    <span id="angle-val" style="font-size:1.2rem; font-weight:bold;">0°</span>
+            <div class="case" style="width:130px; text-align:center;">
+                <div class="gauge-angle" id="gauge-box">
+                    <span id="angle-txt" style="font-size:1.2rem; font-weight:bold;">0°</span>
                 </div>
-                <div id="zero-btn" onclick="setAngleZero()"></div>
+                <div id="zero-btn" onclick="calibrateZero()"></div>
                 <div style="font-size:0.6rem; color:var(--ktm);">MAX: <span id="max-angle">0</span>°</div>
             </div>
 
-            <div class="case" style="width:140px; cursor:pointer;" onclick="openMeteoFull()">
-                <div style="display:flex; justify-content:space-between;">
-                    <span id="temp-txt" style="font-size:1rem; font-weight:bold;">--°C</span>
-                    <span id="weather-icon">--</span>
-                </div>
+            <div class="case" style="width:130px; cursor:pointer;" onclick="window.open('https://meteofrance.com/','_blank')">
+                <div id="temp-txt" style="font-size:1.1rem; font-weight:bold;">--°C</div>
                 <div id="wind-txt" style="font-size:0.7rem; color:var(--ktm);">Vent: -- km/h</div>
             </div>
         </div>
@@ -133,78 +134,88 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        /* 3. TIROIR [LOGIQUE & SYSTEM] */
+        /* [TIROIR SYSTEM-CORE] */
         let map = L.map('map', { zoomControl: false }).setView([43.76, 1.98], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        let angleZero = 0;
-        let sessionMaxAngle = 0;
-        let isRecording = false;
+        let angleOffset = 0;
+        let sessionMax = 0;
+        let recording = false;
+        let lastBeta = 0;
 
-        // [SENSORS] Altitude et Vitesse réelle
-        navigator.geolocation.watchPosition(pos => {
-            const s = Math.round(pos.coords.speed * 3.6) || 0;
-            const a = Math.round(pos.coords.altitude) || 0;
-            document.getElementById('speed').innerText = s;
-            document.getElementById('alt-txt').innerText = "Alt: " + a + " m";
-            updateWeather(pos.coords.latitude, pos.coords.longitude);
-        }, null, { enableHighAccuracy: true });
-
-        // [SENSORS] Angle Inclinaison
-        function requestSensors() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(state => {
-                    if (state === 'granted') window.addEventListener('deviceorientation', handleAngle);
-                });
-            } else { window.addEventListener('deviceorientation', handleAngle); }
+        function changeTheme(mode) {
+            document.body.className = mode === 'nuit' ? 'nuit' : '';
             toggleSettings();
         }
 
-        function handleAngle(e) {
-            let current = Math.abs(e.gamma || 0) - angleZero;
-            current = Math.max(0, Math.round(current));
-            document.getElementById('angle-val').innerText = current + "°";
-            document.getElementById('gauge-ui').style.transform = `rotate(${current}deg)`;
-            if(current > sessionMaxAngle) {
-                sessionMaxAngle = current;
-                document.getElementById('max-angle').innerText = sessionMaxAngle;
+        /* [TIROIR MOTO-SENSORS] - AXE CORRIGÉ PAYSAGE */
+        function initAngle() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(res => {
+                    if (res === 'granted') window.addEventListener('deviceorientation', handleOrientation);
+                });
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
             }
+            toggleSettings();
         }
 
-        function setAngleZero() { angleZero = Math.abs(window.lastRawAngle || 0); }
-
-        // [NAV] Lancement Navigation
-        function launchNav() {
-            const dest = document.getElementById('search-input').value;
-            if(!dest) return;
-            document.getElementById('nav-instr').innerText = "Vers: " + dest;
-            document.getElementById('nav-dist').innerText = "Calcul trajet...";
-            // Ici intégration réelle OSRM possible
+        function handleOrientation(e) {
+            // En paysage (bord gauche en haut), l'inclinaison de la moto (lean) est portée par l'axe Beta
+            lastBeta = e.beta; 
+            let current = Math.abs(lastBeta - angleOffset);
+            current = Math.min(60, Math.round(current)); // Limite physique
+            
+            document.getElementById('angle-txt').innerText = current + "°";
+            if(current > sessionMax) {
+                sessionMax = current;
+                document.getElementById('max-angle').innerText = sessionMax;
+            }
+            document.getElementById('gauge-box').style.transform = `rotate(${e.beta > angleOffset ? current : -current}deg)`;
         }
 
-        // [FUEL] Recherche Stations
-        async function searchFuel() {
-            const results = document.getElementById('fuel-results');
-            results.innerHTML = "Recherche en cours...";
-            // Simulation API avec gestion NC pour la Corse
+        function calibrateZero() { angleOffset = lastBeta; }
+
+        /* [TIROIR GPS & ALTITUDE] */
+        navigator.geolocation.watchPosition(p => {
+            const speed = Math.round(p.coords.speed * 3.6) || 0;
+            const alt = Math.round(p.coords.altitude) || 0;
+            document.getElementById('speed').innerText = speed;
+            document.getElementById('alt-val').innerText = `Alt: ${alt} m`;
+            getWeather(p.coords.latitude, p.coords.longitude);
+        }, null, { enableHighAccuracy: true });
+
+        /* [TIROIR FUEL-ENGINE] */
+        async function findFuel() {
+            const list = document.getElementById('fuel-list');
+            list.innerHTML = "Recherche...";
             setTimeout(() => {
                 const data = [
-                    {nom: "Total Graulhet", prix: "1.85", dist: "1.2"},
-                    {nom: "Station Corse Sud", prix: null, dist: "5.4"},
-                    {nom: "Avia", prix: "1.89", dist: "2.1"}
+                    {n: "Total Energy", p: "1.89", d: "1.4"},
+                    {n: "Station Corse", p: null, d: "5.2"}, // Cas N.C
+                    {n: "E.Leclerc", p: "1.78", d: "3.8"}
                 ];
-                results.innerHTML = data.map(s => `
-                    <div class="station-item">
-                        <b>${s.nom}</b> (${s.dist}km)<br>
-                        Prix: <span style="color:${s.prix?'white':'var(--ktm)'}">${s.prix ? s.prix+'€' : 'N.C'}</span>
-                        <button onclick="launchNav()" style="float:right; background:var(--ktm); border:none; color:white; font-size:0.6rem; border-radius:2px;">GO</button>
+                list.innerHTML = data.map(s => `
+                    <div class="station-card">
+                        <b>${s.n}</b> (${s.d}km)<br>
+                        Prix: <span style="color:${s.p ? '#fff' : 'var(--ktm)'}">${s.p ? s.p+'€' : 'N.C'}</span>
+                        <button class="btn-ktm" style="width:auto; float:right; margin:0; padding:2px 6px;" onclick="setNav('${s.n}')">GO</button>
                     </div>
                 `).join('');
             }, 800);
         }
 
-        // [WEATHER]
-        async function updateWeather(lat, lon) {
+        /* [TIROIR NAV-GUI] */
+        function setNav(dest) {
+            const input = document.getElementById('search-input').value;
+            const final = dest || input;
+            if(!final) return;
+            document.getElementById('nav-target').innerText = final;
+            document.getElementById('nav-info').innerText = "Calcul itinéraire...";
+        }
+
+        /* [TIROIR WEATHER] */
+        async function getWeather(lat, lon) {
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
                 const d = await res.json();
@@ -213,14 +224,13 @@
             } catch(e) {}
         }
 
-        // [UI CONTROLS]
+        /* [UI HELPERS] */
         function toggleSettings() { document.getElementById('settings-drawer').classList.toggle('open'); }
-        function updateRayon(v) { document.getElementById('rayon-val').innerText = v; }
-        function toggleRec() {
-            isRecording = !isRecording;
+        function updateRadius(v) { document.getElementById('radius-val').innerText = v; }
+        function toggleRecording() {
+            recording = !recording;
             document.getElementById('rec-status').classList.toggle('rec-active');
         }
-        function openMeteoFull() { window.open("https://meteofrance.com/", "_blank"); }
     </script>
 </body>
 </html>
