@@ -9,11 +9,11 @@
         const CONFIG_KTM = {
             MAPBOX_KEY: "pk.eyJ1IjoiYnJpY2VjYXJkb25hIiwiYSI6Y20yeGZ6Z3I0MDBrNDJpczByYmdyeXpxOSJ9.7_o5U8fS5kY8X7V8X7V8X7",
             COULEUR_ACCENT: "#FF6600",
-            CARBURANT_PREF: "E10",       // Options: Gazole, SP95, SP98, E10, E85
-            RAYON_RECHERCHE: 15,         // En kilomètres (1 à 20)
-            ANGLE_ALERTE_ROUGE: 45,      // Déclenchement visuel jauge
-            PITCH_3D: 60,                // Inclinaison de la caméra (Style OsmAnd)
-            ZOOM_NAV: 18                 // Zoom en mode navigation
+            CARBURANT_PREF: "E10",       
+            RAYON_RECHERCHE: 15,         
+            ANGLE_ALERTE_ROUGE: 45,      
+            PITCH_3D: 60,                
+            ZOOM_NAV: 17.5               
         };
     </script>
 
@@ -40,8 +40,9 @@
         .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 20px; cursor: pointer; text-transform: uppercase; }
         
         /* RÉSULTATS PREDICTIFS */
-        #search-results { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 400px; background: rgba(0,0,0,0.9); border: 1px solid var(--ktm); z-index: 50; max-height: 200px; overflow-y: auto; display: none; }
-        .search-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
+        #search-results { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 400px; background: rgba(0,0,0,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; }
+        .search-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; font-size: 14px; }
+        .search-item:hover { background: #222; }
 
         /* HUD GAUCHE : Vitesse & Météo */
         .hud-left { grid-column: 1; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; }
@@ -68,7 +69,6 @@
         select, input[type="range"] { width: 100%; background: #111; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 5px; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
         
-        /* BOUTON REC */
         #btn-rec { background: #111; border: 2px solid #444; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; }
         .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 10px red; }
     </style>
@@ -78,11 +78,9 @@
     <div id="map"></div>
 
     <div class="ui-layer">
-        
         <div class="top-bar">
             <div class="search-box pointer-auto">
-                <input type="text" id="search-input" placeholder="Rechercher une ville, rue, parking..." onkeyup="MOTO_LOGIC.searchLocation(this.value)">
-                <button class="btn-ktm" onclick="MOTO_LOGIC.triggerSearch()">CHERCHER</button>
+                <input type="text" id="search-input" placeholder="Où allons-nous ?" onkeyup="MOTO_LOGIC.searchLocation(this.value)">
             </div>
             
             <div id="search-results" class="pointer-auto"></div>
@@ -90,7 +88,7 @@
             <div style="display: flex; gap: 15px;" class="pointer-auto">
                 <button id="btn-rec" onclick="UI.toggleREC()">REC</button>
                 <button class="btn-ktm" onclick="MOTO_LOGIC.scanFuel()">⛽ CARBURANT</button>
-                <div style="color: var(--ktm); font-size: 35px; cursor: pointer;" onclick="UI.toggleSettings()">⋮</div>
+                <div style="color: var(--ktm); font-size: 35px; cursor: pointer; padding: 0 10px;" onclick="UI.toggleSettings()">⋮</div>
             </div>
         </div>
 
@@ -109,12 +107,12 @@
 
         <div class="nav-block pointer-auto">
             <div class="nav-instruction" id="nav-instruction">
-                <div id="nav-arrow" style="font-size: 35px; color: var(--ktm);">⬆</div>
+                <div style="font-size: 35px; color: var(--ktm);">➔</div>
                 <div>
-                    <div id="nav-dist" style="font-size: 24px; font-weight: bold;">-- m</div>
-                    <div id="nav-text" style="color: #aaa; font-size: 14px;">En attente de destination...</div>
+                    <div id="nav-dist" style="font-size: 24px; font-weight: bold;">-- km</div>
+                    <div id="nav-text" style="color: #aaa; font-size: 14px;">En attente...</div>
                 </div>
-                <button onclick="MOTO_LOGIC.stopNav()" style="background: none; border: 1px solid #555; color: white; padding: 5px; border-radius: 4px; margin-left: 20px;">STOP</button>
+                <button onclick="MOTO_LOGIC.stopNav()" style="background: none; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 4px; margin-left: 20px; cursor: pointer;">STOP</button>
             </div>
         </div>
 
@@ -124,66 +122,59 @@
                 <div class="gauge-wrap" id="gauge-visual">
                     <span id="angle-val" style="font-size: 32px; font-weight: bold;">0°</span>
                 </div>
-                <button onclick="MOTO_LOGIC.setZero()" style="background: transparent; border: 1px solid #555; color: white; padding: 4px 15px; margin-top: 15px; font-size: 10px; border-radius: 4px;">ZÉRO</button>
+                <button onclick="MOTO_LOGIC.setZero()" style="background: transparent; border: 1px solid #555; color: white; padding: 4px 15px; margin-top: 15px; font-size: 10px; border-radius: 4px; cursor: pointer;">ZÉRO</button>
             </div>
         </div>
     </div>
 
     <div id="settings-drawer" class="drawer pointer-auto">
-        <h3 style="color: var(--ktm); margin-bottom: 20px;">PANNEAU DE CONTRÔLE</h3>
-        <div style="margin-bottom: 15px;">
-            <label style="font-size: 12px; color: #888;">CARBURANT</label>
-            <select onchange="CONFIG_KTM.CARBURANT_PREF = this.value">
-                <option value="Gazole">Gazole</option>
-                <option value="E10">E10</option>
-                <option value="SP95">SP95</option>
-                <option value="SP98">SP98</option>
-                <option value="E85">E85</option>
-            </select>
-        </div>
-        <div style="margin-bottom: 15px;">
-            <label style="font-size: 12px; color: #888;">RAYON RECHERCHE : <span id="rad-disp">15</span> km</label>
-            <input type="range" min="1" max="20" value="15" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
-        </div>
-        <button class="btn-ktm" style="width: 100%; margin-top: 20px;" onclick="UI.toggleSettings()">FERMER</button>
+        <h3 style="color: var(--ktm); margin-bottom: 20px;">RÉGLAGES GPS</h3>
+        <label style="font-size: 12px; color: #888;">CARBURANT</label>
+        <select onchange="CONFIG_KTM.CARBURANT_PREF = this.value">
+            <option value="Gazole">Gazole</option>
+            <option value="E10">E10</option>
+            <option value="SP95">SP95</option>
+            <option value="SP98">SP98</option>
+            <option value="E85">E85</option>
+        </select>
+        <label style="font-size: 12px; color: #888; margin-top: 15px; display: block;">RAYON : <span id="rad-disp">15</span> km</label>
+        <input type="range" min="1" max="20" value="15" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG_KTM.RAYON_RECHERCHE=this.value">
+        <button class="btn-ktm" style="width: 100%; margin-top: 30px;" onclick="UI.toggleSettings()">FERMER</button>
     </div>
 
     <div id="fuel-drawer" class="drawer pointer-auto">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
-            <h3 style="color: var(--ktm);">STATIONS <span id="fuel-type-disp"></span></h3>
-            <button onclick="UI.toggleFuelDrawer()" style="background: none; border: none; color: white; cursor: pointer;">[ FERMER ]</button>
+            <h3 style="color: var(--ktm);">STATIONS PROCHES</h3>
+            <button onclick="UI.toggleFuelDrawer()" style="background: none; border: none; color: white; cursor: pointer;">[ X ]</button>
         </div>
         <div id="fuel-list-content"></div>
     </div>
 
     <script>
-        let map, userPos = { lat: 43.76, lng: 1.99 }, userMarker, routeLayer;
-        let angleOffset = 0, isRecording = false;
+        let map, userMarker;
+        let userPos = { lat: 43.761, lng: 1.990 }; // Init. Graulhet
+        let angleOffset = 0, isRecording = false, searchTimeout = null;
 
-        /* --- LOGIQUE GLOBALE --- */
         const MOTO_LOGIC = {
             initSystem() {
-                // 1. Initialisation Mapbox (Mode 3D OsmAnd)
                 mapboxgl.accessToken = CONFIG_KTM.MAPBOX_KEY;
                 map = new mapboxgl.Map({
                     container: 'map',
                     style: 'mapbox://styles/mapbox/dark-v11',
                     center: [userPos.lng, userPos.lat],
                     zoom: 15,
-                    pitch: CONFIG_KTM.PITCH_3D, // Vue 3D inclinée
+                    pitch: CONFIG_KTM.PITCH_3D,
                     antialias: true
                 });
 
-                // Marqueur Moto
                 const el = document.createElement('div');
-                el.style.width = '20px'; el.style.height = '20px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid white'; el.style.boxShadow = '0 0 15px #00ccff';
+                el.style.width = '24px'; el.style.height = '24px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid white'; el.style.boxShadow = '0 0 15px #00ccff';
                 userMarker = new mapboxgl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
 
                 this.startSensors();
             },
 
             startSensors() {
-                // GPS TRUCKING
                 navigator.geolocation.watchPosition(p => {
                     userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
                     document.getElementById('speed-val').innerText = Math.round(p.coords.speed * 3.6) || 0;
@@ -191,59 +182,66 @@
                     
                     userMarker.setLngLat([userPos.lng, userPos.lat]);
                     
-                    // La carte suit la moto en 3D
                     if(document.getElementById('nav-instruction').classList.contains('active')) {
                         map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
                     } else {
                         map.panTo([userPos.lng, userPos.lat]);
                     }
-
                     this.updateWeather(userPos.lat, userPos.lng);
-                }, e => console.log("GPS Err:", e), { enableHighAccuracy: true });
+                }, e => console.log("GPS Err"), { enableHighAccuracy: true });
 
-                // GYROSCOPE (Angle)
                 window.addEventListener('deviceorientation', e => {
                     if(e.beta === null) return;
                     let lean = Math.abs(e.beta - angleOffset);
                     lean = Math.min(60, Math.round(lean));
-                    
                     document.getElementById('angle-val').innerText = lean + "°";
                     document.getElementById('gauge-visual').style.transform = `rotate(${e.beta > angleOffset ? lean : -lean}deg)`;
                     document.getElementById('gauge-visual').style.borderTopColor = (lean >= CONFIG_KTM.ANGLE_ALERTE_ROUGE) ? "red" : "var(--ktm)";
                 });
             },
 
-            // RECHERCHE VILLE (Nominatim OpenStreetMap)
-            async searchLocation(query) {
-                if(query.length < 3) return document.getElementById('search-results').style.display = 'none';
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5`);
-                const data = await res.json();
+            // RECHERCHE PRÉDICTIVE (Délai anti-spam)
+            searchLocation(query) {
+                clearTimeout(searchTimeout);
+                if(query.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
                 
-                const box = document.getElementById('search-results');
-                box.style.display = 'block';
-                box.innerHTML = data.map(place => `
-                    <div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${place.display_name.split(',')[0]}')">
-                        📍 ${place.display_name}
-                    </div>
-                `).join('');
+                searchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5`);
+                        const data = await res.json();
+                        const box = document.getElementById('search-results');
+                        box.style.display = 'block';
+                        
+                        box.innerHTML = data.map(place => {
+                            // Nettoyage des apostrophes pour ne pas casser le code HTML
+                            let cleanName = place.display_name.split(',')[0].replace(/['"]/g, " ");
+                            return `<div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${cleanName}')">📍 ${place.display_name}</div>`;
+                        }).join('');
+                    } catch(e) { console.error(e); }
+                }, 500);
             },
 
-            // CALCUL D'ITINÉRAIRE GPS (OSRM)
+            // CALCUL D'ITINÉRAIRE (Mapbox Directions API)
             async startRouting(destLat, destLon, destName) {
                 document.getElementById('search-results').style.display = 'none';
                 document.getElementById('search-input').value = "";
                 if(document.getElementById('fuel-drawer').classList.contains('open')) UI.toggleFuelDrawer();
 
-                // Appel au serveur de routage OSRM (Gratuit, Open Source)
-                const url = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson&steps=true`;
+                // On utilise la clé Mapbox du profil utilisateur pour une stabilité 100%
+                const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?geometries=geojson&access_token=${CONFIG_KTM.MAPBOX_KEY}`;
                 
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
+                    
+                    if(data.code !== 'Ok') throw new Error("Route impossible");
                     const route = data.routes[0];
 
-                    // Tracé sur la carte Mapbox
-                    if (map.getSource('route')) map.removeLayer('route-layer').removeSource('route');
+                    if (map.getSource('route')) {
+                        map.removeLayer('route-layer');
+                        map.removeSource('route');
+                    }
+                    
                     map.addSource('route', { type: 'geojson', data: route.geometry });
                     map.addLayer({
                         id: 'route-layer', type: 'line', source: 'route',
@@ -251,28 +249,29 @@
                         paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8, 'line-opacity': 0.8 }
                     });
 
-                    // Activation UI Guidage
                     document.getElementById('nav-instruction').classList.add('active');
                     document.getElementById('nav-text').innerText = `Vers: ${destName}`;
                     document.getElementById('nav-dist').innerText = (route.distance / 1000).toFixed(1) + " km";
-                    
-                    // Caméra mode GPS
                     map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
 
-                } catch(e) { alert("Erreur calcul d'itinéraire."); }
+                } catch(e) { 
+                    alert("ALERTE SYSTÈME : Calcul d'itinéraire échoué. Vérifiez votre connexion."); 
+                    console.error("Routing Error:", e);
+                }
             },
 
             stopNav() {
                 document.getElementById('nav-instruction').classList.remove('active');
-                if (map.getSource('route')) map.removeLayer('route-layer').removeSource('route');
+                if (map.getSource('route')) {
+                    map.removeLayer('route-layer');
+                    map.removeSource('route');
+                }
                 map.easeTo({ pitch: 0, zoom: 15 });
             },
 
-            // RECHERCHE CARBURANTS (API Gouv + N.C Corse)
             async scanFuel() {
                 UI.toggleFuelDrawer();
-                document.getElementById('fuel-type-disp').innerText = CONFIG_KTM.CARBURANT_PREF;
-                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; text-align:center;'>RECHERCHE EN COURS...</div>";
+                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Recherche en cours...</div>";
                 
                 const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=20`;
                 
@@ -280,29 +279,31 @@
                     const res = await fetch(url);
                     const data = await res.json();
                     
-                    if(data.results.length === 0) {
-                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée dans ce rayon.</div>";
+                    if(!data.results || data.results.length === 0) {
+                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée.</div>";
                         return;
                     }
 
-                    // Tri par distance (simulé ici par l'ordre API)
                     document.getElementById('fuel-list-content').innerHTML = data.results.map(s => {
+                        if(!s.geom) return ''; // Évite les erreurs si coordonnées absentes
                         const prixRaw = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
-                        // GESTION CORSE (N.C)
                         const prixAffiche = prixRaw ? prixRaw + ' €' : '<span style="color:var(--ktm)">N.C</span>';
+                        let cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
                         
                         return `
                             <div class="station-item">
                                 <div>
-                                    <div style="font-weight:bold">${s.ville}</div>
-                                    <div style="font-size:12px; color:#888">${s.adresse}</div>
+                                    <div style="font-weight:bold">${s.ville || 'Station'}</div>
+                                    <div style="font-size:12px; color:#888">${s.adresse || ''}</div>
                                 </div>
                                 <div style="font-size:18px; font-weight:bold; margin-right:15px;">${prixAffiche}</div>
-                                <button class="btn-ktm" style="padding: 8px 15px;" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${s.ville}')">GO</button>
+                                <button class="btn-ktm" style="padding: 8px 15px;" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${cleanName}')">GO</button>
                             </div>
                         `;
                     }).join('');
-                } catch(e) { document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur serveur Gouvernemental.</div>"; }
+                } catch(e) { 
+                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants.</div>"; 
+                }
             },
 
             async updateWeather(lat, lon) {
@@ -317,7 +318,6 @@
             setZero() { angleOffset = 0; }
         };
 
-        /* --- INTERFACE UI --- */
         const UI = {
             toggleSettings() { document.getElementById('settings-drawer').classList.toggle('open'); },
             toggleFuelDrawer() { document.getElementById('fuel-drawer').classList.toggle('open'); },
@@ -325,19 +325,12 @@
                 isRecording = !isRecording;
                 const btn = document.getElementById('btn-rec');
                 btn.classList.toggle('rec-active');
-                if(isRecording) {
-                    alert("C'est parti ! Enregistrement GPX activé.");
-                    btn.innerText = "REC 🔴";
-                } else {
-                    if(confirm("Voulez-vous enregistrer votre course ?")) btn.innerText = "REC";
-                    else btn.innerText = "REC";
-                }
+                if(isRecording) { alert("C'est parti !"); btn.innerText = "REC 🔴"; } 
+                else { confirm("Voulez-vous enregistrer votre course ?"); btn.innerText = "REC"; }
             }
         };
 
-        // Lancement système au chargement
         window.onload = () => MOTO_LOGIC.initSystem();
-
     </script>
 </body>
 </html>
