@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - COCKPIT V30</title>
+    <title>ENERGY CONCEPT - COCKPIT V31</title>
 
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
@@ -42,23 +42,21 @@
         .val-giant { font-size: 5.5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
         .val-label { font-size: 12px; color: #888; font-weight: bold; text-align: center; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
         
-        /* TÉLÉMÉTRIE */
+        /* TÉLÉMÉTRIE & MICRO BOUTON ZÉRO */
         .telemetry-box { width: 100%; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }
         .tele-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 4px; font-weight: bold; }
         .tele-val { color: #fff; font-size: 13px; }
+        .micro-btn { background: transparent; border: 1px solid #333; color: #555; font-size: 9px; padding: 4px 10px; border-radius: 2px; cursor: pointer; width: 100%; margin-top: 5px; text-transform: uppercase; transition: 0.2s; }
+        .micro-btn:active { background: #333; color: white; }
 
-        /* JAUGE D'ANGLE VERTICALE */
-        .vertical-gauge { width: 4px; height: 160px; background: rgba(50,50,50,0.6); border-radius: 2px; position: relative; margin: 15px 0; }
-        .gauge-cursor { width: 18px; height: 6px; background: var(--ktm); position: absolute; left: -7px; top: 50%; transform: translateY(-50%); transition: top 0.1s; border-radius: 2px; box-shadow: 0 0 8px var(--ktm); }
-
-        /* BOUTONS */
-        .btn-ktm-ui { background: rgba(15,15,15,0.8); border: 1px solid #444; color: white; padding: 10px 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; backdrop-filter: blur(5px); }
+        /* BOUTONS GENERAUX */
+        .btn-ktm-ui { background: rgba(15,15,15,0.8); border: 1px solid #444; color: white; padding: 10px 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; backdrop-filter: blur(5px); transition: 0.2s; }
         .btn-ktm-ui:active { border-color: var(--ktm); color: var(--ktm); }
         
         #btn-rec { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
-        #btn-rec::before { content: ''; display: inline-block; width: 10px; height: 10px; background: red; border-radius: 50%; }
+        #btn-rec::before { content: ''; display: inline-block; width: 10px; height: 10px; background: #666; border-radius: 50%; transition: 0.3s; }
         .rec-active { border-color: red !important; box-shadow: 0 0 15px rgba(255,0,0,0.3); }
-        .rec-active::before { animation: blink 1s infinite; }
+        .rec-active::before { background: red !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
         /* NAVIGATION */
@@ -83,6 +81,14 @@
         #fuel-drawer { bottom: -80%; left: 10%; right: 10%; height: 70%; border-top: 3px solid var(--ktm); border-radius: 10px 10px 0 0; }
         #fuel-drawer.open { bottom: 0; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #222; background: #151515; margin-bottom: 5px; border-radius: 4px; }
+        
+        /* Switch Drapeaux */
+        .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--ktm); }
+        input:checked + .slider:before { transform: translateX(16px); }
     </style>
 </head>
 <body>
@@ -98,7 +104,7 @@
                 <div class="telemetry-box">
                     <div class="tele-row">MAX <span class="tele-val" id="speed-max">0</span></div>
                     <div class="tele-row">MOY <span class="tele-val" id="speed-avg">0</span></div>
-                    <button class="btn-ktm-ui" style="width:100%; font-size:10px; padding:5px; margin-top:5px;" onclick="MOTO_LOGIC.resetSpeed()">RST Vitesse</button>
+                    <button class="micro-btn" onclick="MOTO_LOGIC.resetSpeed()">ZÉRO</button>
                 </div>
             </div>
             
@@ -109,7 +115,7 @@
         </div>
 
         <div class="panel-center">
-            <button class="btn-ktm-ui rec-active" id="btn-rec" onclick="UI.toggleREC()">REC</button>
+            <button class="btn-ktm-ui" id="btn-rec" onclick="UI.toggleREC()">REC</button>
             
             <div class="nav-instruction" id="nav-instruction">
                 <div id="nav-arrow" style="font-size: 40px; color: var(--ktm);">➔</div>
@@ -132,14 +138,9 @@
                 <div class="telemetry-box">
                     <div class="tele-row">MAX <span class="tele-val" id="angle-max">0°</span></div>
                     <div class="tele-row">MOY <span class="tele-val" id="angle-avg">0°</span></div>
+                    <button class="micro-btn" onclick="MOTO_LOGIC.resetAngle()">ZÉRO</button>
                 </div>
             </div>
-
-            <div class="vertical-gauge">
-                <div class="gauge-cursor" id="gauge-cursor"></div>
-            </div>
-
-            <button class="btn-ktm-ui" style="width: 100%; border-color: #333; color: #888;" onclick="MOTO_LOGIC.setZeroAngle()">ZÉRO</button>
         </div>
     </div>
 
@@ -177,7 +178,7 @@
 
     <script>
         var map, userMarker;
-        var userPos = { lat: 43.761, lng: 1.990 }; 
+        var userPos = { lat: 43.761, lng: 1.990 }; // Démarrage par défaut (Graulhet)
         var angleOffset = 0, currentBeta = 0;
         var stats = { speed: { max: 0, sum: 0, count: 0 }, angle: { max: 0, sum: 0, count: 0 } };
         var isRecording = false, recordedTrack = [], stationsData = [], markers = [];
@@ -204,10 +205,11 @@
                 el.style = "width:20px; height:20px; background:#00ccff; border-radius:50%; border:3px solid #fff; box-shadow:0 0 10px #00ccff;";
                 userMarker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
 
-                // --- NOUVEAUTÉ V30 : CLIC SUR LA CARTE = FERMETURE DES MENUS ---
-                map.on('click', function() {
-                    UI.closeAllDrawers();
-                });
+                // Fermeture des menus au clic sur la carte
+                map.on('click', function() { UI.closeAllDrawers(); });
+
+                // Initialisation forcée de la météo au démarrage
+                this.updateWeather(userPos.lat, userPos.lng);
 
                 this.startSensors();
             },
@@ -231,12 +233,14 @@
                     if(document.getElementById('nav-instruction').classList.contains('active')) {
                         map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
                     } else { map.panTo([userPos.lng, userPos.lat]); }
-                    MOTO_LOGIC.updateWeather();
+                    
+                    MOTO_LOGIC.updateWeather(userPos.lat, userPos.lng);
                 }, null, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', function(e) {
                     if(!e.beta) return;
-                    currentBeta = e.beta;
+                    currentBeta = e.beta; // Enregistrement de la position physique brute
+                    
                     var lean = Math.abs(Math.round(e.beta - angleOffset));
                     lean = Math.min(60, lean);
                     
@@ -247,18 +251,25 @@
                     document.getElementById('angle-max').innerText = stats.angle.max + "°";
                     document.getElementById('angle-avg').innerText = Math.round(stats.angle.sum/stats.angle.count) + "°";
                     
-                    var pos = 50 + (((e.beta - angleOffset) / 60) * 50);
-                    document.getElementById('gauge-cursor').style.top = Math.max(0, Math.min(100, pos)) + "%";
+                    if(lean >= CONFIG_KTM.ANGLE_ALERTE_ROUGE) document.getElementById('angle-val').style.color = "red";
+                    else document.getElementById('angle-val').style.color = "#fff";
                 });
             },
 
-            resetSpeed: function() { stats.speed = { max:0, sum:0, count:0 }; document.getElementById('speed-max').innerText = "0"; document.getElementById('speed-avg').innerText = "0"; },
+            // Reset complet Vitesse
+            resetSpeed: function() { 
+                stats.speed = { max:0, sum:0, count:0 }; 
+                document.getElementById('speed-max').innerText = "0"; 
+                document.getElementById('speed-avg').innerText = "0"; 
+            },
             
-            setZeroAngle: function() { 
+            // Reset complet Angle (Tare physique + remise à zéro des stats)
+            resetAngle: function() { 
                 angleOffset = currentBeta; 
                 stats.angle = { max:0, sum:0, count:0 };
                 document.getElementById('angle-max').innerText = "0°"; 
                 document.getElementById('angle-avg').innerText = "0°";
+                document.getElementById('angle-val').innerText = "0°";
             },
 
             searchLocation: async function() {
@@ -328,9 +339,11 @@
 
             toggleMarkers: function() { var on = document.getElementById('toggle-flags').checked; markers.forEach(m => on ? m.addTo(map) : m.remove()); },
 
-            updateWeather: async function() {
+            // Modifié pour forcer la position
+            updateWeather: async function(lat, lon) {
+                if(!lat || !lon) return;
                 try {
-                    var r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userPos.lat}&longitude=${userPos.lng}&current_weather=true`);
+                    var r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
                     var d = await r.json();
                     document.getElementById('temp-val').innerText = Math.round(d.current_weather.temperature) + "°C";
                     document.getElementById('wind-val').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
@@ -344,33 +357,28 @@
                 if(drawer.classList.contains('open')) {
                     this.closeAllDrawers();
                 } else {
-                    this.closeAllDrawers(); // Ferme les carburants si ouvert
+                    this.closeAllDrawers();
                     drawer.classList.add('open');
                 }
             },
             
-            // --- NOUVELLE FONCTION UNIVERSELLE DE FERMETURE ---
             closeAllDrawers: function() {
                 var sDrawer = document.getElementById('settings-drawer');
                 var fDrawer = document.getElementById('fuel-drawer');
-                
-                // On referme le grand menu et on vide la recherche pour faire propre
                 if(sDrawer.classList.contains('open')) {
                     sDrawer.classList.remove('open');
                     document.getElementById('search-input').value = "";
                     document.getElementById('search-results').style.display = "none";
                 }
-                
-                // On referme le tiroir du bas
-                if(fDrawer.classList.contains('open')) {
-                    fDrawer.classList.remove('open');
-                }
+                if(fDrawer.classList.contains('open')) fDrawer.classList.remove('open');
             },
 
             toggleREC: function() {
                 isRecording = !isRecording; var btn = document.getElementById('btn-rec');
-                if(isRecording) { btn.classList.add('rec-active'); recordedTrack = []; }
-                else {
+                if(isRecording) { 
+                    btn.classList.add('rec-active'); 
+                    recordedTrack = []; 
+                } else {
                     btn.classList.remove('rec-active');
                     if(recordedTrack.length > 0 && confirm("Sauvegarder la trace GPX ?")) {
                         var gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>' + recordedTrack.map(p => `<trkpt lat="${p.lat}" lon="${p.lng}"></trkpt>`).join('') + '</trkseg></trk></gpx>';
@@ -381,7 +389,7 @@
             }
         };
 
-        window.onload = MOTO_LOGIC.initSystem;
+        window.onload = function() { MOTO_LOGIC.initSystem(); };
     </script>
 </body>
 </html>
