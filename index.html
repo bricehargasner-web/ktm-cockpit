@@ -3,23 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - GPS MOTO 3D</title>
+    <title>ENERGY CONCEPT - GPS MOTO 3D (Zéro API Key)</title>
 
     <script>
         const CONFIG_KTM = {
-            // Remplacez par une clé valide si possible, sinon le système utilisera le secours
-            MAPBOX_KEY: "pk.eyJ1IjoiYnJpY2VjYXJkb25hIiwiYSI6Y20yeGZ6Z3I0MDBrNDJpczByYmdyeXpxOSJ9.7_o5U8fS5kY8X7V8X7V8X7",
             COULEUR_ACCENT: "#FF6600",
-            CARBURANT_PREF: "E10",       
-            RAYON_RECHERCHE: 15,         
-            ANGLE_ALERTE_ROUGE: 45,      
-            PITCH_3D: 60,                
-            ZOOM_NAV: 17.5               
+            CARBURANT_PREF: "E10",       // Options: Gazole, SP95, SP98, E10, E85
+            RAYON_RECHERCHE: 15,         // En kilomètres (1 à 20)
+            ANGLE_ALERTE_ROUGE: 45,      // Déclenchement visuel jauge
+            PITCH_3D: 60,                // Inclinaison de la caméra (Style 3D)
+            ZOOM_NAV: 17                 // Zoom en mode navigation
         };
     </script>
 
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
         :root { --ktm: #FF6600; --bg: rgba(10, 10, 10, 0.85); --glass: rgba(0, 0, 0, 0.7); }
@@ -64,7 +62,7 @@
 
         select, input[type="range"] { width: 100%; background: #111; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 5px; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
-        #btn-rec { background: #111; border: 2px solid #444; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; }
+        #btn-rec { background: #111; border: 2px solid #444; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 10px red; }
     </style>
 </head>
@@ -150,19 +148,38 @@
 
         const MOTO_LOGIC = {
             initSystem() {
-                mapboxgl.accessToken = CONFIG_KTM.MAPBOX_KEY;
-                map = new mapboxgl.Map({
+                // Moteur MapLibre (Sans API KEY) avec fond sombre gratuit CartoDB
+                map = new maplibregl.Map({
                     container: 'map',
-                    style: 'mapbox://styles/mapbox/dark-v11',
+                    style: {
+                        version: 8,
+                        sources: {
+                            'carto-dark': {
+                                type: 'raster',
+                                tiles: [
+                                    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                                    'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                                ],
+                                tileSize: 256
+                            }
+                        },
+                        layers: [{
+                            id: 'carto-dark-layer',
+                            type: 'raster',
+                            source: 'carto-dark',
+                            minzoom: 0,
+                            maxzoom: 22
+                        }]
+                    },
                     center: [userPos.lng, userPos.lat],
                     zoom: 15,
-                    pitch: CONFIG_KTM.PITCH_3D,
+                    pitch: CONFIG_KTM.PITCH_3D, // Vue 3D activée
                     antialias: true
                 });
 
                 const el = document.createElement('div');
                 el.style.width = '24px'; el.style.height = '24px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid white'; el.style.boxShadow = '0 0 15px #00ccff';
-                userMarker = new mapboxgl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
+                userMarker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
 
                 this.startSensors();
             },
@@ -176,6 +193,7 @@
                     userMarker.setLngLat([userPos.lng, userPos.lat]);
                     
                     if(document.getElementById('nav-instruction').classList.contains('active')) {
+                        // Rotation 3D active
                         map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
                     } else {
                         map.panTo([userPos.lng, userPos.lat]);
@@ -193,6 +211,7 @@
                 });
             },
 
+            // RECHERCHE PRÉDICTIVE (API Publique Gratuite)
             searchLocation(query) {
                 clearTimeout(searchTimeout);
                 if(query.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
@@ -212,7 +231,7 @@
                 }, 500);
             },
 
-            /* MOTEUR DE ROUTAGE TRIPLE SÉCURITÉ */
+            // CALCUL D'ITINÉRAIRE (API OSRM 100% Gratuite)
             async startRouting(destLat, destLon, destName) {
                 document.getElementById('search-results').style.display = 'none';
                 document.getElementById('search-input').value = "";
@@ -220,64 +239,38 @@
 
                 destLat = parseFloat(destLat);
                 destLon = parseFloat(destLon);
-                let routeGeoJSON = null;
-                let routeDistanceKm = 0;
 
                 try {
-                    // TENTATIVE 1 : MAPBOX API
-                    const urlMB = `https://api.mapbox.com/directions/v5/mapbox/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?geometries=geojson&access_token=${CONFIG_KTM.MAPBOX_KEY}`;
-                    const resMB = await fetch(urlMB);
-                    const dataMB = await resMB.json();
+                    const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+                    const resOSRM = await fetch(urlOSRM);
+                    const dataOSRM = await resOSRM.json();
                     
-                    if (dataMB.code === 'Ok') {
-                        routeGeoJSON = dataMB.routes[0].geometry;
-                        routeDistanceKm = (dataMB.routes[0].distance / 1000).toFixed(1);
-                    } else { throw new Error("Mapbox Refusé"); }
+                    if (dataOSRM.code !== 'Ok') throw new Error("OSRM Refusé");
 
-                } catch (e1) {
-                    try {
-                        // TENTATIVE 2 : OSRM PUBLIC (Secours)
-                        console.log("Mapbox échoué, passage sur OSRM...");
-                        const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
-                        const resOSRM = await fetch(urlOSRM);
-                        const dataOSRM = await resOSRM.json();
-                        
-                        if (dataOSRM.code === 'Ok') {
-                            routeGeoJSON = dataOSRM.routes[0].geometry;
-                            routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
-                        } else { throw new Error("OSRM Refusé"); }
+                    const routeGeoJSON = dataOSRM.routes[0].geometry;
+                    const routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
 
-                    } catch (e2) {
-                        // TENTATIVE 3 : MODE BOUSSOLE / LIGNE DROITE
-                        alert("Mode Dégradé : Guidage à vol d'oiseau (Boussole) activé.");
-                        routeGeoJSON = { type: "LineString", coordinates: [ [userPos.lng, userPos.lat], [destLon, destLat] ] };
-                        
-                        // Calcul mathématique simple (Haversine)
-                        const R = 6371; 
-                        const dLat = (destLat - userPos.lat) * Math.PI/180;
-                        const dLon = (destLon - userPos.lng) * Math.PI/180;
-                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(userPos.lat*Math.PI/180) * Math.cos(destLat*Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-                        routeDistanceKm = (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+                    // Tracé sur la carte
+                    if (map.getSource('route')) {
+                        map.removeLayer('route-layer');
+                        map.removeSource('route');
                     }
-                }
+                    
+                    map.addSource('route', { type: 'geojson', data: routeGeoJSON });
+                    map.addLayer({
+                        id: 'route-layer', type: 'line', source: 'route',
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8, 'line-opacity': 0.8 }
+                    });
 
-                // Affichage final sur la carte
-                if (map.getSource('route')) {
-                    map.removeLayer('route-layer');
-                    map.removeSource('route');
-                }
-                
-                map.addSource('route', { type: 'geojson', data: routeGeoJSON });
-                map.addLayer({
-                    id: 'route-layer', type: 'line', source: 'route',
-                    layout: { 'line-join': 'round', 'line-cap': 'round' },
-                    paint: { 'line-color': CONFIG_KTM.COULEUR_ACCENT, 'line-width': 8, 'line-opacity': 0.8 }
-                });
+                    document.getElementById('nav-instruction').classList.add('active');
+                    document.getElementById('nav-text').innerText = `Vers: ${destName}`;
+                    document.getElementById('nav-dist').innerText = routeDistanceKm + " km";
+                    map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
 
-                document.getElementById('nav-instruction').classList.add('active');
-                document.getElementById('nav-text').innerText = `Vers: ${destName}`;
-                document.getElementById('nav-dist').innerText = routeDistanceKm + " km";
-                map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
+                } catch (e) {
+                    alert("ALERTE : Connexion au serveur de routage public échouée. Veuillez réessayer.");
+                }
             },
 
             stopNav() {
@@ -286,6 +279,7 @@
                 map.easeTo({ pitch: 0, zoom: 15 });
             },
 
+            // RECHERCHE CARBURANT (API Gouvernement, gratuite)
             async scanFuel() {
                 UI.toggleFuelDrawer();
                 document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Recherche en cours...</div>";
@@ -316,6 +310,7 @@
                 } catch(e) { document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants.</div>"; }
             },
 
+            // METEO (API Publique Gratuite)
             async updateWeather(lat, lon) {
                 try {
                     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
