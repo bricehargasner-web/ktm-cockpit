@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENERGY CONCEPT - GPS MOTO 3D (Zéro API Key)</title>
+    <title>ENERGY CONCEPT - GPS MOTO 3D</title>
 
     <script>
-        const CONFIG_KTM = {
+        /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
+        var CONFIG_KTM = {
             COULEUR_ACCENT: "#FF6600",
-            CARBURANT_PREF: "E10",       // Options: Gazole, SP95, SP98, E10, E85
-            RAYON_RECHERCHE: 15,         // En kilomètres (1 à 20)
-            ANGLE_ALERTE_ROUGE: 45,      // Déclenchement visuel jauge
-            PITCH_3D: 60,                // Inclinaison de la caméra (Style 3D)
-            ZOOM_NAV: 17                 // Zoom en mode navigation
+            CARBURANT_PREF: "Gazole",       
+            RAYON_RECHERCHE: 15,         
+            ANGLE_ALERTE_ROUGE: 45,      
+            PITCH_3D: 60,                
+            ZOOM_NAV: 17                 
         };
     </script>
 
@@ -20,6 +21,7 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
+        /* DESIGN VISUAL-KTM */
         :root { --ktm: #FF6600; --bg: rgba(10, 10, 10, 0.85); --glass: rgba(0, 0, 0, 0.7); }
         * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; user-select: none; margin: 0; padding: 0; }
         body { background: #000; color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
@@ -34,17 +36,15 @@
         .top-bar { grid-column: 1 / 4; grid-row: 1; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
         .search-box { display: flex; background: #111; border: 1px solid #333; border-radius: 4px; overflow: hidden; width: 400px; }
         .search-box input { background: transparent; border: none; color: white; padding: 10px 15px; width: 100%; outline: none; }
-        .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 20px; cursor: pointer; text-transform: uppercase; }
+        .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 15px; cursor: pointer; text-transform: uppercase; }
         
         #search-results { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 400px; background: rgba(0,0,0,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; }
-        .search-item { padding: 12px; border-bottom: 1px solid #333; cursor: pointer; font-size: 14px; }
-        .search-item:hover { background: #222; }
+        .search-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; font-size: 14px; color: white; background: #111; }
+        .search-item:hover { background: #222; color: var(--ktm); }
 
-        /* HUD GAUCHE */
+        /* HUD GAUCHE & DROIT */
         .hud-left { grid-column: 1; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; }
         .speed-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 5px #000; }
-        
-        /* HUD DROIT */
         .hud-right { grid-column: 3; grid-row: 2 / 4; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
         .gauge-wrap { width: 100px; height: 100px; border: 4px solid #222; border-top-color: var(--ktm); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.1s; margin: 0 auto; }
         
@@ -61,7 +61,7 @@
         #fuel-drawer.open { bottom: 0; }
 
         select, input[type="range"] { width: 100%; background: #111; color: #fff; border: 1px solid #444; padding: 10px; margin-top: 5px; }
-        .station-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
+        .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #222; background: #111; margin-bottom: 5px; }
         #btn-rec { background: #111; border: 2px solid #444; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 10px red; }
     </style>
@@ -73,9 +73,11 @@
     <div class="ui-layer">
         <div class="top-bar">
             <div class="search-box pointer-auto">
-                <input type="text" id="search-input" placeholder="Où allons-nous ?" onkeyup="MOTO_LOGIC.searchLocation(this.value)">
+                <input type="text" id="search-input" placeholder="Où allons-nous ?">
+                <button class="btn-ktm" onclick="MOTO_LOGIC.searchLocation()">CHERCHER</button>
             </div>
             <div id="search-results" class="pointer-auto"></div>
+
             <div style="display: flex; gap: 15px;" class="pointer-auto">
                 <button id="btn-rec" onclick="UI.toggleREC()">REC</button>
                 <button class="btn-ktm" onclick="MOTO_LOGIC.scanFuel()">⛽ CARBURANT</button>
@@ -142,13 +144,13 @@
     </div>
 
     <script>
-        let map, userMarker;
-        let userPos = { lat: 43.761, lng: 1.990 }; 
-        let angleOffset = 0, isRecording = false, searchTimeout = null;
+        // GLOBALES (Utilisation de var pour forcer la visibilité)
+        var map, userMarker;
+        var userPos = { lat: 43.761, lng: 1.990 }; // Initialisation Graulhet
+        var angleOffset = 0, isRecording = false;
 
-        const MOTO_LOGIC = {
-            initSystem() {
-                // Moteur MapLibre (Sans API KEY) avec fond sombre gratuit CartoDB
+        var MOTO_LOGIC = {
+            initSystem: function() {
                 map = new maplibregl.Map({
                     container: 'map',
                     style: {
@@ -156,36 +158,27 @@
                         sources: {
                             'carto-dark': {
                                 type: 'raster',
-                                tiles: [
-                                    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                                    'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                                ],
+                                tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
                                 tileSize: 256
                             }
                         },
-                        layers: [{
-                            id: 'carto-dark-layer',
-                            type: 'raster',
-                            source: 'carto-dark',
-                            minzoom: 0,
-                            maxzoom: 22
-                        }]
+                        layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 22 }]
                     },
                     center: [userPos.lng, userPos.lat],
                     zoom: 15,
-                    pitch: CONFIG_KTM.PITCH_3D, // Vue 3D activée
+                    pitch: CONFIG_KTM.PITCH_3D,
                     antialias: true
                 });
 
-                const el = document.createElement('div');
+                var el = document.createElement('div');
                 el.style.width = '24px'; el.style.height = '24px'; el.style.background = '#00ccff'; el.style.borderRadius = '50%'; el.style.border = '3px solid white'; el.style.boxShadow = '0 0 15px #00ccff';
                 userMarker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
 
                 this.startSensors();
             },
 
-            startSensors() {
-                navigator.geolocation.watchPosition(p => {
+            startSensors: function() {
+                navigator.geolocation.watchPosition(function(p) {
                     userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
                     document.getElementById('speed-val').innerText = Math.round(p.coords.speed * 3.6) || 0;
                     document.getElementById('alt-val').innerText = "ALT: " + (Math.round(p.coords.altitude) || 0) + " m";
@@ -193,17 +186,16 @@
                     userMarker.setLngLat([userPos.lng, userPos.lat]);
                     
                     if(document.getElementById('nav-instruction').classList.contains('active')) {
-                        // Rotation 3D active
                         map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
                     } else {
                         map.panTo([userPos.lng, userPos.lat]);
                     }
-                    this.updateWeather(userPos.lat, userPos.lng);
-                }, e => console.log("GPS Err"), { enableHighAccuracy: true });
+                    MOTO_LOGIC.updateWeather(userPos.lat, userPos.lng);
+                }, function(e) { console.log("GPS Attente..."); }, { enableHighAccuracy: true });
 
-                window.addEventListener('deviceorientation', e => {
+                window.addEventListener('deviceorientation', function(e) {
                     if(e.beta === null) return;
-                    let lean = Math.abs(e.beta - angleOffset);
+                    var lean = Math.abs(e.beta - angleOffset);
                     lean = Math.min(60, Math.round(lean));
                     document.getElementById('angle-val').innerText = lean + "°";
                     document.getElementById('gauge-visual').style.transform = `rotate(${e.beta > angleOffset ? lean : -lean}deg)`;
@@ -211,46 +203,51 @@
                 });
             },
 
-            // RECHERCHE PRÉDICTIVE (API Publique Gratuite)
-            searchLocation(query) {
-                clearTimeout(searchTimeout);
-                if(query.length < 3) { document.getElementById('search-results').style.display = 'none'; return; }
+            searchLocation: async function() {
+                var query = document.getElementById('search-input').value;
+                if(query.length < 3) return;
                 
-                searchTimeout = setTimeout(async () => {
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5`);
-                        const data = await res.json();
-                        const box = document.getElementById('search-results');
-                        box.style.display = 'block';
-                        
-                        box.innerHTML = data.map(place => {
-                            let cleanName = place.display_name.split(',')[0].replace(/['"]/g, " ");
-                            return `<div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${cleanName}')">📍 ${place.display_name}</div>`;
-                        }).join('');
-                    } catch(e) { console.error(e); }
-                }, 500);
+                document.getElementById('search-results').style.display = 'block';
+                document.getElementById('search-results').innerHTML = "<div class='search-item'>Recherche de : " + query + "...</div>";
+
+                try {
+                    var res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5`);
+                    var data = await res.json();
+                    
+                    if(data.length === 0) {
+                        document.getElementById('search-results').innerHTML = "<div class='search-item' style='color:red;'>Aucun résultat.</div>";
+                        return;
+                    }
+
+                    document.getElementById('search-results').innerHTML = data.map(function(place) {
+                        var cleanName = place.display_name.split(',')[0].replace(/['"]/g, " ");
+                        return `<div class="search-item" onclick="MOTO_LOGIC.startRouting(${place.lat}, ${place.lon}, '${cleanName}')">📍 ${place.display_name}</div>`;
+                    }).join('');
+                } catch(e) { 
+                    alert("Erreur de recherche: " + e.message); 
+                }
             },
 
-            // CALCUL D'ITINÉRAIRE (API OSRM 100% Gratuite)
-            async startRouting(destLat, destLon, destName) {
+            startRouting: async function(destLat, destLon, destName) {
+                // INFO DEBUG Utilisateur :
+                console.log("Routage vers", destName, destLat, destLon);
+                
                 document.getElementById('search-results').style.display = 'none';
-                document.getElementById('search-input').value = "";
                 if(document.getElementById('fuel-drawer').classList.contains('open')) UI.toggleFuelDrawer();
 
                 destLat = parseFloat(destLat);
                 destLon = parseFloat(destLon);
 
                 try {
-                    const urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
-                    const resOSRM = await fetch(urlOSRM);
-                    const dataOSRM = await resOSRM.json();
+                    var urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+                    var resOSRM = await fetch(urlOSRM);
+                    var dataOSRM = await resOSRM.json();
                     
-                    if (dataOSRM.code !== 'Ok') throw new Error("OSRM Refusé");
+                    if (dataOSRM.code !== 'Ok') throw new Error("OSRM a refusé le calcul.");
 
-                    const routeGeoJSON = dataOSRM.routes[0].geometry;
-                    const routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
+                    var routeGeoJSON = dataOSRM.routes[0].geometry;
+                    var routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
 
-                    // Tracé sur la carte
                     if (map.getSource('route')) {
                         map.removeLayer('route-layer');
                         map.removeSource('route');
@@ -266,75 +263,77 @@
                     document.getElementById('nav-instruction').classList.add('active');
                     document.getElementById('nav-text').innerText = `Vers: ${destName}`;
                     document.getElementById('nav-dist').innerText = routeDistanceKm + " km";
+                    
+                    // On centre la caméra pour démarrer le guidage
                     map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
 
                 } catch (e) {
-                    alert("ALERTE : Connexion au serveur de routage public échouée. Veuillez réessayer.");
+                    alert("ERREUR GPS : " + e.message + "\nVérifiez votre 4G.");
                 }
             },
 
-            stopNav() {
+            stopNav: function() {
                 document.getElementById('nav-instruction').classList.remove('active');
                 if (map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); }
                 map.easeTo({ pitch: 0, zoom: 15 });
             },
 
-            // RECHERCHE CARBURANT (API Gouvernement, gratuite)
-            async scanFuel() {
+            scanFuel: async function() {
                 UI.toggleFuelDrawer();
-                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Recherche en cours...</div>";
+                document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Recherche des stations...</div>";
                 
-                const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=20`;
+                var url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=within_distance(geom%2C%20geom'POINT(${userPos.lng}%20${userPos.lat})'%2C%20${CONFIG_KTM.RAYON_RECHERCHE}km)&limit=20`;
                 
                 try {
-                    const res = await fetch(url);
-                    const data = await res.json();
+                    var res = await fetch(url);
+                    var data = await res.json();
                     if(!data.results || data.results.length === 0) {
-                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée.</div>";
+                        document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px;'>Aucune station trouvée à moins de " + CONFIG_KTM.RAYON_RECHERCHE + "km.</div>";
                         return;
                     }
-                    document.getElementById('fuel-list-content').innerHTML = data.results.map(s => {
+                    document.getElementById('fuel-list-content').innerHTML = data.results.map(function(s) {
                         if(!s.geom) return ''; 
-                        const prixRaw = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
-                        const prixAffiche = prixRaw ? prixRaw + ' €' : '<span style="color:var(--ktm)">N.C</span>';
-                        let cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
+                        var prixRaw = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
+                        var prixAffiche = prixRaw ? prixRaw + ' €' : '<span style="color:var(--ktm)">N.C</span>';
+                        var cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
                         
                         return `
                             <div class="station-item">
                                 <div><div style="font-weight:bold">${s.ville || 'Station'}</div><div style="font-size:12px; color:#888">${s.adresse || ''}</div></div>
                                 <div style="font-size:18px; font-weight:bold; margin-right:15px;">${prixAffiche}</div>
-                                <button class="btn-ktm" style="padding: 8px 15px;" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${cleanName}')">GO</button>
+                                <button class="btn-ktm" onclick="MOTO_LOGIC.startRouting(${s.geom.lat}, ${s.geom.lon}, 'Station ${cleanName}')">GO</button>
                             </div>
                         `;
                     }).join('');
-                } catch(e) { document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants.</div>"; }
+                } catch(e) { 
+                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red;'>Erreur Serveur Carburants Gouvernemental.</div>"; 
+                }
             },
 
-            // METEO (API Publique Gratuite)
-            async updateWeather(lat, lon) {
+            updateWeather: async function(lat, lon) {
                 try {
-                    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-                    const d = await r.json();
+                    var r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                    var d = await r.json();
                     document.getElementById('temp-val').innerText = Math.round(d.current_weather.temperature) + "°C";
                     document.getElementById('wind-val').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
                 } catch(e) {}
             },
-            setZero() { angleOffset = 0; }
+            setZero: function() { angleOffset = 0; }
         };
 
-        const UI = {
-            toggleSettings() { document.getElementById('settings-drawer').classList.toggle('open'); },
-            toggleFuelDrawer() { document.getElementById('fuel-drawer').classList.toggle('open'); },
-            toggleREC() {
+        var UI = {
+            toggleSettings: function() { document.getElementById('settings-drawer').classList.toggle('open'); },
+            toggleFuelDrawer: function() { document.getElementById('fuel-drawer').classList.toggle('open'); },
+            toggleREC: function() {
                 isRecording = !isRecording;
-                const btn = document.getElementById('btn-rec');
+                var btn = document.getElementById('btn-rec');
                 btn.classList.toggle('rec-active');
-                if(isRecording) { alert("C'est parti !"); btn.innerText = "REC 🔴"; } 
+                if(isRecording) { alert("C'est parti ! L'enregistrement est lancé."); btn.innerText = "REC 🔴"; } 
                 else { confirm("Voulez-vous enregistrer votre course ?"); btn.innerText = "REC"; }
             }
         };
 
-        window.onload = () => MOTO_LOGIC.initSystem();
+        window.onload = function() { MOTO_LOGIC.initSystem(); };
     </script>
 </body>
 </html>
