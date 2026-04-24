@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>ENERGY CONCEPT - COCKPIT V4</title>
+  <title>ENERGY CONCEPT - COCKPIT V5</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -20,6 +20,7 @@
       --txt:#fff;
       --muted:#b9b9b9;
       --danger:#ff3b3b;
+      --ok:#39d98a;
     }
     *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,system-ui,sans-serif;user-select:none}
     html,body{width:100%;height:100%;overflow:hidden;background:#000;color:var(--txt)}
@@ -93,10 +94,6 @@
       background:rgba(10,10,10,.96);border:2px solid var(--ktm);color:#fff;font-size:12px;
       font-weight:800;padding:4px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 4px 8px rgba(0,0,0,.55)
     }
-    .flag::after{
-      content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
-      border-width:8px 6px 0;border-style:solid;border-color:var(--ktm) transparent transparent
-    }
     .osmAttrib{
       position:absolute;left:6px;bottom:5px;z-index:15;font-size:10px;color:#ddd;
       background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px
@@ -107,6 +104,7 @@
       z-index:18;background:rgba(0,0,0,.82);border:1px solid #444;color:#fff;
       padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;pointer-events:auto
     }
+    .tiny{font-size:11px;color:#aaa}
   </style>
 </head>
 <body>
@@ -138,7 +136,6 @@
 
     <div class="center">
       <div class="settingsIcon" onclick="UI.toggleSettings()">☰</div>
-
       <div class="nav" id="nav-box">
         <div class="navTop">
           <div class="arrow" id="nav-arrow">➤</div>
@@ -184,6 +181,26 @@
     </div>
 
     <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <div class="label" style="text-align:left">Carburant</div>
+      <select id="fuel-type" class="select" onchange="CONFIG.FUEL=this.value">
+        <option value="Gazole">Gazole</option>
+        <option value="SP95">SP95</option>
+        <option value="SP98">SP98</option>
+        <option value="E10">E10</option>
+        <option value="E85">E85</option>
+        <option value="GPLc">GPLc</option>
+      </select>
+    </div>
+
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
+      <div class="label" style="text-align:left">Tri stations</div>
+      <select id="sort-mode" class="select" onchange="MOTO.sortStations(this.value)">
+        <option value="dist">Distance</option>
+        <option value="price">Prix</option>
+      </select>
+    </div>
+
+    <div class="menuRow" style="border-top:1px solid #333;padding-top:14px">
       <div class="label" style="text-align:left">Rayon <span id="rad-disp">20</span> km</div>
       <input type="range" min="1" max="50" value="20" oninput="document.getElementById('rad-disp').innerText=this.value; CONFIG.RAYON=this.value;">
     </div>
@@ -226,8 +243,9 @@ const CONFIG = {
   ANGLE_ROUGE: 45,
   PITCH: 75,
   ZOOMNAV: 18.5,
-  SEARCH_DELAY: 600,
-  DISPLAY: "auto"
+  SEARCH_DELAY: 700,
+  DISPLAY: "auto",
+  FUEL: "Gazole"
 };
 
 let map, marker, userPos = {lat: 43.761, lng: 1.99};
@@ -268,7 +286,6 @@ const SYS = {
     el.style.boxShadow = "0 0 10px #00ccff";
     marker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
     map.on("click", ()=>UI.closeAll());
-    map.on("load", ()=>UI.setDiag("GPS", "OK"));
   },
   setDisplay(mode){
     CONFIG.DISPLAY = mode;
@@ -414,6 +431,37 @@ const MOTO = {
       map.removeSource("route");
     }
   },
+  fuelFieldName(fuel){
+    const f = String(fuel || "").toLowerCase();
+    const mapFields = {
+      "gazole":"prix_gazole",
+      "sp95":"prix_sp95",
+      "sp98":"prix_sp98",
+      "e10":"prix_e10",
+      "e85":"prix_e85",
+      "gplc":"prix_gplc"
+    };
+    return mapFields[f] || `prix_${f}`;
+  },
+  extractFuelPrice(s){
+    const field = this.fuelFieldName(CONFIG.FUEL);
+    const candidates = [field, field.toLowerCase(), field.toUpperCase(), CONFIG.FUEL, CONFIG.FUEL.toLowerCase()];
+    for(const k of candidates){
+      if(s[k] !== undefined && s[k] !== null && String(s[k]).trim() !== ""){
+        const v = parseFloat(String(s[k]).replace(",", "."));
+        if(!Number.isNaN(v)) return v;
+      }
+    }
+    if(Array.isArray(s.prix)){
+      const f = String(CONFIG.FUEL).toLowerCase();
+      const found = s.prix.find(x => String(x.nom || x.id || "").toLowerCase().includes(f));
+      if(found && found.valeur != null){
+        const v = parseFloat(String(found.valeur).replace(",", "."));
+        if(!Number.isNaN(v)) return v;
+      }
+    }
+    return null;
+  },
   async scanFuel(){
     UI.closeAll();
     const drawer = document.getElementById("fuel-drawer");
@@ -421,8 +469,7 @@ const MOTO = {
     const list = document.getElementById("fuel-list-content");
     list.innerHTML = '<div style="padding:12px;text-align:center;color:#fff">Recherche stations...</div>';
     try{
-      const where = encodeURIComponent(`within_distance(geom, ge_point(${userPos.lng}, ${userPos.lat}), ${CONFIG.RAYON * 1000})`);
-      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?where=${where}&limit=40`;
+      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=200`;
       const r = await fetch(url);
       const d = await r.json();
 
@@ -431,25 +478,29 @@ const MOTO = {
       stations = [];
 
       (d.results || []).forEach(s=>{
-        const lat = s.geom.lat, lon = s.geom.lon;
-        const prix = (s[`prix_${(CONFIG.CARBURANT || "Gazole").toLowerCase()}`] || null);
-        const dist = MOTO.distance(userPos.lat, userPos.lng, lat, lon);
+        if(!s.geom || s.geom.lat == null || s.geom.lon == null) return;
+        const dist = MOTO.distance(userPos.lat, userPos.lng, s.geom.lat, s.geom.lon);
+        if(dist > Number(CONFIG.RAYON)) return;
+
+        const prix = MOTO.extractFuelPrice(s);
         stations.push({
-          ville: s.ville || "Station",
-          prix: prix ? parseFloat(prix) : 999,
-          dist, lat, lon
+          ville: s.ville || s.adresse || s.cp || "Station",
+          prix: prix == null ? 999 : prix,
+          dist,
+          lat: s.geom.lat,
+          lon: s.geom.lon
         });
 
         const el = document.createElement("div");
         el.className = "flag";
-        el.innerText = prix ? (parseFloat(prix).toFixed(3) + " €") : "N.C";
-        el.onclick = ()=>MOTO.route(lat, lon, s.ville || "Station", s.ville || "Station");
-        const mk = new maplibregl.Marker(el).setLngLat([lon, lat]);
+        el.innerText = prix == null ? "N.C" : prix.toFixed(3) + " €";
+        el.onclick = () => MOTO.route(s.geom.lat, s.geom.lon, s.ville || "Station", s.ville || "Station");
+        const mk = new maplibregl.Marker(el).setLngLat([s.geom.lon, s.geom.lat]);
         if(document.getElementById("toggle-flags").checked) mk.addTo(map);
         stationMarkers.push(mk);
       });
 
-      MOTO.sortStations("dist");
+      MOTO.sortStations(document.getElementById("sort-mode").value || "dist");
       UI.setDiag("Carburants", "OK");
     }catch(e){
       list.innerHTML = '<div style="padding:12px;text-align:center;color:#ff6666">Erreur serveur carburants</div>';
@@ -457,7 +508,7 @@ const MOTO = {
     }
   },
   sortStations(mode){
-    stations.sort((a,b)=> mode === "dist" ? a.dist - b.dist : a.prix - b.prix);
+    stations.sort((a,b)=> mode === "price" ? a.prix - b.prix : a.dist - b.dist);
     document.getElementById("fuel-list-content").innerHTML = stations.map(s=>{
       const p = s.prix === 999 ? "N.C" : s.prix.toFixed(3) + " €";
       const c = s.prix === 999 ? "#666" : "var(--ktm)";
