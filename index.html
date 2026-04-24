@@ -3,170 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIAGNOSTIC COMPLET - SYSTÈME NAVIGATION</title>
+    <title>ENERGY CONCEPT - SUPER DIAG V2</title>
     <style>
-        :root { --accent: #FF6600; --bg: #000; --panel: #111; }
-        body { font-family: 'Courier New', monospace; background: var(--bg); color: #eee; padding: 15px; font-size: 12px; }
-        .tiroir { border: 1px solid #333; margin-bottom: 15px; padding: 10px; border-left: 4px solid #666; }
-        .tiroir.active { border-left-color: var(--accent); }
-        .status { font-weight: bold; padding: 5px; margin-top: 5px; display: block; }
-        .log-box { background: #050505; color: #00ff00; padding: 10px; height: 120px; overflow-y: auto; border: 1px solid #222; font-size: 11px; margin-top: 10px; white-space: pre-wrap; }
-        button { background: #222; color: #fff; border: 1px solid #444; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase; }
-        button:active { background: var(--accent); }
-        .success { color: #00ff00; }
-        .fail { color: #ff0000; }
-        #final-report { background: #fff; color: #000; padding: 15px; display: none; margin-top: 20px; }
+        body { font-family: 'Courier New', monospace; background: #000; color: #0f0; padding: 10px; font-size: 11px; }
+        .tiroir { border: 1px solid #333; margin-bottom: 10px; padding: 10px; border-left: 4px solid #FF6600; background: #0a0a0a; }
+        .label { font-weight: bold; color: #FF6600; display: block; margin-bottom: 5px; font-size: 13px; }
+        .log-box { background: #000; color: #0f0; padding: 8px; height: 120px; overflow-y: auto; border: 1px solid #222; margin-top: 10px; border-radius: 4px; }
+        button { background: #FF6600; color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        select, input { width: 100%; padding: 10px; margin: 5px 0; background: #111; color: #fff; border: 1px solid #444; }
+        .valeur { color: #fff; font-size: 1.2em; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h2 style="color:var(--accent)">LOGICIEL DE DIAGNOSTIC V1.0</h2>
+    <h2 style="color:#FF6600">FORCE DIAG V2 - ENERGY CONCEPT</h2>
 
-    <div class="tiroir active" id="tiroir-gps">
-        <strong>[1] ÉTAT DES CAPTEURS</strong>
-        <div id="gps-info">GPS : En attente d'autorisation...</div>
-        <div id="angle-info">ANGLE : En attente...</div>
-        <button onclick="activerCapteurs()">ACTIVER GPS & ANGLE</button>
-    </div>
-
-    <div class="tiroir active" id="tiroir-api">
-        <strong>[2] TEST SERVEUR CARBURANTS (API GOV)</strong>
-        <div style="margin: 10px 0;">
-            Type testé : <select id="fuel-type" style="background:#000; color:#fff; border:1px solid #444;">
-                <option value="Gazole">Gazole</option>
-                <option value="SP98">SP98</option>
-            </select>
+    <div class="tiroir">
+        <span class="label">[MOTO-SENSORS] - INCLINAISON & GPS</span>
+        <button onclick="demarrerCapteurs()">ACTIVER CAPTEURS</button>
+        <div>GPS : <span id="gps-val" class="valeur">Fix en cours...</span></div>
+        <div>Vitesse : <span id="speed-val" class="valeur">0</span> km/h | Alt : <span id="alt-val" class="valeur">--</span> m</div>
+        <div style="margin-top:10px; border-top: 1px solid #333; padding-top:10px;">
+            Angle (Tranche G) : <span id="angle-val" class="valeur">0</span>°
+            <button onclick="resetAngle()" style="width: auto; padding: 2px 10px; background:#444; font-size:10px;">ZÉRO ANGLE</button>
         </div>
-        <button onclick="lancerDiagnosticAPI()">LANCER LE TEST API</button>
-        <div class="log-box" id="log-api">Console API prête...</div>
+        <div class="log-box" id="log-sensors">En attente de mouvement...</div>
     </div>
 
-    <div class="tiroir active">
-        <strong>[3] TEST ÉCRITURE GPX</strong>
-        <button onclick="testerGPX()">VÉRIFIER MÉMOIRE GPX</button>
-        <div class="log-box" id="log-gpx">Console GPX prête...</div>
+    <div class="tiroir">
+        <span class="label">[FUEL-API] - RECHERCHE STATIONS</span>
+        <label>Choix Carburant :</label>
+        <select id="fuel-select">
+            <option value="Gazole">Gazole</option>
+            <option value="SP95">Sans Plomb 95</option>
+            <option value="SP98">Sans Plomb 98</option>
+            <option value="E10">E10</option>
+            <option value="E85">E85</option>
+            <option value="GPLc">GPL</option>
+        </select>
+        <label>Rayon (1-20km) :</label>
+        <input type="range" id="fuel-rad" min="1" max="20" value="10" oninput="this.nextElementSibling.innerText = this.value + 'km'"> <span>10km</span>
+        <button onclick="testNouvelleAPI()" style="background:#28a745;">LANCER RECHERCHE (V2.1 STABLE)</button>
+        <div class="log-box" id="log-fuel">Prêt pour requête...</div>
     </div>
 
-    <div id="final-report">
-        <h3>📋 RAPPORT FINAL À TRANSMETTRE</h3>
-        <textarea id="report-text" style="width:100%; height:200px; font-family:monospace;"></textarea>
-        <p><em>Copie ce texte et envoie-le moi.</em></p>
+    <div class="tiroir">
+        <span class="label">[GPX-REC] - TEST ENREGISTREMENT</span>
+        <div id="rec-info" class="valeur">Points : 0</div>
+        <button id="btn-rec" onclick="toggleREC()" style="background:#dc3545;">DÉMARRER REC</button>
+        <div class="log-box" id="log-rec">Historique GPX...</div>
     </div>
 
     <script>
-        let debug = {
-            gps: "NON_TESTE",
-            angle: "NON_TESTE",
-            api_status: "NON_TESTE",
-            api_raw: "",
-            gpx: "NON_TESTE"
-        };
-
-        const logger = (id, msg) => {
+        const log = (id, msg) => {
             const el = document.getElementById(id);
-            el.innerHTML += `> ${msg}\n`;
+            el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
             el.scrollTop = el.scrollHeight;
         };
 
-        /* --- DIAGNOSTIC CAPTEURS --- */
-        function activerCapteurs() {
-            logger('log-api', "Demande d'accès GPS...");
-            navigator.geolocation.getCurrentPosition(
-                (p) => {
-                    debug.gps = "OK";
-                    document.getElementById('gps-info').innerHTML = `<span class="success">✅ GPS FIX : ${p.coords.latitude.toFixed(4)} / ${p.coords.longitude.toFixed(4)}</span>`;
-                    window.userLat = p.coords.latitude;
-                    window.userLon = p.coords.longitude;
-                },
-                (e) => {
-                    debug.gps = "FAIL: " + e.message;
-                    document.getElementById('gps-info').innerHTML = `<span class="fail">❌ GPS ERREUR : ${e.message}</span>`;
-                }
-            );
+        let coords = { lat: null, lon: null };
+        let angleZero = 0;
+        let isREC = false;
+        let logs = [];
 
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', (e) => {
-                    debug.angle = "OK";
-                    document.getElementById('angle-info').innerHTML = `<span class="success">✅ ANGLE ACTIF</span>`;
-                }, {once: true});
-            }
+        function demarrerCapteurs() {
+            log('log-sensors', "Demande GPS + Orientation...");
+            navigator.geolocation.watchPosition(p => {
+                coords.lat = p.coords.latitude;
+                coords.lon = p.coords.longitude;
+                document.getElementById('gps-val').innerText = `${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`;
+                document.getElementById('speed-val').innerText = Math.round(p.coords.speed * 3.6) || 0;
+                document.getElementById('alt-val').innerText = Math.round(p.coords.altitude) || "--";
+                if(isREC) logs.push({ t: Date.now(), lat: coords.lat, lon: coords.lon, s: Math.round(p.coords.speed*3.6), a: Math.round(p.coords.altitude) });
+                document.getElementById('rec-info').innerText = `Points : ${logs.length}`;
+            }, e => log('log-sensors', "ERREUR GPS : " + e.message), { enableHighAccuracy: true });
+
+            if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(s => {
+                    if(s === 'granted') window.addEventListener('deviceorientation', handleAngle);
+                });
+            } else { window.addEventListener('deviceorientation', handleAngle); }
         }
 
-        /* --- DIAGNOSTIC API (Cœur du problème) --- */
-        async function lancerDiagnosticAPI() {
-            const logId = 'log-api';
-            const fuel = document.getElementById('fuel-type').value;
-            logger(logId, "Début du diagnostic API...");
+        function handleAngle(e) {
+            // Orientation paysage : tranche gauche en haut = inclinaison sur l'axe Beta ou Gamma
+            let val = Math.abs(e.beta - angleZero); 
+            val = Math.min(60, Math.round(val));
+            document.getElementById('angle-val').innerText = val;
+            window.lastRaw = e.beta;
+        }
+        function resetAngle() { angleZero = window.lastRaw || 0; log('log-sensors', "Zéro angle effectué."); }
 
-            if (!window.userLat) {
-                logger(logId, "ERREUR : Fix GPS requis avant test API.");
-                return;
-            }
-
-            // Test de l'URL V2.1 (La plus stable actuellement)
-            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-fichier-instantane-test-public-copy/records?where=within_distance(geom%2C%20geom'POINT(${window.userLon}%20${window.userLat})'%2C%2010km)&limit=5`;
+        async function testNouvelleAPI() {
+            const fuel = document.getElementById('fuel-select').value;
+            const radius = document.getElementById('fuel-rad').value;
+            const logId = 'log-fuel';
             
-            logger(logId, `Tentative d'appel sur : ${url}`);
-
+            if(!coords.lat) return log(logId, "ERREUR : Attendez le Fix GPS.");
+            
+            // Nouvelle URL V2.1 avec le dataset officiel flux instantané
+            const dataset = "prix-des-carburants-en-france-flux-instantane-v2";
+            const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/${dataset}/records?where=within_distance(geom%2C%20geom'POINT(${coords.lon}%20${coords.lat})'%2C%20${radius}km)&limit=20`;
+            
+            log(logId, `Appel API V2.1 (${fuel})...`);
             try {
-                const debut = Date.now();
-                const response = await fetch(url);
-                const fin = Date.now();
+                const res = await fetch(url);
+                log(logId, `Code Réponse : ${res.status}`);
+                if(!res.ok) throw new Error("Dataset non trouvé (404) ou Serveur HS");
                 
-                debug.api_status = response.status;
-                logger(logId, `Réponse reçue en ${fin - debut}ms (Code: ${response.status})`);
+                const data = await res.json();
+                const items = data.results || [];
+                log(logId, `Succès : ${items.length} stations trouvées.`);
 
-                if (!response.ok) {
-                    throw new Error(`Le serveur a répondu avec l'erreur ${response.status}`);
-                }
-
-                const data = await response.json();
-                debug.api_raw = JSON.stringify(data).substring(0, 200) + "...";
-                
-                if (data.results) {
-                    logger(logId, `SUCCÈS : ${data.results.length} stations trouvées.`);
-                } else {
-                    logger(logId, "ALERTE : Données reçues mais format inconnu.");
-                }
-
-            } catch (err) {
-                debug.api_status = "FETCH_ERROR";
-                debug.api_raw = err.message;
-                logger(logId, `❌ ÉCHEC : ${err.message}`);
-                logger(logId, "CONSEIL : Si l'erreur est 'Failed to fetch', c'est un blocage CORS du navigateur.");
-            }
-
-            genererRapport();
+                items.forEach(s => {
+                    // Extraction du prix spécifique selon le carburant choisi
+                    const prix = s[fuel.toLowerCase() + "_prix"] ? s[fuel.toLowerCase() + "_prix"] + "€" : "N.C"; 
+                    log(logId, `> ${s.adresse || s.ville} : ${prix}`);
+                });
+            } catch(e) { log(logId, "ÉCHEC : " + e.message); }
         }
 
-        /* --- DIAGNOSTIC GPX --- */
-        function testerGPX() {
-            try {
-                const testData = [{lat: 43.76, lon: 1.98, t: Date.now()}];
-                localStorage.setItem('diag_gpx_test', JSON.stringify(testData));
-                debug.gpx = "OK (LocalStorage)";
-                logger('log-gpx', "✅ Écriture mémoire réussie.");
-            } catch (e) {
-                debug.gpx = "FAIL: " + e.message;
-                logger('log-gpx', "❌ Échec mémoire : " + e.message);
+        function toggleREC() {
+            isREC = !isREC;
+            const btn = document.getElementById('btn-rec');
+            if(isREC) {
+                logs = [];
+                alert("C'est parti !"); // Source 11
+                btn.innerText = "ARRÊTER ET SAUVER";
+                log('log-rec', "Enregistrement en cours...");
+            } else {
+                if(confirm("Voulez-vous enregistrer votre course ?")) { // Source 11
+                    log('log-rec', `Session terminée. ${logs.length} points sauvegardés.`);
+                }
+                btn.innerText = "DÉMARRER REC";
             }
-            genererRapport();
-        }
-
-        /* --- GÉNÉRATION DU RAPPORT --- */
-        function genererRapport() {
-            const report = `--- DIAGNOSTIC ENERGY CONCEPT ---
-Date: ${new Date().toLocaleString()}
-GPS: ${debug.gps}
-Angle: ${debug.angle}
-API_Status: ${debug.api_status}
-API_Error_Raw: ${debug.api_raw}
-GPX_Storage: ${debug.gpx}
-UA: ${navigator.userAgent}
----------------------------------`;
-            document.getElementById('report-text').value = report;
-            document.getElementById('final-report').style.display = 'block';
-            window.scrollTo(0, document.body.scrollHeight);
         }
     </script>
 </body>
