@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>ENERGY CONCEPT - COCKPIT V6</title>
+  <title>ENERGY CONCEPT - COCKPIT V7</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,13 +13,7 @@
 
   <style>
     :root{
-      --ktm:#ff6600;
-      --bg:#020202;
-      --panel:rgba(4,4,4,.94);
-      --txt:#fff;
-      --muted:#b9b9b9;
-      --danger:#ff3b3b;
-      --ok:#39d98a;
+      --ktm:#ff6600; --bg:#020202; --panel:rgba(4,4,4,.94); --txt:#fff; --muted:#b9b9b9; --danger:#ff3b3b;
     }
     *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,system-ui,sans-serif;user-select:none}
     html,body{width:100%;height:100%;overflow:hidden;background:#000;color:var(--txt)}
@@ -45,14 +39,8 @@
     .btnRec.on::before{background:var(--danger);animation:blink 1s infinite}
     @keyframes blink{50%{opacity:.2}}
     .nav{
-      min-width:300px;max-width:420px;
-      background:rgba(0,0,0,.95);
-      border:1px solid var(--ktm);
-      border-radius:10px;
-      padding:12px 16px;
-      box-shadow:0 10px 24px rgba(0,0,0,.65);
-      opacity:0;transform:translateY(-8px);transition:.25s;
-      pointer-events:auto;
+      min-width:300px;max-width:420px;background:rgba(0,0,0,.95);border:1px solid var(--ktm);border-radius:10px;
+      padding:12px 16px;box-shadow:0 10px 24px rgba(0,0,0,.65);opacity:0;transform:translateY(-8px);transition:.25s;pointer-events:auto;
     }
     .nav.on{opacity:1;transform:translateY(0)}
     .navTop{display:flex;align-items:center;gap:12px}
@@ -62,23 +50,14 @@
     .weather{cursor:pointer}
     .weather .temp{font-size:27px;font-weight:900}
     .weather .wind{font-size:13px;color:#bcbcbc}
-    .settingsIcon{
-      position:absolute;top:14px;right:18px;z-index:20;pointer-events:auto;
-      font-size:30px;color:var(--ktm);cursor:pointer;text-shadow:0 0 10px #000
-    }
-    .drawer{
-      position:fixed;z-index:2000;background:var(--panel);border:1px solid #333;
-      padding:18px;display:flex;flex-direction:column;pointer-events:auto;transition:.3s
-    }
+    .settingsIcon{position:absolute;top:14px;right:18px;z-index:20;pointer-events:auto;font-size:30px;color:var(--ktm);cursor:pointer;text-shadow:0 0 10px #000}
+    .drawer{position:fixed;z-index:2000;background:var(--panel);border:1px solid #333;padding:18px;display:flex;flex-direction:column;pointer-events:auto;transition:.3s}
     #settings-drawer{top:0;right:-340px;width:320px;height:100%;border-left:3px solid var(--ktm)}
     #settings-drawer.open{right:0}
     #fuel-drawer{left:10px;right:10px;bottom:-110px;height:100px;border-top:3px solid var(--ktm);border-radius:12px 12px 0 0}
     #fuel-drawer.open{bottom:0}
     .menuRow{margin-bottom:18px}
-    .input,.select{
-      width:100%;background:#181818;border:1px solid #444;color:#fff;
-      padding:10px 12px;border-radius:5px;outline:none;font-size:14px
-    }
+    .input,.select{width:100%;background:#181818;border:1px solid #444;color:#fff;padding:10px 12px;border-radius:5px;outline:none;font-size:14px}
     .results{margin-top:6px;background:#111;border:1px solid #444;border-radius:5px;max-height:170px;overflow:auto;display:none}
     .resItem{padding:10px;border-bottom:1px solid #222;cursor:pointer;font-size:13px}
     .resItem:hover{background:#262626}
@@ -89,20 +68,10 @@
     .slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
     .switch input:checked + .slider{background:var(--ktm)}
     .switch input:checked + .slider:before{transform:translateX(18px)}
-    .flag{
-      background:rgba(10,10,10,.96);border:2px solid var(--ktm);color:#fff;font-size:12px;
-      font-weight:800;padding:4px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 4px 8px rgba(0,0,0,.55)
-    }
-    .osmAttrib{
-      position:absolute;left:6px;bottom:5px;z-index:15;font-size:10px;color:#ddd;
-      background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px
-    }
+    .flag{background:rgba(10,10,10,.96);border:2px solid var(--ktm);color:#fff;font-size:12px;font-weight:800;padding:4px 8px;border-radius:4px;white-space:nowrap;box-shadow:0 4px 8px rgba(0,0,0,.55)}
+    .osmAttrib{position:absolute;left:6px;bottom:5px;z-index:15;font-size:10px;color:#ddd;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px}
     .diag{font-size:11px;line-height:1.4;color:#bbb}
-    .sunmode{
-      position:absolute;left:50%;top:12px;transform:translateX(-50%);
-      z-index:18;background:rgba(0,0,0,.82);border:1px solid #444;color:#fff;
-      padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;pointer-events:auto
-    }
+    .sunmode{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:18;background:rgba(0,0,0,.82);border:1px solid #444;color:#fff;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;pointer-events:auto}
   </style>
 </head>
 <body>
@@ -158,9 +127,7 @@
       </div>
       <div style="width:100%;margin-top:14px">
         <div class="label" style="text-align:right">Altitude</div>
-        <div class="tele">
-          <div class="row"><span>ALT</span><span class="val" id="alt-val">-- m</span></div>
-        </div>
+        <div class="tele"><div class="row"><span>ALT</span><span class="val" id="alt-val">-- m</span></div></div>
       </div>
     </div>
   </div>
@@ -235,22 +202,13 @@
   </div>
 
 <script>
-const CONFIG = {
-  ACCENT: "#ff6600",
-  RAYON: 20,
-  ANGLE_ROUGE: 45,
-  PITCH: 75,
-  ZOOMNAV: 18.5,
-  SEARCH_DELAY: 700,
-  DISPLAY: "auto",
-  FUEL: "Gazole"
-};
-
+const CONFIG = { ACCENT:"#ff6600", RAYON:20, ANGLE_ROUGE:45, PITCH:75, ZOOMNAV:18.5, SEARCH_DELAY:700, DISPLAY:"auto", FUEL:"Gazole" };
 let map, marker, userPos = {lat: 43.761, lng: 1.99};
 let angleOffset = 0, currentBeta = 0, isRecording = false, track = [];
 let stats = {speed:{max:0,sum:0,count:0}, angle:{max:0,sum:0,count:0}};
 let stations = [], stationMarkers = [];
 let searchTimer = null, lastSearch = 0;
+let lastFix = null;
 
 const SYS = {
   init(){
@@ -261,42 +219,30 @@ const SYS = {
     this.setDisplay("auto");
   },
   lockLandscape(){
-    if(screen.orientation && screen.orientation.lock){
-      screen.orientation.lock("landscape").catch(()=>{});
-    }
+    if(screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(()=>{});
   },
   initMap(){
     map = new maplibregl.Map({
-      container: "map",
-      style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [userPos.lng, userPos.lat],
-      zoom: 15,
-      pitch: CONFIG.PITCH,
-      antialias: true
+      container:"map",
+      style:"https://tiles.openfreemap.org/styles/liberty",
+      center:[userPos.lng, userPos.lat],
+      zoom:15,
+      pitch:CONFIG.PITCH,
+      antialias:true
     });
     map.addControl(new maplibregl.NavigationControl({showCompass:false}), "bottom-right");
     const el = document.createElement("div");
-    el.style.width = "22px";
-    el.style.height = "22px";
-    el.style.borderRadius = "50%";
-    el.style.background = "#00ccff";
-    el.style.border = "3px solid #fff";
-    el.style.boxShadow = "0 0 10px #00ccff";
-    marker = new maplibregl.Marker(el).setLngLat([userPos.lng, userPos.lat]).addTo(map);
+    el.style.width="22px"; el.style.height="22px"; el.style.borderRadius="50%"; el.style.background="#00ccff"; el.style.border="3px solid #fff"; el.style.boxShadow="0 0 10px #00ccff";
+    marker = new maplibregl.Marker(el).setLngLat([userPos.lng,userPos.lat]).addTo(map);
     map.on("click", ()=>UI.closeAll());
   },
   setDisplay(mode){
     CONFIG.DISPLAY = mode;
     const b = document.body, badge = document.getElementById("sunmode");
-    if(mode === "jour"){
-      b.style.filter = "brightness(1.2) contrast(1.15)";
-      badge.innerText = "MODE JOUR";
-    } else if(mode === "nuit"){
-      b.style.filter = "brightness(0.75) contrast(1.05)";
-      badge.innerText = "MODE NUIT";
-    } else {
-      const h = new Date().getHours();
-      const day = h >= 7 && h <= 19;
+    if(mode === "jour"){ b.style.filter = "brightness(1.2) contrast(1.15)"; badge.innerText = "MODE JOUR"; }
+    else if(mode === "nuit"){ b.style.filter = "brightness(0.75) contrast(1.05)"; badge.innerText = "MODE NUIT"; }
+    else {
+      const h = new Date().getHours(), day = h >= 7 && h <= 19;
       b.style.filter = day ? "brightness(1.2) contrast(1.15)" : "brightness(0.75) contrast(1.05)";
       badge.innerText = "MODE AUTO";
     }
@@ -305,21 +251,28 @@ const SYS = {
     if(navigator.geolocation){
       navigator.geolocation.watchPosition(p=>{
         userPos = {lat:p.coords.latitude, lng:p.coords.longitude};
+        lastFix = p;
         const speed = Math.max(0, Math.round((p.coords.speed || 0) * 3.6));
         const alt = p.coords.altitude;
         document.getElementById("speed-val").innerText = speed;
         document.getElementById("alt-val").innerText = alt != null ? Math.round(alt) + " m" : "-- m";
         if(speed > 0){
           stats.speed.max = Math.max(stats.speed.max, speed);
-          stats.speed.sum += speed;
-          stats.speed.count++;
+          stats.speed.sum += speed; stats.speed.count++;
           document.getElementById("speed-max").innerText = stats.speed.max;
           document.getElementById("speed-avg").innerText = Math.round(stats.speed.sum / stats.speed.count);
         }
         marker.setLngLat([userPos.lng, userPos.lat]);
         if(isRecording) track.push({lat:userPos.lat, lng:userPos.lng});
+
         if(document.getElementById("nav-box").classList.contains("on")){
-          map.easeTo({center:[userPos.lng,userPos.lat], bearing:p.coords.heading || 0, pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV});
+          map.easeTo({
+            center:[userPos.lng,userPos.lat],
+            bearing: p.coords.heading || map.getBearing(),
+            pitch: CONFIG.PITCH,
+            zoom: CONFIG.ZOOMNAV,
+            duration: 700
+          });
         } else {
           map.panTo([userPos.lng,userPos.lat]);
         }
@@ -333,8 +286,7 @@ const SYS = {
       let lean = Math.abs(Math.round(currentBeta - angleOffset));
       lean = Math.min(60, lean);
       stats.angle.max = Math.max(stats.angle.max, lean);
-      stats.angle.sum += lean;
-      stats.angle.count++;
+      stats.angle.sum += lean; stats.angle.count++;
       document.getElementById("angle-val").innerText = lean;
       document.getElementById("angle-max").innerText = stats.angle.max;
       document.getElementById("angle-avg").innerText = Math.round(stats.angle.sum / stats.angle.count);
@@ -354,24 +306,13 @@ const SYS = {
 };
 
 const MOTO = {
-  resetSpeed(){
-    stats.speed = {max:0,sum:0,count:0};
-    document.getElementById("speed-max").innerText = 0;
-    document.getElementById("speed-avg").innerText = 0;
-  },
-  resetAngle(){
-    angleOffset = currentBeta;
-    stats.angle = {max:0,sum:0,count:0};
-    document.getElementById("angle-max").innerText = 0;
-    document.getElementById("angle-avg").innerText = 0;
-    document.getElementById("angle-val").innerText = 0;
-  },
+  resetSpeed(){ stats.speed = {max:0,sum:0,count:0}; document.getElementById("speed-max").innerText = 0; document.getElementById("speed-avg").innerText = 0; },
+  resetAngle(){ angleOffset = currentBeta; stats.angle = {max:0,sum:0,count:0}; document.getElementById("angle-max").innerText = 0; document.getElementById("angle-avg").innerText = 0; document.getElementById("angle-val").innerText = 0; },
   debounceSearch(){
     const now = Date.now();
     clearTimeout(searchTimer);
-    if(now - lastSearch < CONFIG.SEARCH_DELAY){
-      searchTimer = setTimeout(()=>this.search(), CONFIG.SEARCH_DELAY);
-    } else this.search();
+    if(now - lastSearch < CONFIG.SEARCH_DELAY) searchTimer = setTimeout(()=>this.search(), CONFIG.SEARCH_DELAY);
+    else this.search();
     lastSearch = now;
   },
   async search(){
@@ -381,40 +322,32 @@ const MOTO = {
     box.style.display = "block";
     box.innerHTML = '<div style="padding:10px;color:#fff">Recherche...</div>';
     try{
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, {
-        headers: {"Accept-Language":"fr"}
-      });
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, {headers:{"Accept-Language":"fr"}});
       const d = await r.json();
-      if(!d.length){
-        box.innerHTML = '<div style="padding:10px;color:#ff6666">Aucun résultat</div>';
-        return;
-      }
-      box.innerHTML = d.map(p => {
+      if(!d.length){ box.innerHTML = '<div style="padding:10px;color:#ff6666">Aucun résultat</div>'; return; }
+      box.innerHTML = d.map(p=>{
         const name = (p.display_name || "").split(",")[0].replace(/'/g,"\\'");
         const disp = (p.display_name || "").replace(/'/g,"\\'");
         return `<div class="resItem" onclick="MOTO.route(${p.lat}, ${p.lon}, '${disp}', '${name}')">${name}</div>`;
       }).join("");
-    }catch(e){
-      box.style.display = "none";
-    }
+    }catch(e){ box.style.display = "none"; }
   },
   async route(lat, lon, full, name){
     UI.closeAll();
     try{
-      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true`);
+      const bearing = lastFix?.coords?.heading || 0;
+      const url = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${lon},${lat}?overview=full&geometries=geojson&steps=true&bearings=${Math.round(bearing)},60;0,0`;
+      const r = await fetch(url);
       const d = await r.json();
       if(!d.routes || !d.routes.length) return;
-      if(map.getSource("route")){
-        map.removeLayer("route-layer");
-        map.removeSource("route");
-      }
+      if(map.getSource("route")){ map.removeLayer("route-layer"); map.removeSource("route"); }
       map.addSource("route", {type:"geojson", data:d.routes[0].geometry});
       map.addLayer({id:"route-layer", type:"line", source:"route", paint:{"line-color":CONFIG.ACCENT, "line-width":8}});
       const step = d.routes[0].legs[0].steps[1] || d.routes[0].legs[0].steps[0];
       document.getElementById("nav-dist").innerText = Math.round(step.distance) + " m";
       document.getElementById("nav-text").innerText = "Vers " + (name || full || "destination");
       document.getElementById("nav-box").classList.add("on");
-      map.easeTo({center:[userPos.lng,userPos.lat], pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV});
+      map.easeTo({center:[userPos.lng,userPos.lat], pitch:CONFIG.PITCH, zoom:CONFIG.ZOOMNAV, duration:650});
       UI.setDiag("Navigation", "OK");
     }catch(e){
       alert("Erreur de calcul d’itinéraire.");
@@ -424,10 +357,7 @@ const MOTO = {
   stopNav(){
     document.getElementById("nav-box").classList.remove("on");
     document.getElementById("nav-text").innerText = "Aucune navigation";
-    if(map && map.getSource("route")){
-      map.removeLayer("route-layer");
-      map.removeSource("route");
-    }
+    if(map && map.getSource("route")){ map.removeLayer("route-layer"); map.removeSource("route"); }
   },
   fuelFieldName(fuel){
     const f = String(fuel || "").toLowerCase();
@@ -464,38 +394,25 @@ const MOTO = {
     document.getElementById("fuel-drawer").classList.add("open");
     const list = document.getElementById("fuel-list-content");
     list.innerHTML = '<div style="padding:12px;text-align:center;color:#fff">Recherche stations...</div>';
-
     try{
-      const url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=200";
+      const url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=300";
       const r = await fetch(url);
       const d = await r.json();
-
       stationMarkers.forEach(m=>m.remove());
       stationMarkers = [];
       stations = [];
 
       (d.results || []).forEach(s=>{
-        const lat = s.geom?.lat;
-        const lon = s.geom?.lon;
+        const lat = s.geom?.lat, lon = s.geom?.lon;
         if(lat == null || lon == null) return;
-
         const dist = MOTO.distance(userPos.lat, userPos.lng, lat, lon);
         if(dist > Number(CONFIG.RAYON)) return;
-
         const prix = MOTO.extractFuelPrice(s);
-        stations.push({
-          ville: s.ville || s.adresse || s.cp || "Station",
-          prix: prix == null ? 999 : prix,
-          dist,
-          lat,
-          lon
-        });
-
+        stations.push({ ville: s.ville || s.adresse || s.cp || "Station", prix: prix == null ? 999 : prix, dist, lat, lon });
         const el = document.createElement("div");
         el.className = "flag";
         el.innerText = prix == null ? "N.C" : prix.toFixed(3) + " €";
-        el.onclick = () => MOTO.route(lat, lon, s.ville || "Station", s.ville || "Station");
-
+        el.onclick = ()=>MOTO.route(lat, lon, s.ville || "Station", s.ville || "Station");
         const mk = new maplibregl.Marker(el).setLngLat([lon, lat]);
         if(document.getElementById("toggle-flags").checked) mk.addTo(map);
         stationMarkers.push(mk);
@@ -538,28 +455,17 @@ const MOTO = {
 };
 
 const UI = {
-  toggleSettings(){
-    const d = document.getElementById("settings-drawer");
-    if(d.classList.contains("open")) this.closeAll();
-    else { this.closeAll(); d.classList.add("open"); }
-  },
+  toggleSettings(){ const d = document.getElementById("settings-drawer"); if(d.classList.contains("open")) this.closeAll(); else { this.closeAll(); d.classList.add("open"); } },
   closeAll(){
-    const s = document.getElementById("settings-drawer");
-    const f = document.getElementById("fuel-drawer");
-    if(s.classList.contains("open")){
-      s.classList.remove("open");
-      document.getElementById("search-input").value = "";
-      document.getElementById("search-results").style.display = "none";
-    }
+    const s = document.getElementById("settings-drawer"), f = document.getElementById("fuel-drawer");
+    if(s.classList.contains("open")){ s.classList.remove("open"); document.getElementById("search-input").value = ""; document.getElementById("search-results").style.display = "none"; }
     if(f.classList.contains("open")) f.classList.remove("open");
   },
   toggleREC(){
     isRecording = !isRecording;
     const b = document.getElementById("btn-rec");
-    if(isRecording){
-      track = [];
-      b.classList.add("on");
-    }else{
+    if(isRecording){ track = []; b.classList.add("on"); }
+    else{
       b.classList.remove("on");
       if(!track.length) return;
       if(!confirm("Sauvegarder la trace GPX ?")) return;
@@ -574,10 +480,7 @@ const UI = {
     const el = document.getElementById("diag-console");
     const lines = el.innerHTML.split("<br>").filter(Boolean);
     const obj = {};
-    lines.forEach(l=>{
-      const i = l.indexOf(":");
-      if(i > -1) obj[l.slice(0,i)] = l.slice(i+1).trim();
-    });
+    lines.forEach(l=>{ const i = l.indexOf(":"); if(i > -1) obj[l.slice(0,i)] = l.slice(i+1).trim(); });
     obj[k] = v;
     el.innerHTML = Object.entries(obj).map(([a,b])=>`${a}: ${b}`).join("<br>");
   }
