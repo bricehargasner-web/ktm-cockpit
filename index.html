@@ -8,12 +8,13 @@
     <script>
         /* --- PANNEAU DE CONTRÔLE ENERGY CONCEPT --- */
         var CONFIG_KTM = {
+            THEME_CARTE: "jour",         
             COULEUR_ACCENT: "#FF6600",
             CARBURANT_PREF: "Gazole",       
             RAYON_RECHERCHE: 50,         
             ANGLE_ALERTE_ROUGE: 45,      
-            PITCH_3D: 60,                
-            ZOOM_NAV: 16                 
+            PITCH_3D: 75,                
+            ZOOM_NAV: 18.5               
         };
     </script>
 
@@ -38,8 +39,7 @@
         .search-box input { background: transparent; border: none; color: white; padding: 12px 15px; width: 100%; outline: none; font-size: 16px; }
         .btn-ktm { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 10px 15px; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
         
-        /* BOUTON REC */
-        #btn-rec { background: var(--bg); border: 2px solid #555; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; backdrop-filter: blur(5px); display: flex; align-items: center; gap: 8px; }
+        #btn-rec { background: var(--bg); border: 2px solid #555; color: #fff; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; backdrop-filter: blur(5px); display: flex; align-items: center; gap: 8px; height: 42px; }
         #btn-rec::before { content: ''; display: inline-block; width: 12px; height: 12px; background: red; border-radius: 50%; }
         .rec-active { border-color: red !important; color: red !important; box-shadow: 0 0 15px rgba(255,0,0,0.5); }
         .rec-active::before { animation: blink 1s infinite; }
@@ -47,37 +47,55 @@
 
         .actions-right { display: flex; gap: 10px; align-items: center; }
 
+        /* MODULE CARBURANT KTM (Bouton + Interrupteur) */
+        .fuel-module { display: flex; background: #111; border: 2px solid #444; border-radius: 4px; overflow: hidden; height: 42px; backdrop-filter: blur(5px); }
+        .fuel-btn { background: var(--ktm); color: #000; font-weight: bold; border: none; padding: 0 15px; cursor: pointer; display: flex; align-items: center; gap: 5px; text-transform: uppercase; }
+        .fuel-toggle-area { display: flex; align-items: center; padding: 0 10px; gap: 8px; background: rgba(0,0,0,0.6); }
+        
+        /* INTERRUPTEUR (Switch) */
+        .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; border: 1px solid #555; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: #888; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--ktm); border-color: var(--ktm); }
+        input:checked + .slider:before { transform: translateX(16px); background-color: #fff; }
+
+        /* DRAPEAUX SUR LA CARTE */
+        .station-marker-flag { background: rgba(15, 15, 15, 0.95); border: 2px solid var(--ktm); color: white; font-weight: bold; font-size: 11px; padding: 3px 6px; border-radius: 4px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.5); cursor: pointer; }
+        .station-marker-flag::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-width: 8px 6px 0; border-style: solid; border-color: var(--ktm) transparent transparent transparent; }
+        .marker-nc { border-color: #666; color: #ccc; }
+        .marker-nc::after { border-color: #666 transparent transparent transparent; }
+
         #search-results { position: absolute; top: 70px; left: 15px; width: calc(100% - 30px); max-width: 400px; background: rgba(15,15,15,0.95); border: 1px solid var(--ktm); z-index: 50; max-height: 250px; overflow-y: auto; display: none; border-radius: 4px; }
         .search-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; font-size: 16px; color: white; }
 
-        /* SECTION CENTRALE (Vitesse / Angle) - SYMETRIE PARFAITE */
+        /* SECTION CENTRALE */
         .mid-section { display: flex; justify-content: space-between; align-items: flex-end; flex-grow: 1; padding-bottom: 20px; }
-        
         .hud-left, .hud-right { display: flex; flex-direction: column; gap: 15px; }
-        .data-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); transition: color 0.2s; position: relative; z-index: 2; }
-        
-        /* Ligne d'horizon sous l'angle */
-        .horizon-line { position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: rgba(255, 102, 0, 0.4); z-index: 1; transition: transform 0.1s, background 0.2s; }
+        .data-val { font-size: 5rem; font-weight: 900; color: var(--ktm); line-height: 1; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); position: relative; z-index: 2; margin-bottom: -5px; }
+        .horizon-line { position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: rgba(255, 102, 0, 0.4); z-index: 1; transition: transform 0.1s; }
+
+        .stats-row { display: flex; justify-content: space-around; font-size: 10px; color: #aaa; font-weight: bold; margin-top: 5px; padding-top: 5px; border-top: 1px solid #444; }
+        .stat-val { color: var(--ktm); }
+        .micro-btn { background: transparent; border: 1px solid #444; color: #666; font-size: 8px; font-weight: bold; padding: 2px 5px; border-radius: 3px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .micro-btn:active { background: #444; color: white; }
 
         /* GUIDAGE BAS */
-        .nav-block { display: flex; justify-content: center; width: 100%; }
-        .nav-instruction { background: var(--bg); border: 2px solid var(--ktm); border-radius: 8px; padding: 15px 30px; display: flex; align-items: center; gap: 20px; opacity: 0; transition: 0.3s; backdrop-filter: blur(10px); }
+        .nav-block { display: flex; justify-content: center; width: 100%; margin-bottom: 40px; }
+        .nav-instruction { background: var(--bg); border: 2px solid var(--ktm); border-radius: 8px; padding: 15px 25px; display: flex; align-items: center; gap: 20px; opacity: 0; transition: 0.3s; backdrop-filter: blur(10px); min-width: 320px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         .nav-instruction.active { opacity: 1; }
 
         /* TIROIRS */
         .drawer { position: fixed; background: rgba(15,15,15,0.98); z-index: 2000; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; border: 1px solid #333; backdrop-filter: blur(15px); }
         #settings-drawer { top: 0; right: -320px; width: 300px; height: 100%; border-left: 4px solid var(--ktm); }
         #settings-drawer.open { right: 0; }
-        
         #fuel-drawer { bottom: -70%; left: 10%; right: 10%; height: 60%; border-top: 4px solid var(--ktm); border-radius: 10px 10px 0 0; display: flex; flex-direction: column; }
         #fuel-drawer.open { bottom: 0; }
 
         select, input[type="range"] { width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 12px; margin-top: 5px; border-radius: 4px; font-size: 16px; }
-        
         .sort-bar { display: flex; gap: 10px; margin-bottom: 10px; background: #222; padding: 10px; border-radius: 4px; }
         .btn-sort { flex-grow: 1; background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-sort.active { background: var(--ktm); color: black; border-color: var(--ktm); }
-        
         #fuel-list-content { overflow-y: auto; flex-grow: 1; }
         .station-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #333; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; }
     </style>
@@ -95,20 +113,35 @@
             
             <div class="actions-right pointer-auto">
                 <button id="btn-rec" onclick="UI.toggleREC()">REC</button>
-                <button class="btn-ktm" style="display:flex; align-items:center; gap:5px;" onclick="MOTO_LOGIC.scanFuel()">⛽ <span class="hide-mobile">CARBURANT</span></button>
-                <div style="color: var(--ktm); font-size: 28px; cursor: pointer; background: var(--bg); border-radius: 4px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border: 1px solid #444;" onclick="UI.toggleSettings()">⋮</div>
+                
+                <div class="fuel-module">
+                    <button class="fuel-btn" onclick="MOTO_LOGIC.scanFuel()">⛽ <span class="hide-mobile">SCAN</span></button>
+                    <div class="fuel-toggle-area">
+                        <span style="font-size: 16px;">📍</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-flags" checked onchange="MOTO_LOGIC.toggleStationMarkers()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="color: var(--ktm); font-size: 28px; cursor: pointer; background: var(--bg); border-radius: 4px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border: 2px solid #444;" onclick="UI.toggleSettings()">⋮</div>
             </div>
         </div>
         <div id="search-results" class="pointer-auto"></div>
 
         <div class="mid-section">
             <div class="hud-left pointer-auto">
-                <div class="case" style="width: 140px; text-align: center;">
+                <div class="case" style="width: 150px; text-align: center; padding-bottom: 5px;">
                     <div class="data-val" id="speed-val">0</div>
-                    <div style="color: #aaa; font-size: 14px; font-weight: bold;">KM/H</div>
-                    <div id="alt-val" style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px; font-size: 12px; color: #ccc;">ALT: -- m</div>
+                    <div style="color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 5px;">KM/H</div>
+                    <div class="stats-row">
+                        <span>MAX:<span class="stat-val" id="speed-max">0</span></span>
+                        <span>MOY:<span class="stat-val" id="speed-avg">0</span></span>
+                        <button class="micro-btn" onclick="MOTO_LOGIC.resetSpeed()">RST</button>
+                    </div>
                 </div>
-                <div class="case" style="width: 140px; cursor: pointer;" onclick="window.open('https://meteofrance.com/', '_blank')">
+                <div class="case" style="width: 150px; cursor: pointer; text-align: center;" onclick="window.open('https://meteofrance.com/', '_blank')">
                     <div style="color: var(--ktm); font-weight: bold; font-size: 12px;">MÉTÉO LOCALE</div>
                     <div id="temp-val" style="font-size: 20px; font-weight: bold;">--°C</div>
                     <div id="wind-val" style="font-size: 12px; color: #aaa;">Vent: -- km/h</div>
@@ -116,13 +149,14 @@
             </div>
 
             <div class="hud-right pointer-auto">
-                <div class="case" style="width: 140px; text-align: center; position: relative;">
+                <div class="case" style="width: 150px; text-align: center; position: relative; padding-bottom: 5px;">
                     <div class="horizon-line" id="horizon-visual"></div>
-                    
                     <div class="data-val" id="angle-val">0°</div>
-                    <div style="color: #aaa; font-size: 14px; font-weight: bold;">ANGLE</div>
-                    <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 5px;">
-                        <button onclick="MOTO_LOGIC.setZero()" style="background: none; border: none; color: #ccc; font-size: 12px; font-weight:bold; cursor: pointer; width: 100%; padding: 0;">ZÉRO</button>
+                    <div style="color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 5px;">ANGLE</div>
+                    <div class="stats-row">
+                        <span>MAX:<span class="stat-val" id="angle-max">0°</span></span>
+                        <span>MOY:<span class="stat-val" id="angle-avg">0°</span></span>
+                        <button class="micro-btn" onclick="MOTO_LOGIC.setZeroAngle()">0°</button>
                     </div>
                 </div>
             </div>
@@ -130,12 +164,13 @@
 
         <div class="nav-block pointer-auto">
             <div class="nav-instruction" id="nav-instruction">
-                <div style="font-size: 35px; color: var(--ktm);">➔</div>
-                <div>
-                    <div id="nav-dist" style="font-size: 24px; font-weight: bold;">-- km</div>
-                    <div id="nav-text" style="color: #ccc; font-size: 14px;">En attente...</div>
+                <div id="nav-arrow" style="font-size: 40px; color: var(--ktm); font-weight: bold; min-width: 40px; text-align: center;">➔</div>
+                <div style="flex-grow: 1;">
+                    <div id="nav-dist" style="font-size: 24px; font-weight: bold;">-- m</div>
+                    <div id="nav-text" style="color: #fff; font-size: 16px;">En attente...</div>
+                    <div id="nav-total" style="color: #aaa; font-size: 12px; margin-top: 2px;">Total: -- km</div>
                 </div>
-                <button onclick="MOTO_LOGIC.stopNav()" style="background: none; border: 1px solid #666; color: white; padding: 5px 15px; border-radius: 4px; margin-left: 20px; cursor: pointer; font-weight: bold;">STOP</button>
+                <button onclick="MOTO_LOGIC.stopNav()" style="background: rgba(255,0,0,0.2); border: 1px solid #666; color: white; padding: 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">✖</button>
             </div>
         </div>
     </div>
@@ -160,20 +195,25 @@
             <h3 style="color: var(--ktm); margin: 0;">STATIONS <span id="fuel-type-title"></span></h3>
             <button onclick="UI.toggleFuelDrawer()" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px;">✖</button>
         </div>
-        
         <div class="sort-bar">
             <button id="sort-dist" class="btn-sort active" onclick="MOTO_LOGIC.sortStations('dist')">Trier par Distance</button>
             <button id="sort-prix" class="btn-sort" onclick="MOTO_LOGIC.sortStations('prix')">Trier par Prix</button>
         </div>
-
         <div id="fuel-list-content"></div>
     </div>
 
     <script>
         var map, userMarker;
         var userPos = { lat: 43.761, lng: 1.990 }; 
-        var angleOffset = 0, isRecording = false;
+        var currentBeta = 0;
+        var angleOffset = 0;
+        var stats = { speed: { max: 0, sum: 0, count: 0 }, angle: { max: 0, sum: 0, count: 0 } };
+        var isRecording = false;
+        var recordedTrack = []; 
         var stationsData = []; 
+        
+        // TABLEAU DES DRAPEAUX SUR LA CARTE
+        var stationMarkersArray = []; 
 
         function getDistance(lat1, lon1, lat2, lon2) {
             var p = 0.017453292519943295;
@@ -182,20 +222,26 @@
             return (12742 * Math.asin(Math.sqrt(a))).toFixed(1); 
         }
 
+        function generateGPX(coords) {
+            var gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="EnergyConcept Cockpit"><trk><name>Course_KTM</name><trkseg>\n';
+            coords.forEach(function(c) {
+                gpx += '  <trkpt lat="' + c.lat + '" lon="' + c.lng + '"></trkpt>\n';
+            });
+            gpx += '</trkseg></trk></gpx>';
+            return gpx;
+        }
+
         var MOTO_LOGIC = {
             initSystem: function() {
+                var mapTileUrl = CONFIG_KTM.THEME_CARTE === "jour" 
+                    ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' 
+                    : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+
                 map = new maplibregl.Map({
                     container: 'map',
                     style: {
                         version: 8,
-                        sources: {
-                            'osm-tiles': {
-                                type: 'raster',
-                                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                                tileSize: 256,
-                                attribution: '&copy; OpenStreetMap'
-                            }
-                        },
+                        sources: { 'osm-tiles': { type: 'raster', tiles: [mapTileUrl], tileSize: 256 } },
                         layers: [{ id: 'osm-layer', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
                     },
                     center: [userPos.lng, userPos.lat],
@@ -214,10 +260,22 @@
             startSensors: function() {
                 navigator.geolocation.watchPosition(function(p) {
                     userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
-                    document.getElementById('speed-val').innerText = Math.round(p.coords.speed * 3.6) || 0;
-                    document.getElementById('alt-val').innerText = "ALT: " + (Math.round(p.coords.altitude) || 0) + " m";
+                    
+                    var currentSpeed = Math.round(p.coords.speed * 3.6) || 0;
+                    document.getElementById('speed-val').innerText = currentSpeed;
+                    
+                    if (currentSpeed > 0) {
+                        stats.speed.max = Math.max(stats.speed.max, currentSpeed);
+                        stats.speed.sum += currentSpeed;
+                        stats.speed.count++;
+                        var avgSpeed = Math.round(stats.speed.sum / stats.speed.count);
+                        document.getElementById('speed-max').innerText = stats.speed.max;
+                        document.getElementById('speed-avg').innerText = avgSpeed;
+                    }
                     
                     userMarker.setLngLat([userPos.lng, userPos.lat]);
+                    
+                    if(isRecording) recordedTrack.push({lat: p.coords.latitude, lng: p.coords.longitude});
                     
                     if(document.getElementById('nav-instruction').classList.contains('active')) {
                         map.easeTo({ center: [userPos.lng, userPos.lat], bearing: p.coords.heading || 0, pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
@@ -225,21 +283,29 @@
                         map.panTo([userPos.lng, userPos.lat]);
                     }
                     MOTO_LOGIC.updateWeather(userPos.lat, userPos.lng);
-                }, function(e) { console.log("Recherche Signal GPS..."); }, { enableHighAccuracy: true });
+                }, function(e) { console.log("Recherche Signal..."); }, { enableHighAccuracy: true });
 
                 window.addEventListener('deviceorientation', function(e) {
                     if(e.beta === null) return;
+                    currentBeta = e.beta; 
+                    
                     var lean = Math.abs(e.beta - angleOffset);
                     lean = Math.min(60, Math.round(lean));
                     
-                    // Mise à jour de la valeur et de l'horizon
+                    stats.angle.max = Math.max(stats.angle.max, lean);
+                    stats.angle.sum += lean;
+                    stats.angle.count++;
+                    var avgAngle = Math.round(stats.angle.sum / stats.angle.count);
+
                     var angleText = document.getElementById('angle-val');
                     var horizon = document.getElementById('horizon-visual');
                     
                     angleText.innerText = lean + "°";
+                    document.getElementById('angle-max').innerText = stats.angle.max + "°";
+                    document.getElementById('angle-avg').innerText = avgAngle + "°";
+                    
                     horizon.style.transform = `rotate(${e.beta > angleOffset ? lean : -lean}deg)`;
                     
-                    // Alerte Rouge
                     if(lean >= CONFIG_KTM.ANGLE_ALERTE_ROUGE) {
                         angleText.style.color = "red";
                         horizon.style.background = "red";
@@ -248,6 +314,19 @@
                         horizon.style.background = "rgba(255, 102, 0, 0.4)";
                     }
                 });
+            },
+
+            resetSpeed: function() {
+                stats.speed = { max: 0, sum: 0, count: 0 };
+                document.getElementById('speed-max').innerText = "0";
+                document.getElementById('speed-avg').innerText = "0";
+            },
+
+            setZeroAngle: function() {
+                angleOffset = currentBeta; 
+                stats.angle = { max: 0, sum: 0, count: 0 };
+                document.getElementById('angle-max').innerText = "0°";
+                document.getElementById('angle-avg').innerText = "0°";
             },
 
             searchLocation: async function() {
@@ -281,14 +360,28 @@
                 destLon = parseFloat(destLon);
 
                 try {
-                    var urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson`;
+                    var urlOSRM = `https://router.project-osrm.org/route/v1/driving/${userPos.lng},${userPos.lat};${destLon},${destLat}?overview=full&geometries=geojson&steps=true`;
                     var resOSRM = await fetch(urlOSRM);
                     var dataOSRM = await resOSRM.json();
                     
                     if (dataOSRM.code !== 'Ok') throw new Error("Échec du routage public.");
 
-                    var routeGeoJSON = dataOSRM.routes[0].geometry;
-                    var routeDistanceKm = (dataOSRM.routes[0].distance / 1000).toFixed(1);
+                    var route = dataOSRM.routes[0];
+                    var routeGeoJSON = route.geometry;
+                    var routeDistanceKm = (route.distance / 1000).toFixed(1);
+
+                    var steps = route.legs[0].steps;
+                    var nextManeuver = steps.length > 1 ? steps[1] : steps[0];
+                    
+                    var instruction = "Vers " + (nextManeuver.name || destName);
+                    var distVirage = nextManeuver.distance > 1000 ? (nextManeuver.distance/1000).toFixed(1) + " km" : Math.round(nextManeuver.distance) + " m";
+                    
+                    var mod = nextManeuver.maneuver.modifier;
+                    var arrow = "➔"; 
+                    if(mod === 'right' || mod === 'sharp right' || mod === 'slight right') arrow = "⬎";
+                    if(mod === 'left' || mod === 'sharp left' || mod === 'slight left') arrow = "⬏";
+                    if(mod === 'uturn') arrow = "⟲";
+                    if(nextManeuver.maneuver.type === 'roundabout') arrow = "↻";
 
                     if (map.getSource('route')) {
                         map.removeLayer('route-layer');
@@ -303,19 +396,34 @@
                     });
 
                     document.getElementById('nav-instruction').classList.add('active');
-                    document.getElementById('nav-text').innerText = `Vers: ${destName}`;
-                    document.getElementById('nav-dist').innerText = routeDistanceKm + " km";
+                    document.getElementById('nav-arrow').innerText = arrow;
+                    document.getElementById('nav-dist').innerText = distVirage; 
+                    document.getElementById('nav-text').innerText = instruction;
+                    document.getElementById('nav-total').innerText = "Dest. finale : " + routeDistanceKm + " km";
+                    
                     map.easeTo({ center: [userPos.lng, userPos.lat], pitch: CONFIG_KTM.PITCH_3D, zoom: CONFIG_KTM.ZOOM_NAV });
 
-                } catch (e) {
-                    alert("ALERTE : Impossible de tracer la route. Vérifiez la couverture 4G.");
-                }
+                } catch (e) { alert("ALERTE : Impossible de tracer la route."); }
             },
 
             stopNav: function() {
                 document.getElementById('nav-instruction').classList.remove('active');
                 if (map.getSource('route')) { map.removeLayer('route-layer'); map.removeSource('route'); }
                 map.easeTo({ pitch: 0, zoom: 15 });
+            },
+
+            // --- GESTION DES MARQUEURS CARBURANTS ---
+            clearStationMarkers: function() {
+                stationMarkersArray.forEach(function(m) { m.remove(); });
+                stationMarkersArray = [];
+            },
+
+            toggleStationMarkers: function() {
+                var show = document.getElementById('toggle-flags').checked;
+                stationMarkersArray.forEach(function(m) {
+                    if(show) m.addTo(map);
+                    else m.remove();
+                });
             },
 
             scanFuel: async function() {
@@ -329,16 +437,34 @@
                     var res = await fetch(url);
                     var data = await res.json();
                     
+                    MOTO_LOGIC.clearStationMarkers(); // On efface les anciens drapeaux
+
                     if(!data.results || data.results.length === 0) {
                         document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; text-align:center;'>Aucune station trouvée.</div>";
                         return;
                     }
 
+                    var isToggleOn = document.getElementById('toggle-flags').checked;
+
                     stationsData = data.results.map(function(s) {
                         if(!s.geom) return null;
                         var prixVal = s[CONFIG_KTM.CARBURANT_PREF.toLowerCase() + "_prix"];
+                        var cleanName = s.ville ? s.ville.replace(/['"]/g, " ") : "Station";
+                        var prixAffiche = prixVal ? prixVal + ' €' : 'N.C';
+
+                        // Création du drapeau sur la carte
+                        var el = document.createElement('div');
+                        el.className = 'station-marker-flag';
+                        if(!prixVal) el.classList.add('marker-nc');
+                        el.innerHTML = prixAffiche;
+                        el.onclick = function() { MOTO_LOGIC.startRouting(s.geom.lat, s.geom.lon, 'Station ' + cleanName); };
+
+                        var marker = new maplibregl.Marker(el).setLngLat([s.geom.lon, s.geom.lat]);
+                        stationMarkersArray.push(marker);
+                        if(isToggleOn) marker.addTo(map);
+
                         return {
-                            ville: s.ville ? s.ville.replace(/['"]/g, " ") : "Station",
+                            ville: cleanName,
                             adresse: s.adresse || "",
                             prixRaw: prixVal ? parseFloat(prixVal) : 999,
                             prixAffiche: prixVal ? prixVal + ' €' : '<span style="color:var(--ktm)">N.C</span>',
@@ -350,9 +476,7 @@
 
                     MOTO_LOGIC.sortStations('dist');
 
-                } catch(e) { 
-                    document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red; text-align:center;'>Erreur Data Gouvernementale.</div>"; 
-                }
+                } catch(e) { document.getElementById('fuel-list-content').innerHTML = "<div style='padding:20px; color:red; text-align:center;'>Erreur Data Gouvernementale.</div>"; }
             },
 
             sortStations: function(mode) {
@@ -387,24 +511,40 @@
                     document.getElementById('temp-val').innerText = Math.round(d.current_weather.temperature) + "°C";
                     document.getElementById('wind-val').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
                 } catch(e) {}
-            },
-            setZero: function() { angleOffset = 0; }
+            }
         };
 
         var UI = {
             toggleSettings: function() { document.getElementById('settings-drawer').classList.toggle('open'); },
             toggleFuelDrawer: function() { document.getElementById('fuel-drawer').classList.toggle('open'); },
             toggleREC: function() {
-                isRecording = !isRecording;
                 var btn = document.getElementById('btn-rec');
-                if(isRecording) {
+                if(!isRecording) {
+                    isRecording = true;
+                    recordedTrack = []; 
                     btn.classList.add('rec-active');
                     btn.innerText = "REC";
-                    alert("C'est parti ! Enregistrement GPX activé.");
+                    alert("C'est parti ! Le GPS enregistre votre trace.");
                 } else {
+                    isRecording = false;
                     btn.classList.remove('rec-active');
                     btn.innerText = "REC";
-                    confirm("Voulez-vous sauvegarder votre course ?");
+                    
+                    if(recordedTrack.length > 0) {
+                        if(confirm("Voulez-vous sauvegarder votre course (" + recordedTrack.length + " points GPS) ?")) {
+                            var gpxData = generateGPX(recordedTrack);
+                            var blob = new Blob([gpxData], {type: "application/gpx+xml"});
+                            var url = URL.createObjectURL(blob);
+                            var a = document.createElement("a");
+                            a.href = url;
+                            a.download = "Course_KTM.gpx";
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                    } else {
+                        alert("Aucun point GPS n'a été enregistré.");
+                    }
                 }
             }
         };
