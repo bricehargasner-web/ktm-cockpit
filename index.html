@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>ENERGY CONCEPT - COCKPIT V5</title>
+  <title>ENERGY CONCEPT - COCKPIT V6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -16,7 +16,6 @@
       --ktm:#ff6600;
       --bg:#020202;
       --panel:rgba(4,4,4,.94);
-      --panel2:rgba(12,12,12,.88);
       --txt:#fff;
       --muted:#b9b9b9;
       --danger:#ff3b3b;
@@ -104,7 +103,6 @@
       z-index:18;background:rgba(0,0,0,.82);border:1px solid #444;color:#fff;
       padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;pointer-events:auto
     }
-    .tiny{font-size:11px;color:#aaa}
   </style>
 </head>
 <body>
@@ -434,20 +432,19 @@ const MOTO = {
   fuelFieldName(fuel){
     const f = String(fuel || "").toLowerCase();
     const mapFields = {
-      "gazole":"prix_gazole",
-      "sp95":"prix_sp95",
-      "sp98":"prix_sp98",
-      "e10":"prix_e10",
-      "e85":"prix_e85",
-      "gplc":"prix_gplc"
+      "gazole":["prix_gazole","prix_gasoil","gazole","gasoil"],
+      "sp95":["prix_sp95","sp95"],
+      "sp98":["prix_sp98","sp98"],
+      "e10":["prix_e10","e10"],
+      "e85":["prix_e85","e85"],
+      "gplc":["prix_gplc","gplc","prix_gpl"]
     };
-    return mapFields[f] || `prix_${f}`;
+    return mapFields[f] || [`prix_${f}`];
   },
   extractFuelPrice(s){
-    const field = this.fuelFieldName(CONFIG.FUEL);
-    const candidates = [field, field.toLowerCase(), field.toUpperCase(), CONFIG.FUEL, CONFIG.FUEL.toLowerCase()];
-    for(const k of candidates){
-      if(s[k] !== undefined && s[k] !== null && String(s[k]).trim() !== ""){
+    const keys = this.fuelFieldName(CONFIG.FUEL);
+    for(const k of keys){
+      if(s[k] != null && s[k] !== ""){
         const v = parseFloat(String(s[k]).replace(",", "."));
         if(!Number.isNaN(v)) return v;
       }
@@ -464,12 +461,12 @@ const MOTO = {
   },
   async scanFuel(){
     UI.closeAll();
-    const drawer = document.getElementById("fuel-drawer");
-    drawer.classList.add("open");
+    document.getElementById("fuel-drawer").classList.add("open");
     const list = document.getElementById("fuel-list-content");
     list.innerHTML = '<div style="padding:12px;text-align:center;color:#fff">Recherche stations...</div>';
+
     try{
-      const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=200`;
+      const url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=200";
       const r = await fetch(url);
       const d = await r.json();
 
@@ -478,8 +475,11 @@ const MOTO = {
       stations = [];
 
       (d.results || []).forEach(s=>{
-        if(!s.geom || s.geom.lat == null || s.geom.lon == null) return;
-        const dist = MOTO.distance(userPos.lat, userPos.lng, s.geom.lat, s.geom.lon);
+        const lat = s.geom?.lat;
+        const lon = s.geom?.lon;
+        if(lat == null || lon == null) return;
+
+        const dist = MOTO.distance(userPos.lat, userPos.lng, lat, lon);
         if(dist > Number(CONFIG.RAYON)) return;
 
         const prix = MOTO.extractFuelPrice(s);
@@ -487,21 +487,22 @@ const MOTO = {
           ville: s.ville || s.adresse || s.cp || "Station",
           prix: prix == null ? 999 : prix,
           dist,
-          lat: s.geom.lat,
-          lon: s.geom.lon
+          lat,
+          lon
         });
 
         const el = document.createElement("div");
         el.className = "flag";
         el.innerText = prix == null ? "N.C" : prix.toFixed(3) + " €";
-        el.onclick = () => MOTO.route(s.geom.lat, s.geom.lon, s.ville || "Station", s.ville || "Station");
-        const mk = new maplibregl.Marker(el).setLngLat([s.geom.lon, s.geom.lat]);
+        el.onclick = () => MOTO.route(lat, lon, s.ville || "Station", s.ville || "Station");
+
+        const mk = new maplibregl.Marker(el).setLngLat([lon, lat]);
         if(document.getElementById("toggle-flags").checked) mk.addTo(map);
         stationMarkers.push(mk);
       });
 
       MOTO.sortStations(document.getElementById("sort-mode").value || "dist");
-      UI.setDiag("Carburants", "OK");
+      UI.setDiag("Carburants", stations.length ? "OK" : "Aucune station");
     }catch(e){
       list.innerHTML = '<div style="padding:12px;text-align:center;color:#ff6666">Erreur serveur carburants</div>';
       UI.setDiag("Carburants", "Erreur");
