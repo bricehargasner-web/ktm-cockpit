@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V3</title>
+    <title>KTM Adventure Dash V5</title>
     
     <style>
         :root {
@@ -129,7 +129,7 @@
 
         <div class="settings-block">
             <label class="settings-label">Diagnostic Capteurs</label>
-            <div id="debug-gyro">Gyroscope: En attente d'autorisation (Clique sur Calibrer 0°)...</div>
+            <div id="debug-gyro">Gyroscope: En attente...</div>
             <div id="debug-gps" style="font-size:0.7rem; color:#00ff00; background:#000; padding:5px; margin-top:5px; font-family:monospace;">GPS: En attente...</div>
         </div>
 
@@ -143,9 +143,9 @@
         const CONFIG = {
             carburantCible: 'SP98',          
             rayonRechercheKm: 20,            
-            lienMeteo: 'https://meteofrance.com', 
+            lienMeteo: 'https://www.meteoetradar.com', // Mis à jour avec le nouveau radar
             filtreAngleDeg: 2, 
-            apiStations: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-du-jour/records'
+            apiStations: 'https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-du-jour/records'
         };
 
         const STATE = {
@@ -238,28 +238,32 @@
             let rawBeta = event.beta ? Math.round(event.beta) : 0;
             let rawGamma = event.gamma ? Math.round(event.gamma) : 0;
             
-            document.getElementById('debug-gyro').innerText = `Actif | Beta (Portrait): ${rawBeta}° | Gamma (Paysage): ${rawGamma}°`;
-
-            // Sélection dynamique de l'axe selon l'orientation de l'écran
+            // Sélection automatique de l'axe (Gamma pour paysage)
             let isLandscape = window.innerWidth > window.innerHeight;
             let activeAxis = isLandscape ? rawBeta : rawGamma; 
             
-            let correctedAngle = Math.abs(activeAxis - STATE.angle.offset);
+            // Calcul de l'angle corrigé par le calibrage
+            let correctedAngle = Math.round(Math.abs(Math.abs(activeAxis) - Math.abs(STATE.angle.offset)));
             
+            document.getElementById('debug-gyro').innerText = `Brut B:${rawBeta}° G:${rawGamma}° | Calcul:${correctedAngle}°`;
+
+            // AFFICHAGE DIRECT (Non bloqué par le filtre)
+            document.getElementById('angle-val').innerText = correctedAngle;
+
+            // ENREGISTREMENT DES STATS (Bloqué par le filtre pour ignorer les micro-vibrations)
             if (correctedAngle >= CONFIG.filtreAngleDeg) {
                 STATE.angle.current = correctedAngle;
-                if (correctedAngle > STATE.angle.max) STATE.angle.max = correctedAngle;
+                if (correctedAngle > STATE.angle.max) {
+                    STATE.angle.max = correctedAngle;
+                    document.getElementById('angle-max').innerText = STATE.angle.max;
+                }
                 STATE.angle.sum += correctedAngle;
                 STATE.angle.count++;
-
-                document.getElementById('angle-val').innerText = STATE.angle.current;
-                document.getElementById('angle-max').innerText = STATE.angle.max;
                 document.getElementById('angle-moy').innerText = Math.round(STATE.angle.sum / STATE.angle.count);
             }
         }
 
         function resetAngle() {
-            // Contournement obligatoire pour les sécurités Apple (iOS 13+)
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
@@ -270,12 +274,11 @@
                             }
                             performResetAngle();
                         } else {
-                            showAlert("Autorisation gyroscope refusée par le téléphone.");
+                            showAlert("Autorisation gyroscope refusée.");
                         }
                     })
                     .catch(() => showAlert("Erreur d'accès au gyroscope."));
             } else {
-                // Pour Android ou anciens iOS
                 if (!STATE.angle.initialized) {
                     window.addEventListener('deviceorientation', handleOrientation);
                     STATE.angle.initialized = true;
@@ -285,12 +288,14 @@
         }
 
         function performResetAngle() {
-            STATE.angle.offset = STATE.angle.current + STATE.angle.offset;
+            let isLandscape = window.innerWidth > window.innerHeight;
+            let testEvent = new DeviceOrientationEvent('deviceorientation'); 
+            STATE.angle.offset = 0; 
             STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0;
             document.getElementById('angle-val').innerText = 0;
             document.getElementById('angle-max').innerText = 0;
             document.getElementById('angle-moy').innerText = 0;
-            showAlert("Angle calibré (0°)");
+            showAlert("Angle calibré (Attente mouvement)");
         }
 
         /* =========================================================
@@ -309,7 +314,15 @@
                 STATE.gpx.active = false;
                 btn.innerText = "REC TRACE GPX";
                 btn.classList.remove('active');
-                downloadGPX();
+                
+                // DEMANDE DE CONFIRMATION AVANT TÉLÉCHARGEMENT
+                if (confirm(`Enregistrement terminé (${STATE.gpx.points.length} points). Voulez-vous télécharger le fichier GPX sur votre téléphone ?`)) {
+                    downloadGPX();
+                } else {
+                    STATE.gpx.points = [];
+                    document.getElementById('gpx-count').innerText = "0";
+                    showAlert("Trace effacée sans être sauvegardée.");
+                }
             }
         }
 
@@ -319,7 +332,6 @@
             STATE.gpx.points.forEach(p => { gpx += `    <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>\n`; });
             gpx += `  </trkseg></trk>\n</gpx>`;
             
-            // Méthode de téléchargement fiabilisée pour Mobile
             const blob = new Blob([gpx], {type: 'application/gpx+xml'});
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -354,7 +366,7 @@
             const url = `${CONFIG.apiStations}?where=${encodeURIComponent(query)}&limit=30`;
 
             fetch(url).then(res => {
-                if(!res.ok) throw new Error("API Gouvernement indisponible.");
+                if(!res.ok) throw new Error(`API bloquée (Erreur ${res.status})`);
                 return res.json();
             }).then(data => {
                 list.innerHTML = "";
@@ -407,8 +419,7 @@
                     `;
                 });
             }).catch(err => {
-                list.innerHTML = "<div style='color:red; text-align:center;'>ÉCHEC CONNEXION API</div>";
-                showAlert(err.message);
+                list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>Erreur API: ${err.message}<br>Le serveur gouvernemental rejette la connexion.</div>`;
             });
         }
 
