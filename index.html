@@ -17,12 +17,13 @@
             --transition-speed: 0.4s;
         }
 
-        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; margin: 0; }
+        /* Fix Scroll : Utilisation de 100dvh (Dynamic Viewport Height) pour le mobile */
+        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; margin: 0; height: 100dvh; }
         
-        /* Structure adaptée pour écran scindé 1/4 */
-        .dashboard-container { display: flex; flex-direction: column; height: 100vh; max-width: 100%; }
+        /* Structure adaptée pour écran scindé 1/4 avec strict respect des limites */
+        .dashboard-container { display: flex; flex-direction: column; height: 100%; max-width: 100%; }
         
-        /* Jauge optimisée (anti-coupure) */
+        /* Jauge optimisée */
         .gauge-wrapper { width: 100%; max-width: var(--gauge-max-width); position: relative; margin: 0 auto; }
         .gauge-svg { width: 100%; height: auto; display: block; overflow: visible; }
         .gauge-bg { fill: none; stroke: #333; stroke-width: 8; stroke-linecap: round; }
@@ -32,7 +33,6 @@
         .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; cursor: pointer; }
         .station-btn:hover { background-color: var(--primary-orange); border-color: var(--primary-orange); }
         
-        /* Personnalisation des Selects */
         select { outline: none; appearance: none; text-align: center; }
     </style>
 </head>
@@ -43,7 +43,7 @@
         <div class="bg-[#111] border-l-4 border-[#FF6B00] p-2 flex flex-row items-center justify-between shrink-0">
             <div class="flex flex-col items-center w-1/2 relative">
                 <div class="flex justify-between w-full px-1 mb-1 items-center">
-                    <span class="text-[9px] text-gray-400 font-mono"><span id="valAngle">-90</span>°</span>
+                    <span class="text-[9px] text-gray-400 font-mono"><span id="valAngle">0</span>°</span>
                     <button onclick="resetStats()" class="bg-gray-800 text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 text-[8px] uppercase cursor-pointer">
                         Zéro
                     </button>
@@ -81,8 +81,8 @@
                 </select>
             </div>
             
-            <button onclick="triggerScan()" class="bg-[#FF6B00] hover:bg-orange-600 text-white rounded p-1.5 flex-1 flex justify-center items-center transition-colors cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="btnScan" onclick="triggerScan()" class="bg-[#FF6B00] hover:bg-orange-600 text-white rounded p-1.5 flex-1 flex justify-center items-center transition-colors cursor-pointer relative z-10">
+                <svg class="pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 12v8"></path>
                     <path d="m8 20 8 0"></path>
                     <path d="M16 9a4 4 0 0 0-8 0"></path>
@@ -91,11 +91,11 @@
             </button>
 
             <button class="bg-[#222] border border-gray-700 rounded p-2 flex justify-center items-center cursor-pointer hover:bg-gray-800 transition-colors">
-                <div class="w-2.5 h-2.5 bg-blue-400 rounded-full shadow-[0_0_5px_rgba(96,165,250,0.8)]"></div>
+                <div class="w-2.5 h-2.5 bg-blue-400 rounded-full shadow-[0_0_5px_rgba(96,165,250,0.8)] pointer-events-none"></div>
             </button>
         </div>
 
-        <div id="station-list" class="flex-1 overflow-y-auto space-y-1 pb-2">
+        <div id="station-list" class="flex-1 overflow-y-auto min-h-0 space-y-1 pb-4">
             </div>
 
     </div>
@@ -117,24 +117,20 @@
         const mockStations = [
             { name: "TotalEnergies", address: "Av. de Provence, Graulhet", price: "1.890", dist: "0.5 KM" },
             { name: "Intermarché", address: "Rte de Toulouse, Graulhet", price: "1.850", dist: "2.4 KM" },
-            { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" }
+            { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" },
+            { name: "Leclerc", address: "Zone de la Métairie, Graulhet", price: "1.840", dist: "5.2 KM" }
         ];
 
         function triggerScan() {
-            // Logique de scan API à intégrer ici. Par défaut, on recharge visuellement la liste.
             renderStations();
         }
 
         function updateDashboard(speed) {
-            if (speed === undefined || speed === null) {
-                console.warn("Alerte: Donnée de vitesse manquante.");
-                return;
-            }
+            if (speed === undefined || speed === null) return;
             
             const speedVal = Math.round(speed);
             const path = document.getElementById('gaugePath');
             const display = document.getElementById('valVitesse');
-            const angleDisplay = document.getElementById('valAngle');
             
             const maxLimit = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-speed-limit').trim()) || 130;
             const percentage = Math.min(speedVal / maxLimit, 1);
@@ -142,9 +138,6 @@
             const offset = 125.6 - (percentage * 125.6);
             path.style.strokeDashoffset = offset;
             display.innerText = speedVal;
-
-            const currentAngle = Math.round((percentage * 180) - 90);
-            angleDisplay.innerText = currentAngle;
 
             let color;
             if (percentage < 0.5) {
@@ -167,23 +160,30 @@
             document.getElementById('avg_speed').innerText = Math.round(speedSum / speedCount);
         }
 
+        // --- GESTION DE L'INCLINAISON (AXES PAYSAGE) ---
+        // Dans l'orientation "Paysage" (USB à gauche, Caméra à droite), 
+        // l'inclinaison (pitch) du téléphone correspond à l'axe Gamma.
+        window.addEventListener('deviceorientation', function(event) {
+            if (event.gamma !== null) {
+                // Arrondi pour éviter les tremblements
+                let angle = Math.round(event.gamma);
+                document.getElementById('valAngle').innerText = angle;
+            }
+        });
+
         function openNav(app, name, address) {
             const query = encodeURIComponent(`${name} ${address}`);
             if (app === 'waze') {
                 window.open(`https://waze.com/ul?q=${query}&navigate=yes`, '_blank');
             } else if (app === 'gmaps') {
-                // URL corrigée pour forcer le calcul de l'itinéraire sur Google Maps
-                window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+                window.open(`http://googleusercontent.com/maps.google.com/5{query}`, '_blank');
             }
         }
 
         function renderStations() {
             const container = document.getElementById('station-list');
             
-            if (!mockStations || mockStations.length === 0) {
-                container.innerHTML = `<div class="text-[#FF6B00] text-xs p-2 text-center border border-gray-800 bg-[#111]">Aucune station détectée. Appuyez sur le bouton scan.</div>`;
-                return;
-            }
+            if (!mockStations || mockStations.length === 0) return;
 
             container.innerHTML = mockStations.map(s => `
                 <div class="bg-[#111] p-2 flex justify-between items-center border-b border-gray-900">
@@ -203,12 +203,11 @@
             `).join('');
         }
 
-        // Simulation de conduite
+        // Simulation de la vitesse (l'angle est maintenant géré par le capteur)
         setInterval(() => {
             updateDashboard(Math.floor(Math.random() * 130));
         }, 3000);
 
-        // Initialisation au lancement
         renderStations();
     </script>
 </body>
