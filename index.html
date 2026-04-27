@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V2</title>
+    <title>KTM Adventure Dash V3</title>
     
     <style>
         :root {
@@ -12,40 +12,34 @@
             --ktm-orange: #FF6600;
             --text-main: #ffffff;
             --text-dim: #888888;
-            --border-rad: 2px; /* Coins plus carrés, aspect TFT */
+            --border-rad: 2px;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 0.5px; }
         
         body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; font-size: 14px; padding: 5px; }
         
-        /* Layout principal */
         #dashboard { display: flex; flex-direction: column; gap: 6px; height: 100vh; }
         
-        /* Blocs TFT */
         .panel { background-color: var(--panel-bg); border-radius: var(--border-rad); padding: 10px; position: relative; border-top: 2px solid #333; }
         .panel.accent-orange { border-top-color: var(--ktm-orange); background: linear-gradient(180deg, rgba(255,102,0,0.1) 0%, rgba(0,0,0,0) 50%); }
         
-        /* Typographie */
         .title { font-family: 'Arial', sans-serif; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
         .val-main { font-size: 3.5rem; text-align: center; margin: -5px 0; color: var(--text-main); }
         .val-unit { font-family: 'Arial', sans-serif; font-size: 1rem; color: var(--ktm-orange); }
         .val-sub { display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 0.75rem; color: var(--text-dim); background: #080808; padding: 5px; border: 1px solid #222; }
         .val-sub span strong { color: var(--text-main); font-size: 0.9rem; }
         
-        /* Boutons */
         button { font-family: 'Arial', sans-serif; background-color: #222; color: var(--text-main); border: 1px solid #444; padding: 6px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; }
         button:active { background-color: var(--ktm-orange); border-color: var(--ktm-orange); color: #000; font-weight: bold; }
         
         .btn-reset { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); font-size: 0.6rem; padding: 3px 6px; }
         .btn-settings { width: 100%; background-color: #333; margin-top: 5px; border-color: #555; }
         
-        /* GPX Record */
         .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; font-weight: bold; }
         .btn-rec.active { background-color: #ff0000; color: #fff; animation: pulse 1s infinite; }
         #gpx-status { font-family: 'Arial', sans-serif; text-align: center; font-size: 0.7rem; color: var(--ktm-orange); margin-top: 4px; }
 
-        /* Météo & Stations */
         .info-row { display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 0.9rem; margin-top: 5px; }
         #stations-list { margin-top: 5px; max-height: 200px; overflow-y: auto; font-family: 'Arial', sans-serif; }
         .station-item { background: #0a0a0a; border-left: 3px solid #333; padding: 6px; margin-bottom: 4px; font-family: 'Arial', sans-serif; }
@@ -55,15 +49,13 @@
         .station-dist { font-size: 0.7rem; color: var(--text-dim); }
         .station-actions { display: flex; gap: 5px; margin-top: 5px; }
         
-        /* Modal Paramètres */
         #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; padding: 20px; flex-direction: column; font-family: 'Arial', sans-serif; }
         .settings-block { background: #111; padding: 15px; border: 1px solid var(--ktm-orange); margin-bottom: 15px; }
         .settings-label { display: block; font-size: 0.8rem; color: var(--ktm-orange); margin-bottom: 10px; text-transform: uppercase; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; margin-bottom: 10px; }
         #debug-gyro { font-size: 0.7rem; color: #00ff00; background: #000; padding: 5px; font-family: monospace; }
         
-        /* Alertes */
-        #alert-box { display: none; background-color: #ff0000; color: #fff; padding: 8px; text-align: center; font-family: 'Arial', sans-serif; font-size: 0.8rem; font-weight: bold; position: fixed; top:0; width: 100%; z-index: 999; }
+        #alert-box { display: none; background-color: #ff0000; color: #fff; padding: 8px; text-align: center; font-family: 'Arial', sans-serif; font-size: 0.8rem; font-weight: bold; position: fixed; top:0; left:0; width: 100%; z-index: 999; }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
@@ -73,7 +65,6 @@
     <div id="alert-box"></div>
 
     <div id="dashboard">
-        
         <div class="panel accent-orange">
             <button class="btn-reset" onclick="resetSpeed()">ZÉRO VIT.</button>
             <div class="title">VITESSE</div>
@@ -138,5 +129,294 @@
 
         <div class="settings-block">
             <label class="settings-label">Diagnostic Capteurs</label>
-            <div id="debug-gyro">Gyroscope: En attente...</div>
-            <div id="debug-gps" style="font-size:0.7rem; color:#00ff00; background:#000;
+            <div id="debug-gyro">Gyroscope: En attente d'autorisation (Clique sur Calibrer 0°)...</div>
+            <div id="debug-gps" style="font-size:0.7rem; color:#00ff00; background:#000; padding:5px; margin-top:5px; font-family:monospace;">GPS: En attente...</div>
+        </div>
+
+        <button onclick="closeSettings()" style="background:var(--ktm-orange); color:#000; padding:15px; font-size:1rem;">VALIDER & FERMER</button>
+    </div>
+
+    <script>
+        /* =========================================================
+           PANNEAU DE CONTRÔLE INTERNE
+        ========================================================= */
+        const CONFIG = {
+            carburantCible: 'SP98',          
+            rayonRechercheKm: 20,            
+            lienMeteo: 'https://meteofrance.com', 
+            filtreAngleDeg: 2, 
+            apiStations: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-du-jour/records'
+        };
+
+        const STATE = {
+            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, max: 0, sum: 0, count: 0, offset: 0, initialized: false },
+            gpx: { active: false, points: [] },
+            weatherLoaded: false
+        };
+
+        /* =========================================================
+           GESTION INTERFACE ET PARAMÈTRES
+        ========================================================= */
+        function updateUI() {
+            document.getElementById('ui-fuel-type').innerText = CONFIG.carburantCible;
+            document.getElementById('ui-radius').innerText = CONFIG.rayonRechercheKm;
+            document.getElementById('val-radius-display').innerText = CONFIG.rayonRechercheKm;
+        }
+        updateUI();
+
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+        
+        function updateSettings() {
+            CONFIG.carburantCible = document.getElementById('input-fuel').value;
+            CONFIG.rayonRechercheKm = document.getElementById('input-radius').value;
+            updateUI();
+        }
+
+        function showAlert(msg) {
+            const box = document.getElementById('alert-box');
+            box.innerText = msg;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 4000);
+        }
+
+        /* =========================================================
+           MOTEUR GPS ET VITESSE
+        ========================================================= */
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    STATE.gps.lat = pos.coords.latitude;
+                    STATE.gps.lon = pos.coords.longitude;
+                    document.getElementById('debug-gps').innerText = `GPS OK: Lat ${pos.coords.latitude.toFixed(4)}, Lon ${pos.coords.longitude.toFixed(4)}`;
+                    
+                    let speedKmh = Math.round((pos.coords.speed || 0) * 3.6);
+                    STATE.gps.speed = speedKmh;
+                    
+                    if (speedKmh > STATE.gps.max) STATE.gps.max = speedKmh;
+                    if (speedKmh > 0) { 
+                        STATE.gps.sum += speedKmh;
+                        STATE.gps.count++;
+                    }
+
+                    document.getElementById('speed-val').innerText = STATE.gps.speed;
+                    document.getElementById('speed-max').innerText = STATE.gps.max;
+                    document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
+
+                    if (STATE.gpx.active) {
+                        STATE.gpx.points.push({
+                            lat: pos.coords.latitude, lon: pos.coords.longitude, 
+                            ele: pos.coords.altitude || 0, time: new Date().toISOString()
+                        });
+                        document.getElementById('gpx-count').innerText = STATE.gpx.points.length;
+                    }
+
+                    if(!STATE.weatherLoaded) fetchWeather(STATE.gps.lat, STATE.gps.lon);
+                },
+                (err) => { 
+                    showAlert("Erreur GPS : Activez la localisation."); 
+                    document.getElementById('debug-gps').innerText = "GPS ERREUR: " + err.message;
+                },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+            );
+        } else {
+            showAlert("Capteur GPS introuvable sur cet appareil.");
+        }
+
+        function resetSpeed() {
+            STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0;
+            document.getElementById('speed-max').innerText = 0;
+            document.getElementById('speed-moy').innerText = 0;
+            showAlert("Vitesses réinitialisées.");
+        }
+
+        /* =========================================================
+           MOTEUR GYROSCOPE (INCLINAISON)
+        ========================================================= */
+        function handleOrientation(event) {
+            let rawBeta = event.beta ? Math.round(event.beta) : 0;
+            let rawGamma = event.gamma ? Math.round(event.gamma) : 0;
+            
+            document.getElementById('debug-gyro').innerText = `Actif | Beta (Portrait): ${rawBeta}° | Gamma (Paysage): ${rawGamma}°`;
+
+            // Sélection dynamique de l'axe selon l'orientation de l'écran
+            let isLandscape = window.innerWidth > window.innerHeight;
+            let activeAxis = isLandscape ? rawBeta : rawGamma; 
+            
+            let correctedAngle = Math.abs(activeAxis - STATE.angle.offset);
+            
+            if (correctedAngle >= CONFIG.filtreAngleDeg) {
+                STATE.angle.current = correctedAngle;
+                if (correctedAngle > STATE.angle.max) STATE.angle.max = correctedAngle;
+                STATE.angle.sum += correctedAngle;
+                STATE.angle.count++;
+
+                document.getElementById('angle-val').innerText = STATE.angle.current;
+                document.getElementById('angle-max').innerText = STATE.angle.max;
+                document.getElementById('angle-moy').innerText = Math.round(STATE.angle.sum / STATE.angle.count);
+            }
+        }
+
+        function resetAngle() {
+            // Contournement obligatoire pour les sécurités Apple (iOS 13+)
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            if (!STATE.angle.initialized) {
+                                window.addEventListener('deviceorientation', handleOrientation);
+                                STATE.angle.initialized = true;
+                            }
+                            performResetAngle();
+                        } else {
+                            showAlert("Autorisation gyroscope refusée par le téléphone.");
+                        }
+                    })
+                    .catch(() => showAlert("Erreur d'accès au gyroscope."));
+            } else {
+                // Pour Android ou anciens iOS
+                if (!STATE.angle.initialized) {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                    STATE.angle.initialized = true;
+                }
+                performResetAngle();
+            }
+        }
+
+        function performResetAngle() {
+            STATE.angle.offset = STATE.angle.current + STATE.angle.offset;
+            STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0;
+            document.getElementById('angle-val').innerText = 0;
+            document.getElementById('angle-max').innerText = 0;
+            document.getElementById('angle-moy').innerText = 0;
+            showAlert("Angle calibré (0°)");
+        }
+
+        /* =========================================================
+           MOTEUR GPX
+        ========================================================= */
+        function toggleRecording() {
+            const btn = document.getElementById('btn-record');
+            if (!STATE.gpx.active) {
+                if(!STATE.gps.lat) return showAlert("Attente du signal GPS pour démarrer l'enregistrement.");
+                STATE.gpx.active = true;
+                STATE.gpx.points = [];
+                document.getElementById('gpx-count').innerText = "0";
+                btn.innerText = "STOP & DL TRACE";
+                btn.classList.add('active');
+            } else {
+                STATE.gpx.active = false;
+                btn.innerText = "REC TRACE GPX";
+                btn.classList.remove('active');
+                downloadGPX();
+            }
+        }
+
+        function downloadGPX() {
+            if (STATE.gpx.points.length === 0) return showAlert("Aucun point enregistré, trace vide.");
+            let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="KTM_Ext">\n  <trk><name>Trace_KTM</name><trkseg>\n`;
+            STATE.gpx.points.forEach(p => { gpx += `    <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>\n`; });
+            gpx += `  </trkseg></trk>\n</gpx>`;
+            
+            // Méthode de téléchargement fiabilisée pour Mobile
+            const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Trace_Moto_${new Date().toISOString().slice(0,10)}.gpx`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 200);
+        }
+
+        /* =========================================================
+           MOTEUR MÉTÉO & STATIONS
+        ========================================================= */
+        function fetchWeather(lat, lon) {
+            STATE.weatherLoaded = true;
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + " °C";
+                    document.getElementById('weather-wind').innerText = "Vent: " + Math.round(data.current_weather.windspeed) + " km/h";
+                }).catch(() => console.log("Météo hors ligne."));
+        }
+        function openWeather() { window.open(CONFIG.lienMeteo, '_blank'); }
+
+        function findStations() {
+            if (!STATE.gps.lat) return showAlert("Signal GPS requis pour scanner le rayon.");
+            const list = document.getElementById('stations-list');
+            list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN EN COURS...</div>";
+
+            const query = `distance(geom, geom'POINT(${STATE.gps.lon} ${STATE.gps.lat})', ${CONFIG.rayonRechercheKm}km)`;
+            const url = `${CONFIG.apiStations}?where=${encodeURIComponent(query)}&limit=30`;
+
+            fetch(url).then(res => {
+                if(!res.ok) throw new Error("API Gouvernement indisponible.");
+                return res.json();
+            }).then(data => {
+                list.innerHTML = "";
+                if (!data.results || data.results.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>RIEN DANS LE RAYON</div>";
+
+                let stationsValides = [];
+                data.results.forEach(st => {
+                    let prixCible = null;
+                    try {
+                        if (st.prix) {
+                            let prixArray = typeof st.prix === 'string' ? JSON.parse(st.prix) : st.prix;
+                            if (!Array.isArray(prixArray)) prixArray = [prixArray];
+                            let fuelData = prixArray.find(p => p["@nom"] === CONFIG.carburantCible);
+                            if (fuelData) prixCible = parseFloat(fuelData["@valeur"]);
+                        }
+                    } catch(e) {}
+
+                    const dLat = (st.geom.lat - STATE.gps.lat) * Math.PI / 180;
+                    const dLon = (st.geom.lon - STATE.gps.lon) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STATE.gps.lat * Math.PI / 180) * Math.cos(st.geom.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+                    stationsValides.push({ nom: st.ville || "Station", adresse: st.adresse || "", lat: st.geom.lat, lon: st.geom.lon, prix: prixCible, dist: distKm });
+                });
+
+                stationsValides.sort((a, b) => {
+                    if (a.prix === null && b.prix === null) return a.dist - b.dist;
+                    if (a.prix === null) return 1;
+                    if (b.prix === null) return -1;
+                    return a.prix - b.prix;
+                });
+
+                stationsValides.forEach(st => {
+                    let affichagePrix = st.prix ? `${st.prix.toFixed(3)} €` : "N.C";
+                    let classItem = st.prix ? "station-item has-fuel" : "station-item";
+                    
+                    list.innerHTML += `
+                        <div class="${classItem}">
+                            <div class="station-header">
+                                <span>${st.nom.substring(0, 18)}</span>
+                                <span class="station-price" style="${st.prix ? '' : 'color:#555;'}">${affichagePrix}</span>
+                            </div>
+                            <div class="station-dist">${st.dist.toFixed(1)} KM - ${st.adresse.substring(0, 20)}</div>
+                            <div class="station-actions">
+                                <button onclick="navApp(${st.lat}, ${st.lon}, 'waze')">WAZE</button>
+                                <button onclick="navApp(${st.lat}, ${st.lon}, 'maps')">MAPS</button>
+                                <button onclick="navApp(${st.lat}, ${st.lon}, 'osmand')">OSM</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }).catch(err => {
+                list.innerHTML = "<div style='color:red; text-align:center;'>ÉCHEC CONNEXION API</div>";
+                showAlert(err.message);
+            });
+        }
+
+        function navApp(lat, lon, app) {
+            if(app === 'waze') window.location.href = `waze://?ll=${lat},${lon}&navigate=yes`;
+            else if(app === 'maps') window.location.href = `google.navigation:q=${lat},${lon}`;
+            else if(app === 'osmand') window.location.href = `osmand.geo://${lat},${lon}`;
+        }
+    </script>
+</body>
+</html>
