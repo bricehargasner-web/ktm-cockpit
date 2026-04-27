@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V7</title>
+    <title>KTM Adventure Dash V8</title>
     
     <style>
         :root {
@@ -150,10 +150,10 @@
         const CONFIG = {
             carburantCible: 'SP98',          
             rayonRechercheKm: 20,            
-            lienMeteo: 'https://www.meteoetradar.com/carte-meteo', // Lien Radar
+            lienMeteo: 'https://www.meteoetradar.com/carte-meteo', 
             filtreAngleDeg: 2, 
-            // Nouvelle URL officielle de l'API Gouvernementale (V2.1)
-            apiStations: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-quotidien/records'
+            // Dataset Officiel Gouvernement V2.1
+            apiStations: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-du-jour/records'
         };
 
         const STATE = {
@@ -353,19 +353,17 @@
         }
         
         function openWeather() { 
-            // Ajout d'un paramètre temporel pour forcer le navigateur à ignorer le cache de l'ancien lien
             window.open(CONFIG.lienMeteo + "?t=" + new Date().getTime(), '_blank'); 
         }
 
         /* =========================================================
-           MOTEUR STATIONS (Nouvelle API Gouvernement)
+           MOTEUR STATIONS (Extracteur Robuste & Liens Natifs)
         ========================================================= */
         function findStations() {
             if (!STATE.gps.lat) return showAlert("Signal GPS requis.");
             const list = document.getElementById('stations-list');
             list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN EN COURS...</div>";
 
-            // Requête Spatiale Officielle
             const query = `distance(geom, geom'POINT(${STATE.gps.lon} ${STATE.gps.lat})', ${CONFIG.rayonRechercheKm}km)`;
             const url = `${CONFIG.apiStations}?where=${encodeURIComponent(query)}&limit=100`;
 
@@ -377,8 +375,8 @@
                 if (!data.results || data.results.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>RIEN DANS LE RAYON</div>";
 
                 let stationsMap = {};
+                let targetFuel = CONFIG.carburantCible.toUpperCase();
                 
-                // Analyse des résultats (Regroupement par Station)
                 data.results.forEach(record => {
                     let id = record.id || record.adresse || Math.random().toString();
                     
@@ -401,20 +399,23 @@
                         }
                     }
 
-                    // Extraction du prix (Supporte les 2 formats possibles de l'API)
-                    if (record.carburant === CONFIG.carburantCible && record.prix_valeur) {
-                        stationsMap[id].prix = parseFloat(record.prix_valeur);
-                    } else if (record.prix && !stationsMap[id].prix) {
-                        try {
-                            let prixArray = typeof record.prix === 'string' ? JSON.parse(record.prix) : record.prix;
-                            if (!Array.isArray(prixArray)) prixArray = [prixArray];
-                            let fuelData = prixArray.find(p => p["@nom"] === CONFIG.carburantCible);
-                            if (fuelData) stationsMap[id].prix = parseFloat(fuelData["@valeur"]);
-                        } catch(e) {}
-                    }
+                    // Extracteur Ultra-Robuste (Regex sur les données brutes de la station)
+                    try {
+                        let rawStr = JSON.stringify(record);
+                        let regex = new RegExp(`"@nom"\\s*:\\s*"${targetFuel}".*?"@valeur"\\s*:\\s*"([0-9.]+)"`, 'i');
+                        let match = rawStr.match(regex);
+                        if (match) {
+                            stationsMap[id].prix = parseFloat(match[1]);
+                        } else if (!stationsMap[id].prix && record.prix) {
+                            // Fallback classique
+                            let pArr = typeof record.prix === 'string' ? JSON.parse(record.prix) : record.prix;
+                            if (!Array.isArray(pArr)) pArr = [pArr];
+                            let fuel = pArr.find(p => (p["@nom"] && p["@nom"].toUpperCase() === targetFuel) || (p.nom && p.nom.toUpperCase() === targetFuel));
+                            if (fuel) stationsMap[id].prix = parseFloat(fuel["@valeur"] || fuel.valeur);
+                        }
+                    } catch(e) {}
                 });
 
-                // Filtrage et Tri
                 let stationsValides = Object.values(stationsMap).filter(st => st.lat !== null && st.dist <= CONFIG.rayonRechercheKm);
                 
                 stationsValides.sort((a, b) => {
@@ -446,14 +447,20 @@
                     `;
                 });
             }).catch(err => {
-                list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>Erreur API: Connexion au serveur gouvernemental impossible.</div>`;
+                list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>Erreur API: Impossible de scanner les prix.</div>`;
             });
         }
 
         function navApp(lat, lon, app) {
-            if(app === 'waze') window.location.href = `waze://?ll=${lat},${lon}&navigate=yes`;
-            else if(app === 'maps') window.location.href = `google.navigation:q=${lat},${lon}`;
-            else if(app === 'osmand') window.location.href = `osmand.geo://${lat},${lon}`;
+            // Liens Natifs / Intents pour ouvrir directement les APK sans casser le navigateur
+            if(app === 'waze') {
+                window.location.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+            } else if(app === 'maps') {
+                window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+            } else if(app === 'osmand') {
+                // Geo Intent universel (Ouvre le selecteur d'APK GPS natif Android)
+                window.location.href = `geo:${lat},${lon}?q=${lat},${lon}`;
+            }
         }
     </script>
 </body>
