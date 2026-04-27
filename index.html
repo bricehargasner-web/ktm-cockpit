@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept Dash V11.3</title>
+    <title>Energy Concept V12 - Overlap Dash</title>
     
     <style>
         :root { --ktm: #ff6600; --bg: #000; --txt: #fff; --ok: #2ecc71; --err: #e74c3c; }
@@ -16,124 +16,140 @@
             border-left: 6px solid var(--ktm);
         }
 
-        /* --- DASHBOARD RUBAN --- */
-        .dash-ribbon { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 0.8fr; 
-            height: 95px; 
-            background: linear-gradient(180deg, #151515, #000);
+        /* --- DASHBOARD IMBRIQUÉ (HAUTEUR RÉDUITE) --- */
+        .dash-header { 
+            display: flex; 
+            height: 110px; 
+            background: linear-gradient(180deg, #111, #000);
             border-bottom: 2px solid var(--ktm);
             align-items: center;
+            padding: 0 10px;
             flex-shrink: 0;
-            padding: 0 5px;
         }
 
-        .v-zone { text-align: center; border-right: 1px solid #333; }
+        /* Compteur avec Arc d'inclinaison intégré */
+        .gauge-zone { position: relative; width: 140px; height: 100px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #333; }
+        .arc-bg { position: absolute; width: 120px; height: 120px; border: 6px solid #222; border-radius: 50%; border-bottom-color: transparent; transform: rotate(180deg); }
+        #arc-val { position: absolute; width: 120px; height: 120px; border: 6px solid transparent; border-radius: 50%; border-top-color: var(--ktm); transition: 0.1s; transform: rotate(0deg); }
+        .speed-data { text-align: center; z-index: 10; }
         .v-val { font-size: 3.5rem; line-height: 1; font-style: italic; }
-        .v-u { font-size: 0.7rem; color: var(--ktm); display: block; margin-top: -5px; }
+        .v-unit { font-size: 0.6rem; color: var(--ktm); display: block; }
+        
+        /* Stats Angle Coin */
+        .angle-stats { position: absolute; top: 5px; left: 5px; font-size: 0.55rem; color: #aaa; text-align: left; line-height: 1.2; }
+        .angle-stats b { color: #fff; font-size: 0.8rem; }
 
-        .a-zone { text-align: center; border-right: 1px solid #333; height: 100%; display: flex; flex-direction: column; justify-content: center; position: relative;}
-        .a-val { font-size: 1.8rem; line-height: 1; }
-        .a-track { width: 85%; height: 14px; background: #222; margin: 4px auto 0; position: relative; border-radius: 2px; overflow: hidden; }
-        #a-bar-L { position: absolute; right: 50%; height: 100%; width: 0%; background: var(--ktm); }
-        #a-bar-R { position: absolute; left: 50%; height: 100%; width: 0%; background: var(--ktm); }
-        .btn-reset { position: absolute; top: 2px; right: 2px; background: #333; color: #fff; font-size: 0.5rem; padding: 3px 6px; border: none; border-radius: 3px; cursor: pointer; }
+        /* Météo (Droite) */
+        .weather-zone { flex: 1; padding-left: 15px; text-align: right; font-size: 0.8rem; }
+        .weather-zone b { font-size: 1.4rem; color: var(--ktm); }
 
-        .i-zone { padding-left: 5px; font-size: 0.7rem; line-height: 1.2; }
-        .i-item b { color: var(--ktm); }
-        .leds { display: flex; gap: 5px; margin-top: 4px; }
-        .led { width: 8px; height: 8px; border-radius: 50%; background: var(--err); }
-        .led.active { background: var(--ok); box-shadow: 0 0 5px var(--ok); }
+        /* --- BARRE DE RÉGLAGES --- */
+        .control-strip { display: flex; gap: 4px; padding: 6px; background: #080808; border-bottom: 1px solid #222; align-items: center; }
+        select { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; flex: 1; }
+        .btn-action { background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 0.75rem; font-weight: bold; padding: 10px; cursor: pointer; }
+        .btn-scan { background: var(--ktm); color: #000; flex: 1.5; border: none; }
+        .btn-rec.active { background: var(--err); color: #fff; animation: blink 1s infinite; }
 
-        /* --- BARRE DE CONTROLE (SCAN & REC) --- */
-        .control-strip { display: flex; gap: 4px; padding: 6px; background: #080808; border-bottom: 1px solid #222; }
-        select { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; width: 60px; }
-        .btn-action { background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; padding: 10px; }
-        .btn-scan { background: var(--ktm); color: #000; flex: 2; border: none; }
-        .btn-rec { flex: 1; background: #1a1a1a; border-color: #444; }
-        .btn-rec.active { background: var(--err); color: #fff; border-color: #f00; animation: blink 1s infinite; }
-
-        /* --- LISTE STATIONS --- */
-        .results-scroll { flex: 1; overflow-y: auto; background: #000; padding: 6px; }
-        .card { background: #111; margin-bottom: 8px; padding: 12px; border-radius: 6px; border-left: 5px solid var(--ktm); }
-        .st-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .st-name { font-size: 0.85rem; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
-        .st-price { color: var(--ktm); font-size: 1.4rem; font-weight: 900; }
-        .go-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
-        .btn-go { background: #222; color: #fff; font-size: 0.55rem; padding: 8px 0; text-align: center; border-radius: 3px; text-decoration: none; border: 1px solid #444; font-weight: bold; }
+        /* --- RÉSULTATS --- */
+        .results-area { flex: 1; overflow-y: auto; background: #000; padding: 6px; }
+        .st-card { background: #111; margin-bottom: 8px; padding: 10px; border-radius: 6px; border-left: 5px solid var(--ktm); }
+        .st-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .st-n { font-size: 0.8rem; color: #fff; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+        .st-p { color: var(--ktm); font-size: 1.3rem; font-weight: 900; }
+        .st-bot { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: #777; }
+        .btn-go { background: #222; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; border: 1px solid var(--ktm); font-weight: bold; }
 
         @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body onclick="MOTO.init()">
 
-    <div class="dash-ribbon">
-        <div class="v-zone">
-            <div id="speed" class="v-val">0</div>
-            <span class="v-u">KM/H</span>
+    <div class="dash-header">
+        <div class="gauge-zone">
+            <div class="angle-stats">
+                ANG: <b id="a-curr">0°</b><br>
+                MAX: <b id="a-max">0°</b><br>
+                MOY: <b id="a-avg">0°</b>
+                <div style="margin-top:2px; font-size:0.5rem;" onclick="event.stopPropagation(); MOTO.resetAngle()">[RESET]</div>
+            </div>
+            <div class="arc-bg"></div>
+            <div id="arc-val"></div>
+            <div class="speed-data">
+                <div id="speed" class="v-val">0</div>
+                <span class="v-unit">KM/H</span>
+            </div>
         </div>
 
-        <div class="a-zone">
-            <button class="btn-reset" onclick="event.stopPropagation(); MOTO.resetAngle()">RESET</button>
-            <div id="a-txt" class="a-val">0°</div>
-            <div class="a-track"><div id="a-bar-L"></div><div id="a-bar-R"></div></div>
-            <div id="a-max" style="font-size: 0.55rem; color: #555; margin-top: 2px;">MAX: 0°</div>
-        </div>
-
-        <div class="i-zone">
-            <div><b id="m-t">--°</b> | <b id="alt">--m</b></div>
-            <div id="m-w">💨 --k/h</div>
-            <div class="leds"><div id="l-gps" class="led"></div><div id="l-gyro" class="led"></div></div>
+        <div class="weather-zone" onclick="window.open('https://meteofrance.com')">
+            <div id="alt" style="font-size:0.7rem; color:#777; margin-bottom:5px;">ALTITUDE: --M</div>
+            <b id="m-t">--°C</b><br>
+            <span id="m-w">VENT: -- K/H</span>
         </div>
     </div>
 
     <div class="control-strip">
-        <select id="fuel"><option value="Gazole">GAZ</option><option value="SP98">98</option><option value="SP95">95</option><option value="E10">E10</option><option value="E85">85</option></select>
-        <button class="btn-action btn-scan" onclick="event.stopPropagation(); MOTO.scan()">SCANNER</button>
-        <button id="btn-rec" class="btn-action btn-rec" onclick="event.stopPropagation(); REC.toggle()">REC</button>
+        <select id="rad">
+            <option value="10">10 KM</option>
+            <option value="20" selected>20 KM</option>
+            <option value="30">30 KM</option>
+            <option value="40">40 KM</option>
+            <option value="50">50 KM</option>
+        </select>
+        <select id="fuel">
+            <option value="Gazole">GAZOLE</option>
+            <option value="SP98">SP98</option>
+            <option value="SP95">SP95</option>
+            <option value="E10">E10</option>
+            <option value="E85">E85</option>
+        </select>
+        <button class="btn-action btn-scan" onclick="event.stopPropagation(); MOTO.scan()">SCAN</button>
+        <button id="btn-rec" class="btn-action" onclick="event.stopPropagation(); REC.toggle()">REC</button>
     </div>
 
-    <div class="results-scroll" id="results">
-        <div style="text-align:center; padding:30px; color:#444; font-size:0.8rem;">RECHERCHE STATIONS...</div>
+    <div class="results-area" id="results">
+        <div style="text-align:center; padding:30px; color:#444; font-size:0.7rem;">PRÊT POUR LE SCAN</div>
     </div>
 
     <script>
         let userPos = { lat: 0, lon: 0 };
-        let track = [], isRecording = false, maxLean = 0;
+        let track = [], isRecording = false;
+        let angleData = { max: 0, sum: 0, count: 0 };
 
         const MOTO = {
             init() {
                 navigator.geolocation.watchPosition(p => {
                     userPos = { lat: p.coords.latitude, lon: p.coords.longitude };
                     document.getElementById('speed').innerText = Math.round((p.coords.speed || 0) * 3.6);
-                    document.getElementById('alt').innerText = (p.coords.altitude ? Math.round(p.coords.altitude) : "--") + "m";
-                    document.getElementById('l-gps').classList.add('active');
+                    document.getElementById('alt').innerText = "ALTITUDE: " + (p.coords.altitude ? Math.round(p.coords.altitude) : "--") + "M";
                     if(isRecording) track.push({ lat: userPos.lat, lon: userPos.lon });
                     this.updateWeather();
                 }, null, { enableHighAccuracy: true });
             },
 
             resetAngle() {
-                maxLean = 0;
-                document.getElementById('a-max').innerText = "MAX: 0°";
+                angleData = { max: 0, sum: 0, count: 0 };
+                document.getElementById('a-max').innerText = "0°";
+                document.getElementById('a-avg').innerText = "0°";
+                document.getElementById('a-curr').innerText = "0°";
             },
 
             async updateWeather() {
                 try {
                     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userPos.lat}&longitude=${userPos.lon}&current_weather=true`);
                     const d = await r.json();
-                    document.getElementById('m-t').innerText = Math.round(d.current_weather.temperature) + "°";
-                    document.getElementById('m-w').innerText = "💨 " + Math.round(d.current_weather.windspeed) + "k/h";
+                    document.getElementById('m-t').innerText = Math.round(d.current_weather.temperature) + "°C";
+                    document.getElementById('m-w').innerText = "VENT: " + Math.round(d.current_weather.windspeed) + " K/H";
                 } catch(e) {}
             },
 
             async scan() {
                 if(!userPos.lat) return;
                 const fuel = document.getElementById('fuel').value;
+                const rad = document.getElementById('rad').value;
                 const resZone = document.getElementById('results');
                 resZone.innerHTML = "<div style='color:var(--ktm); text-align:center; padding:20px;'>SCAN...</div>";
                 try {
-                    const r = await fetch(`https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2&geofilter.distance=${userPos.lat},${userPos.lon},20000&rows=40`);
+                    const url = `https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2&geofilter.distance=${userPos.lat},${userPos.lon},${rad*1000}&rows=40`;
                     const data = await r.json();
                     let st = [];
                     data.records.forEach(i => {
@@ -142,14 +158,9 @@
                     });
                     st.sort((a,b) => a.dist - b.dist);
                     resZone.innerHTML = st.map(s => `
-                        <div class="card">
-                            <div class="st-header"><span class="st-name">${s.nom} (${s.dist.toFixed(1)}km)</span><span class="st-price">${s.prix.toFixed(3)}€</span></div>
-                            <div class="go-grid">
-                                <a class="btn-go" target="_blank" href="waze://?ll=${s.lat},${s.lon}&navigate=yes">WAZE</a>
-                                <a class="btn-go" target="_blank" href="google.navigation:q=${s.lat},${s.lon}">MAPS</a>
-                                <a class="btn-go" target="_blank" href="geo:${s.lat},${s.lon}">OSM</a>
-                                <a class="btn-go" target="_blank" href="liberty-rider://navigation?lat=${s.lat}&lon=${s.lon}">LR</a>
-                            </div>
+                        <div class="st-card">
+                            <div class="st-top"><span class="st-n">${s.nom}</span><span class="st-p">${s.prix.toFixed(3)}€</span></div>
+                            <div class="st-bot"><span>${s.dist.toFixed(1)} KM</span><a class="btn-go" target="_blank" href="waze://?ll=${s.lat},${s.lon}&navigate=yes">GO</a></div>
                         </div>`).join('');
                 } catch(e) {}
             },
@@ -171,27 +182,32 @@
                 isRecording = !isRecording;
                 const btn = document.getElementById('btn-rec');
                 btn.classList.toggle('active', isRecording);
-                btn.innerText = isRecording ? "STOP" : "REC";
                 if(!isRecording && track.length > 5) {
                     const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>${track.map(p => `<trkpt lat="${p.lat}" lon="${p.lon}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'}));
-                    a.download = `Trace_${Date.now()}.gpx`; a.click();
+                    a.download = `Trace_Moto.gpx`; a.click();
                 }
             }
         };
 
         window.addEventListener("deviceorientation", (e) => {
             if(e.beta === null) return;
-            document.getElementById('l-gyro').classList.add('active');
             let lean = Math.round(e.beta || 0) * -1;
             let absLean = Math.abs(lean);
-            document.getElementById('a-txt').innerText = absLean + "°";
-            const barL = document.getElementById('a-bar-L');
-            const barR = document.getElementById('a-bar-R');
-            if (lean < 0) { barL.style.width = Math.min(50, absLean * 1.5) + "%"; barR.style.width = "0%"; }
-            else { barR.style.width = Math.min(50, absLean * 1.5) + "%"; barL.style.width = "0%"; }
-            if(absLean > maxLean) { maxLean = absLean; document.getElementById('a-max').innerText = "MAX: " + maxLean + "°"; }
+            
+            // UI Arc
+            document.getElementById('arc-val').style.transform = `rotate(${lean}deg)`;
+            document.getElementById('a-curr').innerText = absLean + "°";
+            
+            // Stats
+            if(absLean > 0) {
+                angleData.max = Math.max(angleData.max, absLean);
+                angleData.sum += absLean;
+                angleData.count++;
+                document.getElementById('a-max').innerText = angleData.max + "°";
+                document.getElementById('a-avg').innerText = Math.round(angleData.sum / angleData.count) + "°";
+            }
         });
     </script>
 </body>
