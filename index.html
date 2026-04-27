@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V10</title>
+    <title>KTM Adventure Dash V11</title>
     
     <style>
         :root {
@@ -15,52 +15,71 @@
             --border-rad: 2px;
         }
         
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 0.5px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; font-size: 14px; padding: 5px; }
+        /* Anti-aliasing pour écrans mobiles (Correction du flou) */
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            overflow-x: hidden; 
+            font-size: 14px; 
+            padding: 5px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Police agressive uniquement pour les gros compteurs */
+        .val-main, .val-unit, .btn-rec, .panel > button:not(.btn-settings) {
+            font-family: 'Impact', 'Arial Black', sans-serif; 
+            letter-spacing: 0.5px;
+        }
         
         #dashboard { display: flex; flex-direction: column; gap: 6px; height: 100vh; }
         
         .panel { background-color: var(--panel-bg); border-radius: var(--border-rad); padding: 10px; position: relative; border-top: 2px solid #333; }
         .panel.accent-orange { border-top-color: var(--ktm-orange); background: linear-gradient(180deg, rgba(255,102,0,0.1) 0%, rgba(0,0,0,0) 50%); }
         
-        .title { font-family: 'Arial', sans-serif; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
+        .title { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; letter-spacing: normal; }
         .val-main { font-size: 3.5rem; text-align: center; margin: -5px 0; color: var(--text-main); }
-        .val-unit { font-family: 'Arial', sans-serif; font-size: 1rem; color: var(--ktm-orange); }
-        .val-sub { display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 0.75rem; color: var(--text-dim); background: #080808; padding: 5px; border: 1px solid #222; }
+        .val-unit { font-size: 1rem; color: var(--ktm-orange); }
+        .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); background: #080808; padding: 5px; border: 1px solid #222; letter-spacing: normal; }
         .val-sub span strong { color: var(--text-main); font-size: 0.9rem; }
         
-        button { font-family: 'Arial', sans-serif; background-color: #222; color: var(--text-main); border: 1px solid #444; padding: 6px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; }
-        button:active { background-color: var(--ktm-orange); border-color: var(--ktm-orange); color: #000; font-weight: bold; }
+        button { background-color: #222; color: var(--text-main); border: 1px solid #444; padding: 6px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; font-weight: bold; }
+        button:active { background-color: var(--ktm-orange); border-color: var(--ktm-orange); color: #000; }
         
-        .btn-reset { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); font-size: 0.6rem; padding: 3px 6px; }
-        .btn-settings { width: 100%; background-color: #333; margin-top: 5px; border-color: #555; padding: 10px;}
+        .btn-reset { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); font-size: 0.6rem; padding: 3px 6px; letter-spacing: normal; }
+        .btn-settings { width: 100%; background-color: #333; margin-top: 5px; border-color: #555; padding: 10px; letter-spacing: normal;}
         
-        .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; font-weight: bold; }
+        .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; }
         .btn-rec.active { background-color: #ff0000; color: #fff; animation: pulse 1s infinite; }
-        #gpx-status { font-family: 'Arial', sans-serif; text-align: center; font-size: 0.7rem; color: var(--ktm-orange); margin-top: 4px; }
+        #gpx-status { text-align: center; font-size: 0.7rem; color: var(--ktm-orange); margin-top: 4px; letter-spacing: normal; }
 
-        .info-row { display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 0.9rem; margin-top: 5px; }
-        #stations-list { margin-top: 5px; max-height: 200px; overflow-y: auto; font-family: 'Arial', sans-serif; }
-        .station-item { background: #0a0a0a; border-left: 3px solid #333; padding: 6px; margin-bottom: 4px; font-family: 'Arial', sans-serif; }
+        .info-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 5px; font-weight: bold; letter-spacing: normal; }
+        
+        /* Zone liste stations - Polices natives pour netteté absolue */
+        #stations-list { margin-top: 5px; max-height: 200px; overflow-y: auto; letter-spacing: normal; }
+        .station-item { background: #0a0a0a; border-left: 3px solid #333; padding: 6px; margin-bottom: 4px; }
         .station-item.has-fuel { border-left-color: var(--ktm-orange); }
         .station-header { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; }
         .station-price { color: var(--ktm-orange); }
-        .station-dist { font-size: 0.7rem; color: var(--text-dim); }
-        .station-actions { display: flex; gap: 5px; margin-top: 5px; }
+        .station-dist { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+        .station-actions { display: flex; gap: 5px; margin-top: 6px; }
+        .station-actions button { letter-spacing: normal; font-size: 0.7rem; }
         
         /* Modal Paramètres */
-        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; font-family: 'Arial', sans-serif; overflow-y: auto; }
+        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; letter-spacing: normal; }
         .settings-block { background: #111; padding: 15px; border: 1px solid var(--ktm-orange); margin-bottom: 15px; }
-        .settings-label { display: block; font-size: 0.8rem; color: var(--ktm-orange); margin-bottom: 10px; text-transform: uppercase; }
-        select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; margin-bottom: 10px; }
+        .settings-label { display: block; font-size: 0.8rem; color: var(--ktm-orange); margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
+        select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; margin-bottom: 10px; font-size: 1rem; }
         #debug-gyro { font-size: 0.7rem; color: #00ff00; background: #000; padding: 5px; font-family: monospace; }
         
         /* Croix de fermeture Flottante */
-        .btn-close { position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #000; border: 2px solid var(--ktm-orange); border-radius: 50%; color: var(--ktm-orange); font-size: 1.5rem; font-family: Arial, sans-serif; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 2000; box-shadow: 0 0 15px rgba(0,0,0,0.9); cursor: pointer; }
+        .btn-close { position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #000; border: 2px solid var(--ktm-orange); border-radius: 50%; color: var(--ktm-orange); font-size: 1.5rem; font-family: Arial, sans-serif; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 2000; box-shadow: 0 0 15px rgba(0,0,0,0.9); cursor: pointer; letter-spacing: normal;}
         .btn-close:active { background: var(--ktm-orange); color: #000; }
 
-        #alert-box { display: none; background-color: #ff0000; color: #fff; padding: 8px; text-align: center; font-family: 'Arial', sans-serif; font-size: 0.8rem; font-weight: bold; position: fixed; top:0; left:0; width: 100%; z-index: 999; }
+        #alert-box { display: none; background-color: #ff0000; color: #fff; padding: 8px; text-align: center; font-size: 0.8rem; font-weight: bold; position: fixed; top:0; left:0; width: 100%; z-index: 999; letter-spacing: normal; }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
@@ -110,7 +129,7 @@
                 <span>Rayon: <span id="ui-radius"></span> km</span>
             </div>
             <button class="btn-settings" onclick="openSettings()">⚙️ PARAMÈTRES / RÉGLAGES</button>
-            <button onclick="findStations()" style="width:100%; margin-top:5px; border-color:var(--ktm-orange);">SCAN STATIONS</button>
+            <button onclick="findStations()" style="width:100%; margin-top:5px; border-color:var(--ktm-orange); font-family: 'Impact', sans-serif; letter-spacing:0.5px;">SCAN STATIONS</button>
             <div id="stations-list"></div>
         </div>
     </div>
@@ -118,7 +137,7 @@
     <div id="settings-modal">
         <button class="btn-close" onclick="closeSettings()">X</button>
         
-        <h2 style="color:var(--ktm-orange); margin-bottom:15px; margin-top:10px; font-family:'Arial',sans-serif;">RÉGLAGES</h2>
+        <h2 style="color:var(--ktm-orange); margin-bottom:15px; margin-top:10px; font-weight:bold;">RÉGLAGES</h2>
         
         <div class="settings-block">
             <label class="settings-label">Carburant recherché</label>
@@ -152,7 +171,6 @@
             rayonRechercheKm: 20,            
             lienMeteo: 'https://www.meteoetradar.com/carte-meteo', 
             filtreAngleDeg: 2, 
-            // URL de l'API V1 Gouvernementale (Totalement blindée, sans erreur 404 ni restrictions CORS)
             apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
         };
 
@@ -357,7 +375,7 @@
         }
 
         /* =========================================================
-           MOTEUR STATIONS (Réécriture API V1 - Infaillible)
+           MOTEUR STATIONS OFFICIEL API V1
         ========================================================= */
         function findStations() {
             if (!STATE.gps.lat) return showAlert("Signal GPS requis pour le scan.");
@@ -365,7 +383,6 @@
             list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN EN COURS...</div>";
 
             const radiusMeters = CONFIG.rayonRechercheKm * 1000;
-            // Requête V1 avec géofiltre natif (Impossible à faire planter)
             const url = `${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${radiusMeters}&rows=50`;
 
             fetch(url).then(res => {
@@ -375,7 +392,6 @@
                 list.innerHTML = "";
                 if (!data.records || data.records.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>RIEN DANS CE RAYON</div>";
 
-                // Mapping pour traduire ton choix vers la case exacte de l'API
                 const FUEL_MAP = {
                     'SP98': 'sp98_prix',
                     'SP95': 'sp95_prix',
@@ -391,11 +407,9 @@
                     let coords = record.geometry ? record.geometry.coordinates : null;
                     if (!coords && !st.geom) return;
 
-                    // Les coordonnées GeoJSON sont [longitude, latitude]
                     let lat = coords ? coords[1] : st.geom[0];
                     let lon = coords ? coords[0] : st.geom[1];
                     
-                    // Extraction directe du prix, fini les recherches textuelles aléatoires !
                     let prixCible = st[targetField] ? parseFloat(st[targetField]) : null;
 
                     const dLat = (lat - STATE.gps.lat) * Math.PI / 180;
@@ -447,11 +461,9 @@
         }
 
         /* =========================================================
-           NAVIGATION INTENTS (LANCE LES APK AU LIEU DES PAGES WEB)
+           NAVIGATION INTENTS
         ========================================================= */
         function navApp(lat, lon, app) {
-            // "waze://" et "google.navigation:" forcent Android à intercepter la commande
-            // au lieu d'ouvrir bêtement le site internet.
             if(app === 'waze') window.location.href = `waze://?ll=${lat},${lon}&navigate=yes`;
             else if(app === 'maps') window.location.href = `google.navigation:q=${lat},${lon}`;
             else if(app === 'osmand') window.location.href = `osmand.geo://${lat},${lon}`;
