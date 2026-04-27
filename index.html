@@ -6,14 +6,14 @@
     <title>Dashboard Energy Concept</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- PANNEAU DE CONTRÔLE (20 PREMIÈRES LIGNES) --- */
+        /* --- PANNEAU DE CONTRÔLE (RÉGLAGES GLOBAUX) --- */
         :root {
             --primary-orange: #FF6B00;
             --bg-dark: #000000;
             --card-bg: #111111;
             --text-gray: #A0A0A0;
             --max-speed-limit: 130;
-            --gauge-max-width: 110px; /* Réduit pour l'écran 1/4 */
+            --gauge-max-width: 110px;
             --transition-speed: 0.4s;
         }
 
@@ -29,8 +29,11 @@
         .gauge-fill { fill: none; stroke: #ffffff; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--transition-speed) ease-out, stroke var(--transition-speed) ease; }
         
         .speed-value { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 2rem; font-weight: bold; line-height: 1; }
-        .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; }
+        .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; cursor: pointer; }
         .station-btn:hover { background-color: var(--primary-orange); border-color: var(--primary-orange); }
+        
+        /* Personnalisation des Selects */
+        select { outline: none; appearance: none; text-align: center; }
     </style>
 </head>
 <body class="p-1">
@@ -38,15 +41,13 @@
     <div class="dashboard-container gap-1">
         
         <div class="bg-[#111] border-l-4 border-[#FF6B00] p-2 flex flex-row items-center justify-between shrink-0">
-            
             <div class="flex flex-col items-center w-1/2 relative">
                 <div class="flex justify-between w-full px-1 mb-1 items-center">
                     <span class="text-[9px] text-gray-400 font-mono"><span id="valAngle">-90</span>°</span>
-                    <button onclick="resetStats()" class="bg-gray-800 text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 text-[8px] uppercase">
+                    <button onclick="resetStats()" class="bg-gray-800 text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 text-[8px] uppercase cursor-pointer">
                         Zéro
                     </button>
                 </div>
-
                 <div class="gauge-wrapper">
                     <svg class="gauge-svg" viewBox="0 0 100 65">
                         <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
@@ -63,6 +64,35 @@
                 <div class="flex justify-between pt-1"><span class="text-gray-500">Temp:</span><span>21°</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Vent:</span><span>5k/h</span></div>
             </div>
+        </div>
+
+        <div class="flex items-center justify-between bg-[#111] p-1.5 gap-1.5 shrink-0 rounded-sm">
+            <div class="flex gap-1">
+                <select class="bg-[#222] text-gray-300 border border-gray-700 rounded text-[10px] py-1.5 px-2 cursor-pointer">
+                    <option>10k</option>
+                    <option>20k</option>
+                    <option>50k</option>
+                </select>
+                <select class="bg-[#222] text-gray-300 border border-gray-700 rounded text-[10px] py-1.5 px-2 cursor-pointer">
+                    <option>98</option>
+                    <option>95</option>
+                    <option>E10</option>
+                    <option>GAZ</option>
+                </select>
+            </div>
+            
+            <button onclick="triggerScan()" class="bg-[#FF6B00] hover:bg-orange-600 text-white rounded p-1.5 flex-1 flex justify-center items-center transition-colors cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 12v8"></path>
+                    <path d="m8 20 8 0"></path>
+                    <path d="M16 9a4 4 0 0 0-8 0"></path>
+                    <path d="M19 6a7 7 0 0 0-14 0"></path>
+                </svg>
+            </button>
+
+            <button class="bg-[#222] border border-gray-700 rounded p-2 flex justify-center items-center cursor-pointer hover:bg-gray-800 transition-colors">
+                <div class="w-2.5 h-2.5 bg-blue-400 rounded-full shadow-[0_0_5px_rgba(96,165,250,0.8)]"></div>
+            </button>
         </div>
 
         <div id="station-list" class="flex-1 overflow-y-auto space-y-1 pb-2">
@@ -90,8 +120,16 @@
             { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" }
         ];
 
+        function triggerScan() {
+            // Logique de scan API à intégrer ici. Par défaut, on recharge visuellement la liste.
+            renderStations();
+        }
+
         function updateDashboard(speed) {
-            if (speed === undefined || speed === null) return; // Gestion d'erreur basique
+            if (speed === undefined || speed === null) {
+                console.warn("Alerte: Donnée de vitesse manquante.");
+                return;
+            }
             
             const speedVal = Math.round(speed);
             const path = document.getElementById('gaugePath');
@@ -134,7 +172,8 @@
             if (app === 'waze') {
                 window.open(`https://waze.com/ul?q=${query}&navigate=yes`, '_blank');
             } else if (app === 'gmaps') {
-                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                // URL corrigée pour forcer le calcul de l'itinéraire sur Google Maps
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
             }
         }
 
@@ -142,7 +181,7 @@
             const container = document.getElementById('station-list');
             
             if (!mockStations || mockStations.length === 0) {
-                container.innerHTML = `<div class="text-red-500 text-xs p-2">Erreur : Aucune donnée de station disponible.</div>`;
+                container.innerHTML = `<div class="text-[#FF6B00] text-xs p-2 text-center border border-gray-800 bg-[#111]">Aucune station détectée. Appuyez sur le bouton scan.</div>`;
                 return;
             }
 
@@ -164,12 +203,12 @@
             `).join('');
         }
 
-        // Simulation
+        // Simulation de conduite
         setInterval(() => {
             updateDashboard(Math.floor(Math.random() * 130));
         }, 3000);
 
-        // Init
+        // Initialisation au lancement
         renderStations();
     </script>
 </body>
