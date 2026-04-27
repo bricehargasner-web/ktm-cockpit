@@ -2,157 +2,125 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Energy Concept</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- CONFIGURATION VISUELLE (PANNEAU DE CONTRÔLE) --- */
+        /* --- PANNEAU DE CONTRÔLE (20 PREMIÈRES LIGNES) --- */
         :root {
             --primary-orange: #FF6B00;
             --bg-dark: #000000;
             --card-bg: #111111;
             --text-gray: #A0A0A0;
-            --gauge-size: 140px; /* Taille de la jauge pour meilleure visibilité */
+            --max-speed-limit: 130;
+            --gauge-max-width: 110px; /* Réduit pour l'écran 1/4 */
+            --transition-speed: 0.4s;
         }
 
-        body { 
-            background-color: var(--bg-dark); 
-            color: white; 
-            font-family: sans-serif; 
-            overflow: hidden;
-            /* Optimisé paysage bord gauche haut */
-            width: 100vw; height: 100vh;
-            max-width: 400px; /* Restreint pour split-screen droite */
-        }
+        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; margin: 0; }
         
-        /* Style de la Jauge Arc-de-cercle MODIFIÉ */
-        .gauge-container {
-            position: relative;
-            width: var(--gauge-size);
-            height: calc(var(--gauge-size) / 2 + 20px);
-            margin: 0 auto;
-        }
-        .gauge-svg { transform: rotate(0deg); width: 100%; height: 100%; } /* Inversé : 0° haut centre */
-        .gauge-bg { fill: none; stroke: #333; stroke-width: 10; stroke-linecap: round; }
-        .gauge-fill { 
-            fill: none; stroke: url(#gradient); stroke-width: 10; 
-            stroke-linecap: round; transition: stroke-dasharray 0.5s ease; 
-        }
-        /* Dégradé blanc → orange → rouge vif selon angle */
-        #gradient {
-            stop-color: #ffffff; stop-opacity: 1;
-        }
-        .gauge-value {
-            position: absolute; top: 5px; left: 50%;
-            transform: translateX(-50%); font-size: 1.8rem; font-weight: bold;
-            display: flex; flex-direction: column; align-items: center; gap: 2px;
-        }
-        .angle-display { font-size: 0.8rem; color: var(--text-gray); }
-        .zero-btn {
-            width: 16px; height: 16px; border: 1px solid #555; 
-            background: #222; color: #aaa; font-size: 0.6rem; 
-            border-radius: 50%; cursor: pointer; line-height: 14px;
-        }
-        .zero-btn:hover { background: #FF6B00; color: white; }
-
-        /* Boutons Maps/Waze agrandis pour tactile split-screen */
-        .nav-btn {
-            min-width: 28px; min-height: 24px; /* Plus gros pour doigts */
-            padding: 2px 6px; font-size: 9px; font-weight: bold;
-            border-radius: 4px; border: none; cursor: pointer;
-            transition: all 0.2s; touch-action: manipulation;
-        }
-        .nav-btn:active { transform: scale(0.95); }
-        .gm-btn { background: #4285F4; color: white; }
-        .wz-btn { background: #FF2B55; color: white; }
+        /* Structure adaptée pour écran scindé 1/4 */
+        .dashboard-container { display: flex; flex-direction: column; height: 100vh; max-width: 100%; }
+        
+        /* Jauge optimisée (anti-coupure) */
+        .gauge-wrapper { width: 100%; max-width: var(--gauge-max-width); position: relative; margin: 0 auto; }
+        .gauge-svg { width: 100%; height: auto; display: block; overflow: visible; }
+        .gauge-bg { fill: none; stroke: #333; stroke-width: 8; stroke-linecap: round; }
+        .gauge-fill { fill: none; stroke: #ffffff; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--transition-speed) ease-out, stroke var(--transition-speed) ease; }
+        
+        .speed-value { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 2rem; font-weight: bold; line-height: 1; }
+        .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; }
+        .station-btn:hover { background-color: var(--primary-orange); border-color: var(--primary-orange); }
     </style>
 </head>
-<body class="p-2">
+<body class="p-1">
 
-    <div class="grid grid-cols-1 gap-2">
+    <div class="dashboard-container gap-1">
         
-        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-3 flex justify-between items-center">
-            <div class="gauge-container">
-                <svg class="gauge-svg" viewBox="0 0 100 60">
-                    <defs>
-                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#ffffff"></stop>
-                            <stop offset="50%" stop-color="#FF8C00"></stop>
-                            <stop offset="100%" stop-color="#FF0000"></stop>
-                        </linearGradient>
-                    </defs>
-                    <path class="gauge-bg" d="M 10 10 A 40 40 0 0 1 90 10" /> <!-- Arc inversé haut -->
-                    <path id="gaugePath" class="gauge-fill" d="M 10 10 A 40 40 0 0 1 90 10" stroke-dasharray="0, 126" />
-                </svg>
-                <div class="gauge-value" id="valVitesse">
-                    <span id="speedVal">0</span>
-                    <div>
-                        <span class="angle-display" id="angleVal">0°</span>
-                        <button class="zero-btn" onclick="resetGauge()">0</button>
-                    </div>
+        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-2 flex flex-row items-center justify-between shrink-0">
+            
+            <div class="flex flex-col items-center w-1/2 relative">
+                <div class="flex justify-between w-full px-1 mb-1 items-center">
+                    <span class="text-[9px] text-gray-400 font-mono"><span id="valAngle">-90</span>°</span>
+                    <button onclick="resetStats()" class="bg-gray-800 text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 text-[8px] uppercase">
+                        Zéro
+                    </button>
+                </div>
+
+                <div class="gauge-wrapper">
+                    <svg class="gauge-svg" viewBox="0 0 100 65">
+                        <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                        <path id="gaugePath" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" stroke-dasharray="125.6" stroke-dashoffset="125.6" />
+                    </svg>
+                    <div class="speed-value" id="valVitesse">0</div>
                 </div>
             </div>
 
-            <div class="text-right text-xs space-y-1 uppercase tracking-tighter">
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Alt:</span><span id="alt">--m</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Moy:</span><span id="avg_speed">0</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400 text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold">0</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Temp:</span><span>21°</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Vent:</span><span>5k/h</span></div>
+            <div class="w-1/2 pl-2 text-[10px] space-y-1 uppercase tracking-tighter">
+                <div class="flex justify-between"><span class="text-gray-500">Alt:</span><span id="alt">207m</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Moy:</span><span id="avg_speed">0</span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold text-[#FF6B00]">0</span></div>
+                <div class="flex justify-between pt-1"><span class="text-gray-500">Temp:</span><span>21°</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Vent:</span><span>5k/h</span></div>
             </div>
         </div>
 
-        <div id="station-list" class="space-y-1 overflow-y-auto" style="max-height: 60vh;">
+        <div id="station-list" class="flex-1 overflow-y-auto space-y-1 pb-2">
             </div>
 
     </div>
 
     <script>
-        /* --- LOGIQUE DE CALCUL ET DONNÉES --- */
+        /* --- LOGIQUE ET DONNÉES --- */
         let maxSpeed = 0;
         let speedSum = 0;
         let speedCount = 0;
-        let currentAddress = ''; // Pour liens Maps/Waze
 
-        // Données fictives avec coordonnées GPS pour Maps/Waze directs
+        function resetStats() {
+            maxSpeed = 0;
+            speedSum = 0;
+            speedCount = 0;
+            document.getElementById('max_speed').innerText = "0";
+            document.getElementById('avg_speed').innerText = "0";
+        }
+
         const mockStations = [
-            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", coords: "43.9035,1.9375", price: "1.890", dist: "0.5 KM" },
-            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", coords: "43.9102,1.9458", price: "1.850", dist: "2.4 KM" },
-            { name: "Esso", address: "Bd de l'Europe, Graulhet", coords: "43.9151,1.9523", price: "1.910", dist: "4.1 KM" }
+            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", price: "1.890", dist: "0.5 KM" },
+            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", price: "1.850", dist: "2.4 KM" },
+            { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" }
         ];
 
-        function openGoogleMaps(addressOrCoords) {
-            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressOrCoords)}&travelmode=driving`;
-            window.open(url, '_blank', 'noopener,noreferrer');
-        }
-
-        function openWaze(addressOrCoords) {
-            const url = `https://waze.com/ul?ll=${addressOrCoords}&navigate=yes`;
-            window.open(url, '_blank', 'noopener,noreferrer');
-        }
-
         function updateDashboard(speed) {
-            // 1. Mise à jour Jauge MODIFIÉE
+            if (speed === undefined || speed === null) return; // Gestion d'erreur basique
+            
             const speedVal = Math.round(speed);
-            const angle = Math.min((speedVal / 130) * 180, 180); // Angle 0° à 180°
             const path = document.getElementById('gaugePath');
-            const display = document.getElementById('speedVal');
-            const angleDisplay = document.getElementById('angleVal');
+            const display = document.getElementById('valVitesse');
+            const angleDisplay = document.getElementById('valAngle');
             
-            // Calcul du périmètre de l'arc (126 env pour 180 deg)
-            const percentage = angle / 180;
-            const dash = percentage * 126;
-            path.style.strokeDasharray = `${dash}, 126`;
+            const maxLimit = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-speed-limit').trim()) || 130;
+            const percentage = Math.min(speedVal / maxLimit, 1);
             
-            // Dégradé dynamique selon angle
-            const gradient = document.getElementById('gradient');
-            gradient.children[1].setAttribute('offset', `${percentage * 50}%`);
-            gradient.children[2].setAttribute('offset', `${percentage * 100}%`);
-            
+            const offset = 125.6 - (percentage * 125.6);
+            path.style.strokeDashoffset = offset;
             display.innerText = speedVal;
-            angleDisplay.innerText = `${Math.round(angle)}°`;
 
-            // 2. Stats Max / Moy (inchangé)
+            const currentAngle = Math.round((percentage * 180) - 90);
+            angleDisplay.innerText = currentAngle;
+
+            let color;
+            if (percentage < 0.5) {
+                let p = percentage * 2; 
+                let g = Math.round(255 - (255 - 107) * p);
+                let b = Math.round(255 - (255 - 0) * p);
+                color = `rgb(255, ${g}, ${b})`;
+            } else {
+                let p = (percentage - 0.5) * 2; 
+                let g = Math.round(107 - (107 * p));
+                color = `rgb(255, ${g}, 0)`;
+            }
+            path.style.stroke = color;
+
             if (speedVal > maxSpeed) maxSpeed = speedVal;
             speedSum += speedVal;
             speedCount++;
@@ -161,50 +129,48 @@
             document.getElementById('avg_speed').innerText = Math.round(speedSum / speedCount);
         }
 
-        function resetGauge() {
-            document.getElementById('gaugePath').style.strokeDasharray = '0, 126';
-            document.getElementById('speedVal').innerText = '0';
-            document.getElementById('angleVal').innerText = '0°';
-            // Reset stats si besoin
-            maxSpeed = 0;
-            speedSum = 0;
-            speedCount = 0;
-            document.getElementById('max_speed').innerText = '0';
-            document.getElementById('avg_speed').innerText = '0';
+        function openNav(app, name, address) {
+            const query = encodeURIComponent(`${name} ${address}`);
+            if (app === 'waze') {
+                window.open(`https://waze.com/ul?q=${query}&navigate=yes`, '_blank');
+            } else if (app === 'gmaps') {
+                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+            }
         }
 
         function renderStations() {
             const container = document.getElementById('station-list');
-            container.innerHTML = mockStations.map((s, index) => {
-                currentAddress = s.coords; // Stocke l'adresse courante pour boutons
-                return `
-                <div class="bg-[#111] p-3 flex justify-between items-center border-b border-gray-900">
-                    <div class="flex flex-col">
-                        <span class="text-[#FF6B00] font-bold text-lg leading-tight">${s.name}</span>
-                        <span class="text-gray-500 text-[10px] uppercase">${s.address}</span>
-                        <span class="text-gray-400 text-xs mt-1 italic">${s.dist}</span>
+            
+            if (!mockStations || mockStations.length === 0) {
+                container.innerHTML = `<div class="text-red-500 text-xs p-2">Erreur : Aucune donnée de station disponible.</div>`;
+                return;
+            }
+
+            container.innerHTML = mockStations.map(s => `
+                <div class="bg-[#111] p-2 flex justify-between items-center border-b border-gray-900">
+                    <div class="flex flex-col w-2/3 pr-2">
+                        <span class="text-[#FF6B00] font-bold text-sm leading-tight truncate">${s.name}</span>
+                        <span class="text-gray-500 text-[9px] uppercase truncate">${s.address}</span>
+                        <span class="text-gray-400 text-[10px] mt-0.5 italic">${s.dist}</span>
                     </div>
-                    <div class="flex flex-col items-end">
-                        <span class="text-[#FF6B00] text-2xl font-mono font-bold">${s.price}€</span>
-                        <div class="flex gap-1 mt-1">
-                            <button class="nav-btn wz-btn" onclick="openWaze('${s.coords}')" title="Waze">WZ</button>
-                            <button class="nav-btn gm-btn" onclick="openGoogleMaps('${s.coords}')" title="Google Maps">GM</button>
+                    <div class="flex flex-col items-end w-1/3">
+                        <span class="text-[#FF6B00] text-lg font-mono font-bold leading-none">${s.price}€</span>
+                        <div class="flex gap-1 mt-1.5">
+                            <button onclick="openNav('waze', '${s.name.replace(/'/g, "\\'")}', '${s.address.replace(/'/g, "\\'")}')" class="station-btn">WZ</button>
+                            <button onclick="openNav('gmaps', '${s.name.replace(/'/g, "\\'")}', '${s.address.replace(/'/g, "\\'")}')" class="station-btn">GM</button>
                         </div>
                     </div>
                 </div>
-            `;
-            }).join('');
+            `).join('');
         }
 
-        // Simulation de mouvement
+        // Simulation
         setInterval(() => {
-            const randomSpeed = Math.floor(Math.random() * 50);
-            updateDashboard(randomSpeed);
+            updateDashboard(Math.floor(Math.random() * 130));
         }, 3000);
 
-        // Initialisation
+        // Init
         renderStations();
-        document.getElementById('alt').innerText = "207m";
     </script>
 </body>
 </html>
