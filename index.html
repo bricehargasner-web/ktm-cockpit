@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Energy Concept V12 - Overlap Dash</title>
+    <title>KTM V13 - Iconic Dash</title>
     
     <style>
         :root { --ktm: #ff6600; --bg: #000; --txt: #fff; --ok: #2ecc71; --err: #e74c3c; }
@@ -13,132 +13,110 @@
             background: var(--bg); color: var(--txt); 
             height: 100vh; width: 100vw; 
             overflow: hidden; display: flex; flex-direction: column;
-            border-left: 6px solid var(--ktm);
+            border-left: 4px solid var(--ktm);
         }
 
-        /* --- DASHBOARD IMBRIQUÉ (HAUTEUR RÉDUITE) --- */
-        .dash-header { 
-            display: flex; 
-            height: 110px; 
-            background: linear-gradient(180deg, #111, #000);
-            border-bottom: 2px solid var(--ktm);
-            align-items: center;
-            padding: 0 10px;
-            flex-shrink: 0;
+        /* --- DASHBOARD COMPACT (ARC) --- */
+        .header-dash { 
+            display: flex; height: 95px; 
+            background: #000; border-bottom: 2px solid var(--ktm);
+            align-items: center; padding: 0 5px; flex-shrink: 0;
         }
 
-        /* Compteur avec Arc d'inclinaison intégré */
-        .gauge-zone { position: relative; width: 140px; height: 100px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #333; }
-        .arc-bg { position: absolute; width: 120px; height: 120px; border: 6px solid #222; border-radius: 50%; border-bottom-color: transparent; transform: rotate(180deg); }
-        #arc-val { position: absolute; width: 120px; height: 120px; border: 6px solid transparent; border-radius: 50%; border-top-color: var(--ktm); transition: 0.1s; transform: rotate(0deg); }
-        .speed-data { text-align: center; z-index: 10; }
-        .v-val { font-size: 3.5rem; line-height: 1; font-style: italic; }
-        .v-unit { font-size: 0.6rem; color: var(--ktm); display: block; }
+        .gauge-zone { position: relative; width: 110px; height: 80px; display: flex; align-items: center; justify-content: center; }
+        .arc-bg { position: absolute; top: 5px; width: 100px; height: 100px; border: 5px solid #222; border-radius: 50%; border-bottom-color: transparent; transform: rotate(-90deg); }
+        #arc-val { position: absolute; top: 5px; width: 100px; height: 100px; border: 5px solid transparent; border-radius: 50%; border-top-color: var(--ktm); transition: 0.1s; transform: rotate(-90deg); }
         
-        /* Stats Angle Coin */
-        .angle-stats { position: absolute; top: 5px; left: 5px; font-size: 0.55rem; color: #aaa; text-align: left; line-height: 1.2; }
-        .angle-stats b { color: #fff; font-size: 0.8rem; }
+        .speed-val { font-size: 3rem; line-height: 1; font-style: italic; z-index: 5; margin-top: 15px;}
+        .angle-mini { position: absolute; top: 35px; font-size: 0.8rem; color: #fff; }
 
-        /* Météo (Droite) */
-        .weather-zone { flex: 1; padding-left: 15px; text-align: right; font-size: 0.8rem; }
-        .weather-zone b { font-size: 1.4rem; color: var(--ktm); }
+        .info-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 10px; font-size: 0.7rem; border-left: 1px solid #222; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
 
-        /* --- BARRE DE RÉGLAGES --- */
-        .control-strip { display: flex; gap: 4px; padding: 6px; background: #080808; border-bottom: 1px solid #222; align-items: center; }
-        select { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; flex: 1; }
-        .btn-action { background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 0.75rem; font-weight: bold; padding: 10px; cursor: pointer; }
-        .btn-scan { background: var(--ktm); color: #000; flex: 1.5; border: none; }
-        .btn-rec.active { background: var(--err); color: #fff; animation: blink 1s infinite; }
+        /* --- BARRE DE COMMANDE ICONIQUE --- */
+        .cmd-bar { 
+            display: flex; gap: 2px; padding: 4px; 
+            background: #111; border-bottom: 1px solid #333; align-items: center;
+        }
+        .cmd-bar select, .cmd-btn { 
+            background: #222; color: #fff; border: 1px solid #444; 
+            padding: 8px 4px; border-radius: 4px; font-size: 0.75rem; 
+        }
+        .cmd-btn { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-scan { background: var(--ktm); color: #000; font-size: 1.1rem; flex: 1.2; }
+        .btn-rec.active { background: var(--err); animation: blink 1s infinite; }
 
-        /* --- RÉSULTATS --- */
-        .results-area { flex: 1; overflow-y: auto; background: #000; padding: 6px; }
-        .st-card { background: #111; margin-bottom: 8px; padding: 10px; border-radius: 6px; border-left: 5px solid var(--ktm); }
-        .st-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .st-n { font-size: 0.8rem; color: #fff; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
-        .st-p { color: var(--ktm); font-size: 1.3rem; font-weight: 900; }
-        .st-bot { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: #777; }
-        .btn-go { background: #222; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; border: 1px solid var(--ktm); font-weight: bold; }
+        /* --- LISTE STATIONS --- */
+        .results { flex: 1; overflow-y: auto; background: #000; padding: 4px; }
+        .st-card { 
+            background: #111; margin-bottom: 4px; padding: 6px; 
+            border-radius: 4px; border-left: 3px solid var(--ktm);
+        }
+        .st-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+        .st-name { font-size: 0.7rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+        .st-price { color: var(--ktm); font-size: 1.1rem; }
+        
+        .st-actions { display: flex; justify-content: space-between; align-items: center; }
+        .st-dist { font-size: 0.65rem; color: #666; }
+        .go-icons { display: flex; gap: 5px; }
+        .icon-go { width: 28px; height: 28px; background: #222; border-radius: 4px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.6rem; color: #fff; }
 
         @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body onclick="MOTO.init()">
 
-    <div class="dash-header">
+    <div class="header-dash">
         <div class="gauge-zone">
-            <div class="angle-stats">
-                ANG: <b id="a-curr">0°</b><br>
-                MAX: <b id="a-max">0°</b><br>
-                MOY: <b id="a-avg">0°</b>
-                <div style="margin-top:2px; font-size:0.5rem;" onclick="event.stopPropagation(); MOTO.resetAngle()">[RESET]</div>
-            </div>
             <div class="arc-bg"></div>
             <div id="arc-val"></div>
-            <div class="speed-data">
-                <div id="speed" class="v-val">0</div>
-                <span class="v-unit">KM/H</span>
-            </div>
+            <div id="speed" class="speed-val">0</div>
+            <div id="lean-val" class="angle-mini">0°</div>
         </div>
-
-        <div class="weather-zone" onclick="window.open('https://meteofrance.com')">
-            <div id="alt" style="font-size:0.7rem; color:#777; margin-bottom:5px;">ALTITUDE: --M</div>
-            <b id="m-t">--°C</b><br>
-            <span id="m-w">VENT: -- K/H</span>
+        <div class="info-zone">
+            <div class="info-row"><span>ALT:</span><b id="alt">--m</b></div>
+            <div class="info-row"><span>TEMP:</span><b id="m-t">--°</b></div>
+            <div class="info-row"><span>VENT:</span><b id="m-w">--k/h</b></div>
+            <div class="info-row" style="font-size: 0.55rem; color: #555;"><span>MAX:</span><b id="a-max">0°</b></div>
         </div>
     </div>
 
-    <div class="control-strip">
-        <select id="rad">
-            <option value="10">10 KM</option>
-            <option value="20" selected>20 KM</option>
-            <option value="30">30 KM</option>
-            <option value="40">40 KM</option>
-            <option value="50">50 KM</option>
+    <div class="cmd-bar">
+        <select id="rad" title="Rayon">
+            <option value="10">10k</option><option value="20" selected>20k</option><option value="30">30k</option>
         </select>
-        <select id="fuel">
-            <option value="Gazole">GAZOLE</option>
-            <option value="SP98">SP98</option>
-            <option value="SP95">SP95</option>
-            <option value="E10">E10</option>
-            <option value="E85">E85</option>
+        <select id="fuel" title="Carburant">
+            <option value="Gazole">GO</option><option value="SP98">98</option><option value="SP95">95</option><option value="E10">E10</option>
         </select>
-        <button class="btn-action btn-scan" onclick="event.stopPropagation(); MOTO.scan()">SCAN</button>
-        <button id="btn-rec" class="btn-action" onclick="event.stopPropagation(); REC.toggle()">REC</button>
+        <div class="cmd-btn btn-scan" onclick="event.stopPropagation(); MOTO.scan()">📡</div>
+        <div id="btn-rec" class="cmd-btn" onclick="event.stopPropagation(); REC.toggle()">⏺️</div>
     </div>
 
-    <div class="results-area" id="results">
-        <div style="text-align:center; padding:30px; color:#444; font-size:0.7rem;">PRÊT POUR LE SCAN</div>
+    <div class="results" id="results">
+        <div style="text-align:center; padding:20px; color:#444; font-size:0.7rem;">CLIQUER 📡 POUR SCANNER</div>
     </div>
 
     <script>
         let userPos = { lat: 0, lon: 0 };
-        let track = [], isRecording = false;
-        let angleData = { max: 0, sum: 0, count: 0 };
+        let track = [], isRecording = false, maxLean = 0;
 
         const MOTO = {
             init() {
                 navigator.geolocation.watchPosition(p => {
                     userPos = { lat: p.coords.latitude, lon: p.coords.longitude };
                     document.getElementById('speed').innerText = Math.round((p.coords.speed || 0) * 3.6);
-                    document.getElementById('alt').innerText = "ALTITUDE: " + (p.coords.altitude ? Math.round(p.coords.altitude) : "--") + "M";
+                    document.getElementById('alt').innerText = (p.coords.altitude ? Math.round(p.coords.altitude) : "--") + "m";
                     if(isRecording) track.push({ lat: userPos.lat, lon: userPos.lon });
                     this.updateWeather();
                 }, null, { enableHighAccuracy: true });
-            },
-
-            resetAngle() {
-                angleData = { max: 0, sum: 0, count: 0 };
-                document.getElementById('a-max').innerText = "0°";
-                document.getElementById('a-avg').innerText = "0°";
-                document.getElementById('a-curr').innerText = "0°";
             },
 
             async updateWeather() {
                 try {
                     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userPos.lat}&longitude=${userPos.lon}&current_weather=true`);
                     const d = await r.json();
-                    document.getElementById('m-t').innerText = Math.round(d.current_weather.temperature) + "°C";
-                    document.getElementById('m-w').innerText = "VENT: " + Math.round(d.current_weather.windspeed) + " K/H";
+                    document.getElementById('m-t').innerText = Math.round(d.current_weather.temperature) + "°";
+                    document.getElementById('m-w').innerText = Math.round(d.current_weather.windspeed) + "k/h";
                 } catch(e) {}
             },
 
@@ -147,10 +125,11 @@
                 const fuel = document.getElementById('fuel').value;
                 const rad = document.getElementById('rad').value;
                 const resZone = document.getElementById('results');
-                resZone.innerHTML = "<div style='color:var(--ktm); text-align:center; padding:20px;'>SCAN...</div>";
+                resZone.innerHTML = "<div style='color:var(--ktm); text-align:center; padding:15px;'>📡 SCAN...</div>";
                 try {
                     const url = `https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2&geofilter.distance=${userPos.lat},${userPos.lon},${rad*1000}&rows=40`;
-                    const data = await r.json();
+                    const res = await fetch(url);
+                    const data = await res.json();
                     let st = [];
                     data.records.forEach(i => {
                         const prix = this.extract(i.fields, fuel);
@@ -159,10 +138,17 @@
                     st.sort((a,b) => a.dist - b.dist);
                     resZone.innerHTML = st.map(s => `
                         <div class="st-card">
-                            <div class="st-top"><span class="st-n">${s.nom}</span><span class="st-p">${s.prix.toFixed(3)}€</span></div>
-                            <div class="st-bot"><span>${s.dist.toFixed(1)} KM</span><a class="btn-go" target="_blank" href="waze://?ll=${s.lat},${s.lon}&navigate=yes">GO</a></div>
+                            <div class="st-top"><span class="st-name">${s.nom}</span><span class="st-price">${s.prix.toFixed(3)}€</span></div>
+                            <div class="st-actions">
+                                <span class="st-dist">${s.dist.toFixed(1)} KM</span>
+                                <div class="go-icons">
+                                    <a class="icon-go" target="_blank" href="waze://?ll=${s.lat},${s.lon}&navigate=yes">WZ</a>
+                                    <a class="icon-go" target="_blank" href="google.navigation:q=${s.lat},${s.lon}">GM</a>
+                                    <a class="icon-go" target="_blank" href="geo:${s.lat},${s.lon}">OSM</a>
+                                </div>
+                            </div>
                         </div>`).join('');
-                } catch(e) {}
+                } catch(e) { resZone.innerHTML = "ERR API"; }
             },
 
             extract(f, t) {
@@ -186,7 +172,7 @@
                     const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>${track.map(p => `<trkpt lat="${p.lat}" lon="${p.lon}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'}));
-                    a.download = `Trace_Moto.gpx`; a.click();
+                    a.download = `Trace_${Date.now()}.gpx`; a.click();
                 }
             }
         };
@@ -195,19 +181,9 @@
             if(e.beta === null) return;
             let lean = Math.round(e.beta || 0) * -1;
             let absLean = Math.abs(lean);
-            
-            // UI Arc
-            document.getElementById('arc-val').style.transform = `rotate(${lean}deg)`;
-            document.getElementById('a-curr').innerText = absLean + "°";
-            
-            // Stats
-            if(absLean > 0) {
-                angleData.max = Math.max(angleData.max, absLean);
-                angleData.sum += absLean;
-                angleData.count++;
-                document.getElementById('a-max').innerText = angleData.max + "°";
-                document.getElementById('a-avg').innerText = Math.round(angleData.sum / angleData.count) + "°";
-            }
+            document.getElementById('arc-val').style.transform = `rotate(${-90 + lean}deg)`;
+            document.getElementById('lean-val').innerText = absLean + "°";
+            if(absLean > maxLean) { maxLean = absLean; document.getElementById('a-max').innerText = maxLean + "°"; }
         });
     </script>
 </body>
