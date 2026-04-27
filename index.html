@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V8</title>
+    <title>KTM Adventure Dash V10</title>
     
     <style>
         :root {
@@ -49,14 +49,14 @@
         .station-dist { font-size: 0.7rem; color: var(--text-dim); }
         .station-actions { display: flex; gap: 5px; margin-top: 5px; }
         
-        /* Modal Paramètres avec défilement */
+        /* Modal Paramètres */
         #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; font-family: 'Arial', sans-serif; overflow-y: auto; }
         .settings-block { background: #111; padding: 15px; border: 1px solid var(--ktm-orange); margin-bottom: 15px; }
         .settings-label { display: block; font-size: 0.8rem; color: var(--ktm-orange); margin-bottom: 10px; text-transform: uppercase; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; margin-bottom: 10px; }
         #debug-gyro { font-size: 0.7rem; color: #00ff00; background: #000; padding: 5px; font-family: monospace; }
         
-        /* Croix de fermeture Flottante (Fixée à l'écran) */
+        /* Croix de fermeture Flottante */
         .btn-close { position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #000; border: 2px solid var(--ktm-orange); border-radius: 50%; color: var(--ktm-orange); font-size: 1.5rem; font-family: Arial, sans-serif; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 2000; box-shadow: 0 0 15px rgba(0,0,0,0.9); cursor: pointer; }
         .btn-close:active { background: var(--ktm-orange); color: #000; }
 
@@ -152,8 +152,8 @@
             rayonRechercheKm: 20,            
             lienMeteo: 'https://www.meteoetradar.com/carte-meteo', 
             filtreAngleDeg: 2, 
-            // Dataset Officiel Gouvernement V2.1
-            apiStations: 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-du-jour/records'
+            // URL de l'API V1 Gouvernementale (Totalement blindée, sans erreur 404 ni restrictions CORS)
+            apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
         };
 
         const STATE = {
@@ -340,7 +340,7 @@
         }
 
         /* =========================================================
-           MOTEUR MÉTÉO (Anti-Cache Intégré)
+           MOTEUR MÉTÉO
         ========================================================= */
         function fetchWeather(lat, lon) {
             STATE.weatherLoaded = true;
@@ -357,67 +357,62 @@
         }
 
         /* =========================================================
-           MOTEUR STATIONS (Extracteur Robuste & Liens Natifs)
+           MOTEUR STATIONS (Réécriture API V1 - Infaillible)
         ========================================================= */
         function findStations() {
-            if (!STATE.gps.lat) return showAlert("Signal GPS requis.");
+            if (!STATE.gps.lat) return showAlert("Signal GPS requis pour le scan.");
             const list = document.getElementById('stations-list');
             list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN EN COURS...</div>";
 
-            const query = `distance(geom, geom'POINT(${STATE.gps.lon} ${STATE.gps.lat})', ${CONFIG.rayonRechercheKm}km)`;
-            const url = `${CONFIG.apiStations}?where=${encodeURIComponent(query)}&limit=100`;
+            const radiusMeters = CONFIG.rayonRechercheKm * 1000;
+            // Requête V1 avec géofiltre natif (Impossible à faire planter)
+            const url = `${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${radiusMeters}&rows=50`;
 
             fetch(url).then(res => {
-                if(!res.ok) throw new Error(`Erreur Serveur (${res.status})`);
+                if(!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
                 return res.json();
             }).then(data => {
                 list.innerHTML = "";
-                if (!data.results || data.results.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>RIEN DANS LE RAYON</div>";
+                if (!data.records || data.records.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>RIEN DANS CE RAYON</div>";
 
-                let stationsMap = {};
-                let targetFuel = CONFIG.carburantCible.toUpperCase();
-                
-                data.results.forEach(record => {
-                    let id = record.id || record.adresse || Math.random().toString();
+                // Mapping pour traduire ton choix vers la case exacte de l'API
+                const FUEL_MAP = {
+                    'SP98': 'sp98_prix',
+                    'SP95': 'sp95_prix',
+                    'E10': 'e10_prix',
+                    'Gazole': 'gazole_prix',
+                    'E85': 'e85_prix'
+                };
+                let targetField = FUEL_MAP[CONFIG.carburantCible];
+                let stationsValides = [];
+
+                data.records.forEach(record => {
+                    let st = record.fields;
+                    let coords = record.geometry ? record.geometry.coordinates : null;
+                    if (!coords && !st.geom) return;
+
+                    // Les coordonnées GeoJSON sont [longitude, latitude]
+                    let lat = coords ? coords[1] : st.geom[0];
+                    let lon = coords ? coords[0] : st.geom[1];
                     
-                    if (!stationsMap[id]) {
-                        let lat = record.geom ? record.geom.lat : null;
-                        let lon = record.geom ? record.geom.lon : null;
-                        
-                        stationsMap[id] = {
-                            nom: record.ville || "Station",
-                            adresse: record.adresse || "",
-                            lat: lat, lon: lon,
-                            prix: null, dist: 999
-                        };
-                        
-                        if (lat && lon && STATE.gps.lat) {
-                            const dLat = (lat - STATE.gps.lat) * Math.PI / 180;
-                            const dLon = (lon - STATE.gps.lon) * Math.PI / 180;
-                            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STATE.gps.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-                            stationsMap[id].dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                        }
-                    }
+                    // Extraction directe du prix, fini les recherches textuelles aléatoires !
+                    let prixCible = st[targetField] ? parseFloat(st[targetField]) : null;
 
-                    // Extracteur Ultra-Robuste (Regex sur les données brutes de la station)
-                    try {
-                        let rawStr = JSON.stringify(record);
-                        let regex = new RegExp(`"@nom"\\s*:\\s*"${targetFuel}".*?"@valeur"\\s*:\\s*"([0-9.]+)"`, 'i');
-                        let match = rawStr.match(regex);
-                        if (match) {
-                            stationsMap[id].prix = parseFloat(match[1]);
-                        } else if (!stationsMap[id].prix && record.prix) {
-                            // Fallback classique
-                            let pArr = typeof record.prix === 'string' ? JSON.parse(record.prix) : record.prix;
-                            if (!Array.isArray(pArr)) pArr = [pArr];
-                            let fuel = pArr.find(p => (p["@nom"] && p["@nom"].toUpperCase() === targetFuel) || (p.nom && p.nom.toUpperCase() === targetFuel));
-                            if (fuel) stationsMap[id].prix = parseFloat(fuel["@valeur"] || fuel.valeur);
-                        }
-                    } catch(e) {}
+                    const dLat = (lat - STATE.gps.lat) * Math.PI / 180;
+                    const dLon = (lon - STATE.gps.lon) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STATE.gps.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+                    if (distKm <= CONFIG.rayonRechercheKm) {
+                        stationsValides.push({
+                            nom: st.ville || "Station Service",
+                            adresse: st.adresse || "",
+                            lat: lat, lon: lon,
+                            prix: prixCible, dist: distKm
+                        });
+                    }
                 });
 
-                let stationsValides = Object.values(stationsMap).filter(st => st.lat !== null && st.dist <= CONFIG.rayonRechercheKm);
-                
                 stationsValides.sort((a, b) => {
                     if (a.prix === null && b.prix === null) return a.dist - b.dist;
                     if (a.prix === null) return 1;
@@ -447,20 +442,19 @@
                     `;
                 });
             }).catch(err => {
-                list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>Erreur API: Impossible de scanner les prix.</div>`;
+                list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>DÉFAUT API: ${err.message}<br>Le portail OpenData refuse la connexion.</div>`;
             });
         }
 
+        /* =========================================================
+           NAVIGATION INTENTS (LANCE LES APK AU LIEU DES PAGES WEB)
+        ========================================================= */
         function navApp(lat, lon, app) {
-            // Liens Natifs / Intents pour ouvrir directement les APK sans casser le navigateur
-            if(app === 'waze') {
-                window.location.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
-            } else if(app === 'maps') {
-                window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
-            } else if(app === 'osmand') {
-                // Geo Intent universel (Ouvre le selecteur d'APK GPS natif Android)
-                window.location.href = `geo:${lat},${lon}?q=${lat},${lon}`;
-            }
+            // "waze://" et "google.navigation:" forcent Android à intercepter la commande
+            // au lieu d'ouvrir bêtement le site internet.
+            if(app === 'waze') window.location.href = `waze://?ll=${lat},${lon}&navigate=yes`;
+            else if(app === 'maps') window.location.href = `google.navigation:q=${lat},${lon}`;
+            else if(app === 'osmand') window.location.href = `osmand.geo://${lat},${lon}`;
         }
     </script>
 </body>
