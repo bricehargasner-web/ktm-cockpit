@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Dashboard Energy Concept</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -15,7 +15,15 @@
             --gauge-size: 140px; /* Taille de la jauge pour meilleure visibilité */
         }
 
-        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; }
+        body { 
+            background-color: var(--bg-dark); 
+            color: white; 
+            font-family: sans-serif; 
+            overflow: hidden;
+            /* Optimisé paysage bord gauche haut */
+            width: 100vw; height: 100vh;
+            max-width: 400px; /* Restreint pour split-screen droite */
+        }
         
         /* Style de la Jauge Arc-de-cercle MODIFIÉ */
         .gauge-container {
@@ -46,6 +54,17 @@
             border-radius: 50%; cursor: pointer; line-height: 14px;
         }
         .zero-btn:hover { background: #FF6B00; color: white; }
+
+        /* Boutons Maps/Waze agrandis pour tactile split-screen */
+        .nav-btn {
+            min-width: 28px; min-height: 24px; /* Plus gros pour doigts */
+            padding: 2px 6px; font-size: 9px; font-weight: bold;
+            border-radius: 4px; border: none; cursor: pointer;
+            transition: all 0.2s; touch-action: manipulation;
+        }
+        .nav-btn:active { transform: scale(0.95); }
+        .gm-btn { background: #4285F4; color: white; }
+        .wz-btn { background: #FF2B55; color: white; }
     </style>
 </head>
 <body class="p-2">
@@ -93,13 +112,24 @@
         let maxSpeed = 0;
         let speedSum = 0;
         let speedCount = 0;
+        let currentAddress = ''; // Pour liens Maps/Waze
 
-        // Données fictives simulant l'API (avec Noms et Adresses)
+        // Données fictives avec coordonnées GPS pour Maps/Waze directs
         const mockStations = [
-            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", price: "1.890", dist: "0.5 KM" },
-            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", price: "1.850", dist: "2.4 KM" },
-            { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" }
+            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", coords: "43.9035,1.9375", price: "1.890", dist: "0.5 KM" },
+            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", coords: "43.9102,1.9458", price: "1.850", dist: "2.4 KM" },
+            { name: "Esso", address: "Bd de l'Europe, Graulhet", coords: "43.9151,1.9523", price: "1.910", dist: "4.1 KM" }
         ];
+
+        function openGoogleMaps(addressOrCoords) {
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressOrCoords)}&travelmode=driving`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        function openWaze(addressOrCoords) {
+            const url = `https://waze.com/ul?ll=${addressOrCoords}&navigate=yes`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
 
         function updateDashboard(speed) {
             // 1. Mise à jour Jauge MODIFIÉE
@@ -145,7 +175,9 @@
 
         function renderStations() {
             const container = document.getElementById('station-list');
-            container.innerHTML = mockStations.map(s => `
+            container.innerHTML = mockStations.map((s, index) => {
+                currentAddress = s.coords; // Stocke l'adresse courante pour boutons
+                return `
                 <div class="bg-[#111] p-3 flex justify-between items-center border-b border-gray-900">
                     <div class="flex flex-col">
                         <span class="text-[#FF6B00] font-bold text-lg leading-tight">${s.name}</span>
@@ -155,12 +187,13 @@
                     <div class="flex flex-col items-end">
                         <span class="text-[#FF6B00] text-2xl font-mono font-bold">${s.price}€</span>
                         <div class="flex gap-1 mt-1">
-                            <button class="bg-[#222] px-2 py-1 text-[9px]">WZ</button>
-                            <button class="bg-[#222] px-2 py-1 text-[9px]">GM</button>
+                            <button class="nav-btn wz-btn" onclick="openWaze('${s.coords}')" title="Waze">WZ</button>
+                            <button class="nav-btn gm-btn" onclick="openGoogleMaps('${s.coords}')" title="Google Maps">GM</button>
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Simulation de mouvement
