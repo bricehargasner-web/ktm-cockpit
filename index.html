@@ -1,246 +1,210 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moto Dash</title>
-<script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dashboard Energy Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- CONFIGURATION VISUELLE (PANNEAU DE CONTRÔLE) --- */
+        :root {
+            --primary-orange: #FF6B00;
+            --bg-dark: #000000;
+            --card-bg: #111111;
+            --text-gray: #A0A0A0;
+            --gauge-size: 140px; /* Taille de la jauge pour meilleure visibilité */
+        }
 
-<style>
-body { background:black; color:white; margin:0; font-family:sans-serif; }
-.card { background:#111; padding:10px; margin:5px; border-left:4px solid #FF6B00;}
-.btn { padding:10px; background:#222; border-radius:6px; }
-.btn-orange { background:#FF6B00; }
-.station { background:#111; padding:8px; border-bottom:1px solid #222; }
-</style>
+        body { 
+            background-color: var(--bg-dark); 
+            color: white; 
+            font-family: sans-serif; 
+            overflow: hidden;
+            /* Optimisé paysage bord gauche haut */
+            width: 100vw; height: 100vh;
+            max-width: 400px; /* Restreint pour split-screen droite */
+        }
+        
+        /* Style de la Jauge Arc-de-cercle MODIFIÉ */
+        .gauge-container {
+            position: relative;
+            width: var(--gauge-size);
+            height: calc(var(--gauge-size) / 2 + 20px);
+            margin: 0 auto;
+        }
+        .gauge-svg { transform: rotate(0deg); width: 100%; height: 100%; } /* Inversé : 0° haut centre */
+        .gauge-bg { fill: none; stroke: #333; stroke-width: 10; stroke-linecap: round; }
+        .gauge-fill { 
+            fill: none; stroke: url(#gradient); stroke-width: 10; 
+            stroke-linecap: round; transition: stroke-dasharray 0.5s ease; 
+        }
+        /* Dégradé blanc → orange → rouge vif selon angle */
+        #gradient {
+            stop-color: #ffffff; stop-opacity: 1;
+        }
+        .gauge-value {
+            position: absolute; top: 5px; left: 50%;
+            transform: translateX(-50%); font-size: 1.8rem; font-weight: bold;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .angle-display { font-size: 0.8rem; color: var(--text-gray); }
+        .zero-btn {
+            width: 16px; height: 16px; border: 1px solid #555; 
+            background: #222; color: #aaa; font-size: 0.6rem; 
+            border-radius: 50%; cursor: pointer; line-height: 14px;
+        }
+        .zero-btn:hover { background: #FF6B00; color: white; }
+
+        /* Boutons Maps/Waze agrandis pour tactile split-screen */
+        .nav-btn {
+            min-width: 28px; min-height: 24px; /* Plus gros pour doigts */
+            padding: 2px 6px; font-size: 9px; font-weight: bold;
+            border-radius: 4px; border: none; cursor: pointer;
+            transition: all 0.2s; touch-action: manipulation;
+        }
+        .nav-btn:active { transform: scale(0.95); }
+        .gm-btn { background: #4285F4; color: white; }
+        .wz-btn { background: #FF2B55; color: white; }
+    </style>
 </head>
+<body class="p-2">
 
-<body>
+    <div class="grid grid-cols-1 gap-2">
+        
+        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-3 flex justify-between items-center">
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 60">
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#ffffff"></stop>
+                            <stop offset="50%" stop-color="#FF8C00"></stop>
+                            <stop offset="100%" stop-color="#FF0000"></stop>
+                        </linearGradient>
+                    </defs>
+                    <path class="gauge-bg" d="M 10 10 A 40 40 0 0 1 90 10" /> <!-- Arc inversé haut -->
+                    <path id="gaugePath" class="gauge-fill" d="M 10 10 A 40 40 0 0 1 90 10" stroke-dasharray="0, 126" />
+                </svg>
+                <div class="gauge-value" id="valVitesse">
+                    <span id="speedVal">0</span>
+                    <div>
+                        <span class="angle-display" id="angleVal">0°</span>
+                        <button class="zero-btn" onclick="resetGauge()">0</button>
+                    </div>
+                </div>
+            </div>
 
-<div class="flex flex-col h-screen">
-
-<!-- TOP -->
-<div class="card flex justify-between">
-
-<div>
-<div>Vitesse</div>
-<div id="speed" class="text-2xl">0</div>
-</div>
-
-<div>
-<div>Angle</div>
-<div id="angle" class="text-2xl">0°</div>
-</div>
-
-<div>
-<div>Météo</div>
-<div id="temp">--°</div>
-<div id="wind"></div>
-<a id="meteoLink" target="_blank" class="text-blue-400 text-xs">Voir détail</a>
-</div>
-
-</div>
-
-<!-- CONTROLS -->
-<div class="flex gap-2 p-2">
-
-<select id="radius" class="btn">
-<option value="5000">5 km</option>
-<option value="10000">10 km</option>
-<option value="20000">20 km</option>
-<option value="50000">50 km</option>
-</select>
-
-<select id="sort" class="btn">
-<option value="dist">Distance</option>
-<option value="price">Prix</option>
-</select>
-
-<button onclick="scanStations()" class="btn btn-orange flex-1">SCAN</button>
-<button onclick="toggleRec()" id="recBtn" class="btn">REC</button>
-
-</div>
-
-<!-- STATIONS -->
-<div id="stations" class="flex-1 overflow-auto"></div>
-
-</div>
-
-<script>
-
-let currentLat=0,currentLon=0;
-let gpxTrack=[];
-let recording=false;
-
-// ================= GPS =================
-navigator.geolocation.watchPosition((pos)=>{
-    currentLat = pos.coords.latitude;
-    currentLon = pos.coords.longitude;
-
-    let speed = pos.coords.speed;
-    if(speed){
-        document.getElementById("speed").innerText = Math.round(speed*3.6);
-    }
-
-    if(recording){
-        gpxTrack.push({
-            lat:currentLat,
-            lon:currentLon,
-            time:new Date().toISOString()
-        });
-    }
-
-    getWeather(currentLat,currentLon);
-
-},console.error,{enableHighAccuracy:true});
-
-// ================= ANGLE =================
-let lastAngle=0;
-window.addEventListener("deviceorientation",(e)=>{
-    let a = Math.abs(e.gamma||0);
-    a = lastAngle*0.8 + a*0.2;
-    lastAngle=a;
-    document.getElementById("angle").innerText = Math.round(a)+"°";
-});
-
-// ================= WEATHER =================
-async function getWeather(lat,lon){
-    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-    const data = await res.json();
-
-    document.getElementById("temp").innerText =
-        Math.round(data.current_weather.temperature)+"°";
-
-    document.getElementById("wind").innerText =
-        "Vent "+Math.round(data.current_weather.windspeed)+" km/h";
-
-    // lien météo ultra précis (Windy = parfait moto)
-    document.getElementById("meteoLink").href =
-        `https://www.windy.com/${lat}/${lon}`;
-}
-
-// ================= DISTANCE =================
-function getDistance(lat1,lon1,lat2,lon2){
-    const R=6371;
-    const dLat=(lat2-lat1)*Math.PI/180;
-    const dLon=(lon2-lon1)*Math.PI/180;
-
-    const a=
-        Math.sin(dLat/2)**2 +
-        Math.cos(lat1*Math.PI/180) *
-        Math.cos(lat2*Math.PI/180) *
-        Math.sin(dLon/2)**2;
-
-    return R * (2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
-}
-
-// ================= STATIONS =================
-async function scanStations(){
-
-    const radius = document.getElementById("radius").value;
-
-    const query = `
-    [out:json];
-    node["amenity"="fuel"](around:${radius},${currentLat},${currentLon});
-    out;
-    `;
-
-    const res = await fetch("https://overpass-api.de/api/interpreter",{
-        method:"POST",
-        body:query
-    });
-
-    const data = await res.json();
-
-    let list = data.elements.map(e=>{
-        const dist = getDistance(currentLat,currentLon,e.lat,e.lon);
-
-        return {
-            name:e.tags?.name || "Station",
-            city:e.tags?.addr:city || "",
-            lat:e.lat,
-            lon:e.lon,
-            dist:dist,
-            price: Math.random()*2 // fallback si pas dispo
-        };
-    });
-
-    // TRI
-    const sort = document.getElementById("sort").value;
-
-    if(sort==="dist"){
-        list.sort((a,b)=>a.dist-b.dist);
-    }else{
-        list.sort((a,b)=>a.price-b.price);
-    }
-
-    renderStations(list);
-}
-
-// ================= RENDER =================
-function renderStations(list){
-
-    const container=document.getElementById("stations");
-
-    container.innerHTML = list.map(s=>`
-    <div class="station flex justify-between">
-
-        <div>
-            <div style="color:#FF6B00">${s.name}</div>
-            <div class="text-xs">${s.city}</div>
-            <div class="text-xs">${s.dist.toFixed(1)} km</div>
+            <div class="text-right text-xs space-y-1 uppercase tracking-tighter">
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Alt:</span><span id="alt">--m</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Moy:</span><span id="avg_speed">0</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400 text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold">0</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Temp:</span><span>21°</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Vent:</span><span>5k/h</span></div>
+            </div>
         </div>
 
-        <button class="btn btn-orange"
-            onclick="go(${s.lat},${s.lon})">
-            GO
-        </button>
+        <div id="station-list" class="space-y-1 overflow-y-auto" style="max-height: 60vh;">
+            </div>
 
     </div>
-    `).join("");
-}
 
-// ================= NAV =================
-function go(lat,lon){
-    window.location.href=`waze://?ll=${lat},${lon}&navigate=yes`;
-}
+    <script>
+        /* --- LOGIQUE DE CALCUL ET DONNÉES --- */
+        let maxSpeed = 0;
+        let speedSum = 0;
+        let speedCount = 0;
+        let currentAddress = ''; // Pour liens Maps/Waze
 
-// ================= GPX =================
-function toggleRec(){
+        // Données fictives avec coordonnées GPS pour Maps/Waze directs
+        const mockStations = [
+            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", coords: "43.9035,1.9375", price: "1.890", dist: "0.5 KM" },
+            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", coords: "43.9102,1.9458", price: "1.850", dist: "2.4 KM" },
+            { name: "Esso", address: "Bd de l'Europe, Graulhet", coords: "43.9151,1.9523", price: "1.910", dist: "4.1 KM" }
+        ];
 
-    recording = !recording;
-    const btn = document.getElementById("recBtn");
+        function openGoogleMaps(addressOrCoords) {
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressOrCoords)}&travelmode=driving`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
 
-    if(recording){
-        gpxTrack=[];
-        btn.style.background="red";
-    }else{
-        btn.style.background="#222";
-        downloadGPX();
-    }
-}
+        function openWaze(addressOrCoords) {
+            const url = `https://waze.com/ul?ll=${addressOrCoords}&navigate=yes`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
 
-function downloadGPX(){
+        function updateDashboard(speed) {
+            // 1. Mise à jour Jauge MODIFIÉE
+            const speedVal = Math.round(speed);
+            const angle = Math.min((speedVal / 130) * 180, 180); // Angle 0° à 180°
+            const path = document.getElementById('gaugePath');
+            const display = document.getElementById('speedVal');
+            const angleDisplay = document.getElementById('angleVal');
+            
+            // Calcul du périmètre de l'arc (126 env pour 180 deg)
+            const percentage = angle / 180;
+            const dash = percentage * 126;
+            path.style.strokeDasharray = `${dash}, 126`;
+            
+            // Dégradé dynamique selon angle
+            const gradient = document.getElementById('gradient');
+            gradient.children[1].setAttribute('offset', `${percentage * 50}%`);
+            gradient.children[2].setAttribute('offset', `${percentage * 100}%`);
+            
+            display.innerText = speedVal;
+            angleDisplay.innerText = `${Math.round(angle)}°`;
 
-    let gpx=`<?xml version="1.0"?>
-<gpx version="1.1">
-<trk><trkseg>`;
+            // 2. Stats Max / Moy (inchangé)
+            if (speedVal > maxSpeed) maxSpeed = speedVal;
+            speedSum += speedVal;
+            speedCount++;
+            
+            document.getElementById('max_speed').innerText = maxSpeed;
+            document.getElementById('avg_speed').innerText = Math.round(speedSum / speedCount);
+        }
 
-    gpxTrack.forEach(p=>{
-        gpx+=`<trkpt lat="${p.lat}" lon="${p.lon}">
-<time>${p.time}</time></trkpt>`;
-    });
+        function resetGauge() {
+            document.getElementById('gaugePath').style.strokeDasharray = '0, 126';
+            document.getElementById('speedVal').innerText = '0';
+            document.getElementById('angleVal').innerText = '0°';
+            // Reset stats si besoin
+            maxSpeed = 0;
+            speedSum = 0;
+            speedCount = 0;
+            document.getElementById('max_speed').innerText = '0';
+            document.getElementById('avg_speed').innerText = '0';
+        }
 
-    gpx+=`</trkseg></trk></gpx>`;
+        function renderStations() {
+            const container = document.getElementById('station-list');
+            container.innerHTML = mockStations.map((s, index) => {
+                currentAddress = s.coords; // Stocke l'adresse courante pour boutons
+                return `
+                <div class="bg-[#111] p-3 flex justify-between items-center border-b border-gray-900">
+                    <div class="flex flex-col">
+                        <span class="text-[#FF6B00] font-bold text-lg leading-tight">${s.name}</span>
+                        <span class="text-gray-500 text-[10px] uppercase">${s.address}</span>
+                        <span class="text-gray-400 text-xs mt-1 italic">${s.dist}</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[#FF6B00] text-2xl font-mono font-bold">${s.price}€</span>
+                        <div class="flex gap-1 mt-1">
+                            <button class="nav-btn wz-btn" onclick="openWaze('${s.coords}')" title="Waze">WZ</button>
+                            <button class="nav-btn gm-btn" onclick="openGoogleMaps('${s.coords}')" title="Google Maps">GM</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
 
-    const blob = new Blob([gpx],{type:"application/gpx+xml"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download="trace.gpx";
-    a.click();
-}
+        // Simulation de mouvement
+        setInterval(() => {
+            const randomSpeed = Math.floor(Math.random() * 50);
+            updateDashboard(randomSpeed);
+        }, 3000);
 
-</script>
-
+        // Initialisation
+        renderStations();
+        document.getElementById('alt').innerText = "207m";
+    </script>
 </body>
 </html>
