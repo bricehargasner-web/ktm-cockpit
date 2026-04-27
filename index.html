@@ -12,27 +12,28 @@
             --bg-dark: #000000;
             --card-bg: #111111;
             --text-gray: #A0A0A0;
-            --gauge-size: 140px; /* Taille de la jauge pour meilleure visibilité */
+            --gauge-width: 160px; /* Largeur de la jauge */
+            --max-speed-limit: 130; /* Base de calcul pour le 100% de la jauge */
         }
 
         body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; }
         
-        /* Style de la Jauge Arc-de-cercle */
+        /* Style spécifique de la Jauge */
         .gauge-container {
             position: relative;
-            width: var(--gauge-size);
-            height: calc(var(--gauge-size) / 2 + 20px);
+            width: var(--gauge-width);
             margin: 0 auto;
         }
-        .gauge-svg { transform: rotate(-180deg); width: 100%; height: 100%; }
-        .gauge-bg { fill: none; stroke: #333; stroke-width: 10; stroke-linecap: round; }
+        .gauge-svg { width: 100%; overflow: visible; }
+        .gauge-bg { fill: none; stroke: #333; stroke-width: 8; stroke-linecap: round; }
         .gauge-fill { 
-            fill: none; stroke: var(--primary-orange); stroke-width: 10; 
-            stroke-linecap: round; transition: stroke-dasharray 0.5s ease; 
+            fill: none; stroke: #ffffff; stroke-width: 8; 
+            stroke-linecap: round; 
+            transition: stroke-dashoffset 0.4s ease-out, stroke 0.4s ease; 
         }
         .gauge-value {
-            position: absolute; bottom: 0; left: 50%;
-            transform: translateX(-50%); font-size: 2rem; font-weight: bold;
+            position: absolute; bottom: -5px; left: 50%;
+            transform: translateX(-50%); font-size: 2.5rem; font-weight: bold;
         }
     </style>
 </head>
@@ -40,21 +41,31 @@
 
     <div class="grid grid-cols-1 gap-2">
         
-        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-3 flex justify-between items-center">
-            <div class="gauge-container">
-                <svg class="gauge-svg" viewBox="0 0 100 60">
-                    <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
-                    <path id="gaugePath" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" stroke-dasharray="0, 126" />
-                </svg>
-                <div class="gauge-value" id="valVitesse">0</div>
+        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-3 flex justify-between items-center relative h-[120px]">
+            
+            <div class="absolute top-2 left-3 flex flex-col gap-1 items-start">
+                <span class="text-[10px] text-gray-400 font-mono">Angle: <span id="valAngle">-90</span>°</span>
+                <button onclick="resetStats()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 rounded px-2 py-0.5 text-[9px] uppercase transition-colors">
+                    Zéro
+                </button>
             </div>
 
-            <div class="text-right text-xs space-y-1 uppercase tracking-tighter">
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Alt:</span><span id="alt">--m</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Moy:</span><span id="avg_speed">0</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400 text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold">0</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Temp:</span><span>21°</span></div>
-                <div class="flex justify-between gap-4"><span class="text-gray-400">Vent:</span><span>5k/h</span></div>
+            <div class="gauge-container flex-grow flex justify-center mt-4">
+                <div class="relative w-full max-w-[140px]">
+                    <svg class="gauge-svg" viewBox="0 0 100 55">
+                        <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                        <path id="gaugePath" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" stroke-dasharray="125.6" stroke-dashoffset="125.6" />
+                    </svg>
+                    <div class="gauge-value" id="valVitesse">0</div>
+                </div>
+            </div>
+
+            <div class="text-right text-[11px] space-y-1 uppercase tracking-tighter min-w-[80px]">
+                <div class="flex justify-between gap-3"><span class="text-gray-400">Alt:</span><span id="alt">--m</span></div>
+                <div class="flex justify-between gap-3"><span class="text-gray-400">Moy:</span><span id="avg_speed">0</span></div>
+                <div class="flex justify-between gap-3"><span class="text-gray-400 text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold">0</span></div>
+                <div class="flex justify-between gap-3"><span class="text-gray-400">Temp:</span><span>21°</span></div>
+                <div class="flex justify-between gap-3"><span class="text-gray-400">Vent:</span><span>5k/h</span></div>
             </div>
         </div>
 
@@ -69,7 +80,16 @@
         let speedSum = 0;
         let speedCount = 0;
 
-        // Données fictives simulant l'API (avec Noms et Adresses)
+        // Fonction liée au bouton "Zéro"
+        function resetStats() {
+            maxSpeed = 0;
+            speedSum = 0;
+            speedCount = 0;
+            document.getElementById('max_speed').innerText = "0";
+            document.getElementById('avg_speed').innerText = "0";
+        }
+
+        // Données fictives simulant l'API
         const mockStations = [
             { name: "TotalEnergies", address: "Av. de Provence, Graulhet", price: "1.890", dist: "0.5 KM" },
             { name: "Intermarché", address: "Rte de Toulouse, Graulhet", price: "1.850", dist: "2.4 KM" },
@@ -77,18 +97,41 @@
         ];
 
         function updateDashboard(speed) {
-            // 1. Mise à jour Jauge
             const speedVal = Math.round(speed);
             const path = document.getElementById('gaugePath');
             const display = document.getElementById('valVitesse');
+            const angleDisplay = document.getElementById('valAngle');
             
-            // Calcul du périmètre de l'arc (126 env pour 180 deg)
-            const percentage = Math.min(speedVal / 130, 1); // Max 130 km/h
-            const dash = percentage * 126;
-            path.style.strokeDasharray = `${dash}, 126`;
+            // 1. Calculs Jauge & Angle
+            const maxLimit = getComputedStyle(document.documentElement).getPropertyValue('--max-speed-limit').trim() || 130;
+            const percentage = Math.min(speedVal / maxLimit, 1);
+            
+            // stroke-dashoffset de 125.6 (vide) à 0 (plein)
+            const offset = 125.6 - (percentage * 125.6);
+            path.style.strokeDashoffset = offset;
             display.innerText = speedVal;
 
-            // 2. Stats Max / Moy
+            // Calcul de l'angle: Gauche = -90°, Haut Centre = 0°, Droite = 90°
+            const currentAngle = Math.round((percentage * 180) - 90);
+            angleDisplay.innerText = currentAngle;
+
+            // 2. Gestion Dynamique de la Couleur (Blanc -> Orange -> Rouge)
+            let color;
+            if (percentage < 0.5) {
+                // Blanc (255,255,255) vers Orange (255,107,0)
+                let p = percentage * 2; // normalisé de 0 à 1
+                let g = Math.round(255 - (255 - 107) * p);
+                let b = Math.round(255 - (255 - 0) * p);
+                color = `rgb(255, ${g}, ${b})`;
+            } else {
+                // Orange (255,107,0) vers Rouge Vif (255,0,0)
+                let p = (percentage - 0.5) * 2; // normalisé de 0 à 1
+                let g = Math.round(107 - (107 * p));
+                color = `rgb(255, ${g}, 0)`;
+            }
+            path.style.stroke = color;
+
+            // 3. Stats Max / Moy
             if (speedVal > maxSpeed) maxSpeed = speedVal;
             speedSum += speedVal;
             speedCount++;
@@ -119,7 +162,7 @@
 
         // Simulation de mouvement
         setInterval(() => {
-            const randomSpeed = Math.floor(Math.random() * 50);
+            const randomSpeed = Math.floor(Math.random() * 130); // Test jusqu'à 130 pour voir le dégradé complet
             updateDashboard(randomSpeed);
         }, 3000);
 
