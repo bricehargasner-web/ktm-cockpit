@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V11</title>
+    <title>KTM Adventure Dash V12</title>
     
     <style>
         :root {
@@ -30,7 +30,7 @@
         }
 
         /* Police agressive uniquement pour les gros compteurs */
-        .val-main, .val-unit, .btn-rec, .panel > button:not(.btn-settings) {
+        .val-main, .val-unit, .btn-rec, .panel > button:not(.btn-settings):not(.sort-btn) {
             font-family: 'Impact', 'Arial Black', sans-serif; 
             letter-spacing: 0.5px;
         }
@@ -52,12 +52,17 @@
         .btn-reset { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); font-size: 0.6rem; padding: 3px 6px; letter-spacing: normal; }
         .btn-settings { width: 100%; background-color: #333; margin-top: 5px; border-color: #555; padding: 10px; letter-spacing: normal;}
         
-        .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; }
+        .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; margin-top: 5px;}
         .btn-rec.active { background-color: #ff0000; color: #fff; animation: pulse 1s infinite; }
         #gpx-status { text-align: center; font-size: 0.7rem; color: var(--ktm-orange); margin-top: 4px; letter-spacing: normal; }
 
         .info-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 5px; font-weight: bold; letter-spacing: normal; }
         
+        /* Interrupteur Tri Stations */
+        .sort-toggle { display: none; gap: 4px; margin-top: 6px; }
+        .sort-btn { flex: 1; padding: 8px; font-family: -apple-system, sans-serif; font-size: 0.75rem; background: #1a1a1a; color: var(--text-dim); border: 1px solid #333; letter-spacing: normal; }
+        .sort-btn.active { background: var(--ktm-orange); color: #000; border-color: var(--ktm-orange); }
+
         /* Zone liste stations - Polices natives pour netteté absolue */
         #stations-list { margin-top: 5px; max-height: 200px; overflow-y: auto; letter-spacing: normal; }
         .station-item { background: #0a0a0a; border-left: 3px solid #333; padding: 6px; margin-bottom: 4px; }
@@ -66,7 +71,7 @@
         .station-price { color: var(--ktm-orange); }
         .station-dist { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
         .station-actions { display: flex; gap: 5px; margin-top: 6px; }
-        .station-actions button { letter-spacing: normal; font-size: 0.7rem; }
+        .station-actions button { letter-spacing: normal; font-size: 0.7rem; font-family: -apple-system, sans-serif;}
         
         /* Modal Paramètres */
         #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; letter-spacing: normal; }
@@ -130,6 +135,12 @@
             </div>
             <button class="btn-settings" onclick="openSettings()">⚙️ PARAMÈTRES / RÉGLAGES</button>
             <button onclick="findStations()" style="width:100%; margin-top:5px; border-color:var(--ktm-orange); font-family: 'Impact', sans-serif; letter-spacing:0.5px;">SCAN STATIONS</button>
+            
+            <div class="sort-toggle" id="sort-controls">
+                <button id="sort-price" class="sort-btn active" onclick="setSort('price')">💰 MOINS CHER</button>
+                <button id="sort-dist" class="sort-btn" onclick="setSort('dist')">📍 PLUS PROCHE</button>
+            </div>
+            
             <div id="stations-list"></div>
         </div>
     </div>
@@ -178,7 +189,9 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, max: 0, sum: 0, count: 0, offset: 0, initialized: false },
             gpx: { active: false, points: [] },
-            weatherLoaded: false
+            weatherLoaded: false,
+            stationsData: [], // Stockage des stations pour le tri sans recharger
+            currentSort: 'price' // 'price' ou 'dist'
         };
 
         /* =========================================================
@@ -375,12 +388,15 @@
         }
 
         /* =========================================================
-           MOTEUR STATIONS OFFICIEL API V1
+           MOTEUR STATIONS OFFICIEL API V1 (AVEC TRI)
         ========================================================= */
         function findStations() {
             if (!STATE.gps.lat) return showAlert("Signal GPS requis pour le scan.");
             const list = document.getElementById('stations-list');
+            const sortControls = document.getElementById('sort-controls');
+            
             list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN EN COURS...</div>";
+            sortControls.style.display = 'none';
 
             const radiusMeters = CONFIG.rayonRechercheKm * 1000;
             const url = `${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${radiusMeters}&rows=50`;
@@ -400,7 +416,7 @@
                     'E85': 'e85_prix'
                 };
                 let targetField = FUEL_MAP[CONFIG.carburantCible];
-                let stationsValides = [];
+                STATE.stationsData = [];
 
                 data.records.forEach(record => {
                     let st = record.fields;
@@ -409,7 +425,6 @@
 
                     let lat = coords ? coords[1] : st.geom[0];
                     let lon = coords ? coords[0] : st.geom[1];
-                    
                     let prixCible = st[targetField] ? parseFloat(st[targetField]) : null;
 
                     const dLat = (lat - STATE.gps.lat) * Math.PI / 180;
@@ -418,7 +433,7 @@
                     const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
                     if (distKm <= CONFIG.rayonRechercheKm) {
-                        stationsValides.push({
+                        STATE.stationsData.push({
                             nom: st.ville || "Station Service",
                             adresse: st.adresse || "",
                             lat: lat, lon: lon,
@@ -427,36 +442,61 @@
                     }
                 });
 
-                stationsValides.sort((a, b) => {
-                    if (a.prix === null && b.prix === null) return a.dist - b.dist;
-                    if (a.prix === null) return 1;
-                    if (b.prix === null) return -1;
-                    return a.prix - b.prix;
-                });
+                if (STATE.stationsData.length === 0) {
+                    return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>AUCUNE STATION EXPLOITABLE</div>";
+                }
 
-                if (stationsValides.length === 0) return list.innerHTML = "<div style='color:var(--ktm-orange); text-align:center;'>AUCUNE STATION EXPLOITABLE</div>";
+                sortControls.style.display = 'flex';
+                renderStations();
 
-                stationsValides.forEach(st => {
-                    let affichagePrix = st.prix ? `${st.prix.toFixed(3)} €` : "N.C";
-                    let classItem = st.prix ? "station-item has-fuel" : "station-item";
-                    
-                    list.innerHTML += `
-                        <div class="${classItem}">
-                            <div class="station-header">
-                                <span>${st.nom.substring(0, 18)}</span>
-                                <span class="station-price" style="${st.prix ? '' : 'color:#555;'}">${affichagePrix}</span>
-                            </div>
-                            <div class="station-dist">${st.dist.toFixed(1)} KM - ${st.adresse.substring(0, 20)}</div>
-                            <div class="station-actions">
-                                <button onclick="navApp(${st.lat}, ${st.lon}, 'waze')">WAZE</button>
-                                <button onclick="navApp(${st.lat}, ${st.lon}, 'maps')">MAPS</button>
-                                <button onclick="navApp(${st.lat}, ${st.lon}, 'osmand')">OSM</button>
-                            </div>
-                        </div>
-                    `;
-                });
             }).catch(err => {
                 list.innerHTML = `<div style='color:#ff0000; text-align:center; font-size:0.8rem; padding:10px;'>DÉFAUT API: ${err.message}<br>Le portail OpenData refuse la connexion.</div>`;
+            });
+        }
+
+        function setSort(type) {
+            STATE.currentSort = type;
+            document.getElementById('sort-price').classList.remove('active');
+            document.getElementById('sort-dist').classList.remove('active');
+            document.getElementById(`sort-${type}`).classList.add('active');
+            renderStations();
+        }
+
+        function renderStations() {
+            const list = document.getElementById('stations-list');
+            list.innerHTML = "";
+
+            // Tri en direct sans recharger l'API
+            STATE.stationsData.sort((a, b) => {
+                if (a.prix === null && b.prix === null) return a.dist - b.dist;
+                if (a.prix === null) return 1;
+                if (b.prix === null) return -1;
+                
+                if (STATE.currentSort === 'price') {
+                    return a.prix - b.prix; // Moins cher en premier
+                } else {
+                    return a.dist - b.dist; // Plus proche en premier
+                }
+            });
+
+            STATE.stationsData.forEach(st => {
+                let affichagePrix = st.prix ? `${st.prix.toFixed(3)} €` : "N.C";
+                let classItem = st.prix ? "station-item has-fuel" : "station-item";
+                
+                list.innerHTML += `
+                    <div class="${classItem}">
+                        <div class="station-header">
+                            <span>${st.nom.substring(0, 18)}</span>
+                            <span class="station-price" style="${st.prix ? '' : 'color:#555;'}">${affichagePrix}</span>
+                        </div>
+                        <div class="station-dist">${st.dist.toFixed(1)} KM - ${st.adresse.substring(0, 20)}</div>
+                        <div class="station-actions">
+                            <button onclick="navApp(${st.lat}, ${st.lon}, 'waze')">WAZE</button>
+                            <button onclick="navApp(${st.lat}, ${st.lon}, 'maps')">MAPS</button>
+                            <button onclick="navApp(${st.lat}, ${st.lon}, 'osmand')">OSM</button>
+                        </div>
+                    </div>
+                `;
             });
         }
 
