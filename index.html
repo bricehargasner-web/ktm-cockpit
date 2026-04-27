@@ -2,189 +2,130 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM V13 - Iconic Dash</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Energy Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --ktm: #ff6600; --bg: #000; --txt: #fff; --ok: #2ecc71; --err: #e74c3c; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial Black', sans-serif; }
+        /* --- CONFIGURATION VISUELLE (PANNEAU DE CONTRÔLE) --- */
+        :root {
+            --primary-orange: #FF6B00;
+            --bg-dark: #000000;
+            --card-bg: #111111;
+            --text-gray: #A0A0A0;
+            --gauge-size: 140px; /* Taille de la jauge pour meilleure visibilité */
+        }
+
+        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; }
         
-        body { 
-            background: var(--bg); color: var(--txt); 
-            height: 100vh; width: 100vw; 
-            overflow: hidden; display: flex; flex-direction: column;
-            border-left: 4px solid var(--ktm);
+        /* Style de la Jauge Arc-de-cercle */
+        .gauge-container {
+            position: relative;
+            width: var(--gauge-size);
+            height: calc(var(--gauge-size) / 2 + 20px);
+            margin: 0 auto;
         }
-
-        /* --- DASHBOARD COMPACT (ARC) --- */
-        .header-dash { 
-            display: flex; height: 95px; 
-            background: #000; border-bottom: 2px solid var(--ktm);
-            align-items: center; padding: 0 5px; flex-shrink: 0;
+        .gauge-svg { transform: rotate(-180deg); width: 100%; height: 100%; }
+        .gauge-bg { fill: none; stroke: #333; stroke-width: 10; stroke-linecap: round; }
+        .gauge-fill { 
+            fill: none; stroke: var(--primary-orange); stroke-width: 10; 
+            stroke-linecap: round; transition: stroke-dasharray 0.5s ease; 
         }
-
-        .gauge-zone { position: relative; width: 110px; height: 80px; display: flex; align-items: center; justify-content: center; }
-        .arc-bg { position: absolute; top: 5px; width: 100px; height: 100px; border: 5px solid #222; border-radius: 50%; border-bottom-color: transparent; transform: rotate(-90deg); }
-        #arc-val { position: absolute; top: 5px; width: 100px; height: 100px; border: 5px solid transparent; border-radius: 50%; border-top-color: var(--ktm); transition: 0.1s; transform: rotate(-90deg); }
-        
-        .speed-val { font-size: 3rem; line-height: 1; font-style: italic; z-index: 5; margin-top: 15px;}
-        .angle-mini { position: absolute; top: 35px; font-size: 0.8rem; color: #fff; }
-
-        .info-zone { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 10px; font-size: 0.7rem; border-left: 1px solid #222; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-
-        /* --- BARRE DE COMMANDE ICONIQUE --- */
-        .cmd-bar { 
-            display: flex; gap: 2px; padding: 4px; 
-            background: #111; border-bottom: 1px solid #333; align-items: center;
+        .gauge-value {
+            position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%); font-size: 2rem; font-weight: bold;
         }
-        .cmd-bar select, .cmd-btn { 
-            background: #222; color: #fff; border: 1px solid #444; 
-            padding: 8px 4px; border-radius: 4px; font-size: 0.75rem; 
-        }
-        .cmd-btn { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .btn-scan { background: var(--ktm); color: #000; font-size: 1.1rem; flex: 1.2; }
-        .btn-rec.active { background: var(--err); animation: blink 1s infinite; }
-
-        /* --- LISTE STATIONS --- */
-        .results { flex: 1; overflow-y: auto; background: #000; padding: 4px; }
-        .st-card { 
-            background: #111; margin-bottom: 4px; padding: 6px; 
-            border-radius: 4px; border-left: 3px solid var(--ktm);
-        }
-        .st-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
-        .st-name { font-size: 0.7rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
-        .st-price { color: var(--ktm); font-size: 1.1rem; }
-        
-        .st-actions { display: flex; justify-content: space-between; align-items: center; }
-        .st-dist { font-size: 0.65rem; color: #666; }
-        .go-icons { display: flex; gap: 5px; }
-        .icon-go { width: 28px; height: 28px; background: #222; border-radius: 4px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 0.6rem; color: #fff; }
-
-        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
-<body onclick="MOTO.init()">
+<body class="p-2">
 
-    <div class="header-dash">
-        <div class="gauge-zone">
-            <div class="arc-bg"></div>
-            <div id="arc-val"></div>
-            <div id="speed" class="speed-val">0</div>
-            <div id="lean-val" class="angle-mini">0°</div>
+    <div class="grid grid-cols-1 gap-2">
+        
+        <div class="bg-[#111] border-l-4 border-[#FF6B00] p-3 flex justify-between items-center">
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 60">
+                    <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                    <path id="gaugePath" class="gauge-fill" d="M 10 50 A 40 40 0 0 1 90 50" stroke-dasharray="0, 126" />
+                </svg>
+                <div class="gauge-value" id="valVitesse">0</div>
+            </div>
+
+            <div class="text-right text-xs space-y-1 uppercase tracking-tighter">
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Alt:</span><span id="alt">--m</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Moy:</span><span id="avg_speed">0</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400 text-[#FF6B00]">Max:</span><span id="max_speed" class="font-bold">0</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Temp:</span><span>21°</span></div>
+                <div class="flex justify-between gap-4"><span class="text-gray-400">Vent:</span><span>5k/h</span></div>
+            </div>
         </div>
-        <div class="info-zone">
-            <div class="info-row"><span>ALT:</span><b id="alt">--m</b></div>
-            <div class="info-row"><span>TEMP:</span><b id="m-t">--°</b></div>
-            <div class="info-row"><span>VENT:</span><b id="m-w">--k/h</b></div>
-            <div class="info-row" style="font-size: 0.55rem; color: #555;"><span>MAX:</span><b id="a-max">0°</b></div>
-        </div>
-    </div>
 
-    <div class="cmd-bar">
-        <select id="rad" title="Rayon">
-            <option value="10">10k</option><option value="20" selected>20k</option><option value="30">30k</option>
-        </select>
-        <select id="fuel" title="Carburant">
-            <option value="Gazole">GO</option><option value="SP98">98</option><option value="SP95">95</option><option value="E10">E10</option>
-        </select>
-        <div class="cmd-btn btn-scan" onclick="event.stopPropagation(); MOTO.scan()">📡</div>
-        <div id="btn-rec" class="cmd-btn" onclick="event.stopPropagation(); REC.toggle()">⏺️</div>
-    </div>
+        <div id="station-list" class="space-y-1 overflow-y-auto" style="max-height: 60vh;">
+            </div>
 
-    <div class="results" id="results">
-        <div style="text-align:center; padding:20px; color:#444; font-size:0.7rem;">CLIQUER 📡 POUR SCANNER</div>
     </div>
 
     <script>
-        let userPos = { lat: 0, lon: 0 };
-        let track = [], isRecording = false, maxLean = 0;
+        /* --- LOGIQUE DE CALCUL ET DONNÉES --- */
+        let maxSpeed = 0;
+        let speedSum = 0;
+        let speedCount = 0;
 
-        const MOTO = {
-            init() {
-                navigator.geolocation.watchPosition(p => {
-                    userPos = { lat: p.coords.latitude, lon: p.coords.longitude };
-                    document.getElementById('speed').innerText = Math.round((p.coords.speed || 0) * 3.6);
-                    document.getElementById('alt').innerText = (p.coords.altitude ? Math.round(p.coords.altitude) : "--") + "m";
-                    if(isRecording) track.push({ lat: userPos.lat, lon: userPos.lon });
-                    this.updateWeather();
-                }, null, { enableHighAccuracy: true });
-            },
+        // Données fictives simulant l'API (avec Noms et Adresses)
+        const mockStations = [
+            { name: "TotalEnergies", address: "Av. de Provence, Graulhet", price: "1.890", dist: "0.5 KM" },
+            { name: "Intermarché", address: "Rte de Toulouse, Graulhet", price: "1.850", dist: "2.4 KM" },
+            { name: "Esso", address: "Bd de l'Europe, Graulhet", price: "1.910", dist: "4.1 KM" }
+        ];
 
-            async updateWeather() {
-                try {
-                    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userPos.lat}&longitude=${userPos.lon}&current_weather=true`);
-                    const d = await r.json();
-                    document.getElementById('m-t').innerText = Math.round(d.current_weather.temperature) + "°";
-                    document.getElementById('m-w').innerText = Math.round(d.current_weather.windspeed) + "k/h";
-                } catch(e) {}
-            },
+        function updateDashboard(speed) {
+            // 1. Mise à jour Jauge
+            const speedVal = Math.round(speed);
+            const path = document.getElementById('gaugePath');
+            const display = document.getElementById('valVitesse');
+            
+            // Calcul du périmètre de l'arc (126 env pour 180 deg)
+            const percentage = Math.min(speedVal / 130, 1); // Max 130 km/h
+            const dash = percentage * 126;
+            path.style.strokeDasharray = `${dash}, 126`;
+            display.innerText = speedVal;
 
-            async scan() {
-                if(!userPos.lat) return;
-                const fuel = document.getElementById('fuel').value;
-                const rad = document.getElementById('rad').value;
-                const resZone = document.getElementById('results');
-                resZone.innerHTML = "<div style='color:var(--ktm); text-align:center; padding:15px;'>📡 SCAN...</div>";
-                try {
-                    const url = `https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2&geofilter.distance=${userPos.lat},${userPos.lon},${rad*1000}&rows=40`;
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    let st = [];
-                    data.records.forEach(i => {
-                        const prix = this.extract(i.fields, fuel);
-                        if(prix) st.push({ nom: i.fields.nom || i.fields.ville, prix: prix, dist: this.dist(userPos.lat, userPos.lon, i.fields.geom[0], i.fields.geom[1]), lat: i.fields.geom[0], lon: i.fields.geom[1] });
-                    });
-                    st.sort((a,b) => a.dist - b.dist);
-                    resZone.innerHTML = st.map(s => `
-                        <div class="st-card">
-                            <div class="st-top"><span class="st-name">${s.nom}</span><span class="st-price">${s.prix.toFixed(3)}€</span></div>
-                            <div class="st-actions">
-                                <span class="st-dist">${s.dist.toFixed(1)} KM</span>
-                                <div class="go-icons">
-                                    <a class="icon-go" target="_blank" href="waze://?ll=${s.lat},${s.lon}&navigate=yes">WZ</a>
-                                    <a class="icon-go" target="_blank" href="google.navigation:q=${s.lat},${s.lon}">GM</a>
-                                    <a class="icon-go" target="_blank" href="geo:${s.lat},${s.lon}">OSM</a>
-                                </div>
-                            </div>
-                        </div>`).join('');
-                } catch(e) { resZone.innerHTML = "ERR API"; }
-            },
+            // 2. Stats Max / Moy
+            if (speedVal > maxSpeed) maxSpeed = speedVal;
+            speedSum += speedVal;
+            speedCount++;
+            
+            document.getElementById('max_speed').innerText = maxSpeed;
+            document.getElementById('avg_speed').innerText = Math.round(speedSum / speedCount);
+        }
 
-            extract(f, t) {
-                const map = {"Gazole":"gazole_prix","SP98":"sp98_prix","SP95":"sp95_prix","E10":"e10_prix","E85":"e85_prix"};
-                return f[map[t]] ? parseFloat(f[map[t]]) : null;
-            },
+        function renderStations() {
+            const container = document.getElementById('station-list');
+            container.innerHTML = mockStations.map(s => `
+                <div class="bg-[#111] p-3 flex justify-between items-center border-b border-gray-900">
+                    <div class="flex flex-col">
+                        <span class="text-[#FF6B00] font-bold text-lg leading-tight">${s.name}</span>
+                        <span class="text-gray-500 text-[10px] uppercase">${s.address}</span>
+                        <span class="text-gray-400 text-xs mt-1 italic">${s.dist}</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[#FF6B00] text-2xl font-mono font-bold">${s.price}€</span>
+                        <div class="flex gap-1 mt-1">
+                            <button class="bg-[#222] px-2 py-1 text-[9px]">WZ</button>
+                            <button class="bg-[#222] px-2 py-1 text-[9px]">GM</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-            dist(la1, lo1, la2, lo2) {
-                const p = 0.01745;
-                const a = 0.5 - Math.cos((la2-la1)*p)/2 + Math.cos(la1*p)*Math.cos(la2*p)*(1-Math.cos((lo2-lo1)*p))/2;
-                return 12742 * Math.asin(Math.sqrt(a));
-            }
-        };
+        // Simulation de mouvement
+        setInterval(() => {
+            const randomSpeed = Math.floor(Math.random() * 50);
+            updateDashboard(randomSpeed);
+        }, 3000);
 
-        const REC = {
-            toggle() {
-                isRecording = !isRecording;
-                const btn = document.getElementById('btn-rec');
-                btn.classList.toggle('active', isRecording);
-                if(!isRecording && track.length > 5) {
-                    const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1"><trk><trkseg>${track.map(p => `<trkpt lat="${p.lat}" lon="${p.lon}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'}));
-                    a.download = `Trace_${Date.now()}.gpx`; a.click();
-                }
-            }
-        };
-
-        window.addEventListener("deviceorientation", (e) => {
-            if(e.beta === null) return;
-            let lean = Math.round(e.beta || 0) * -1;
-            let absLean = Math.abs(lean);
-            document.getElementById('arc-val').style.transform = `rotate(${-90 + lean}deg)`;
-            document.getElementById('lean-val').innerText = absLean + "°";
-            if(absLean > maxLean) { maxLean = absLean; document.getElementById('a-max').innerText = maxLean + "°"; }
-        });
+        // Initialisation
+        renderStations();
+        document.getElementById('alt').innerText = "207m";
     </script>
 </body>
 </html>
