@@ -17,23 +17,25 @@
             --transition-speed: 0.4s;
         }
 
-        /* Fix Scroll : Utilisation de 100dvh (Dynamic Viewport Height) pour le mobile */
         body { background-color: var(--bg-dark); color: white; font-family: sans-serif; overflow: hidden; margin: 0; height: 100dvh; }
         
-        /* Structure adaptée pour écran scindé 1/4 avec strict respect des limites */
         .dashboard-container { display: flex; flex-direction: column; height: 100%; max-width: 100%; }
         
-        /* Jauge optimisée */
         .gauge-wrapper { width: 100%; max-width: var(--gauge-max-width); position: relative; margin: 0 auto; }
         .gauge-svg { width: 100%; height: auto; display: block; overflow: visible; }
         .gauge-bg { fill: none; stroke: #333; stroke-width: 8; stroke-linecap: round; }
         .gauge-fill { fill: none; stroke: #ffffff; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--transition-speed) ease-out, stroke var(--transition-speed) ease; }
         
         .speed-value { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 2rem; font-weight: bold; line-height: 1; }
-        .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; cursor: pointer; }
+        
+        .station-btn { background-color: #222; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid #444; transition: background 0.2s; cursor: pointer; text-decoration: none; display: inline-block;}
         .station-btn:hover { background-color: var(--primary-orange); border-color: var(--primary-orange); }
         
         select { outline: none; appearance: none; text-align: center; }
+        
+        /* Animation pour le bouton scan */
+        .scan-flash { background-color: #ffffff !important; color: var(--primary-orange) !important; }
+        #station-list { transition: opacity 0.3s ease; }
     </style>
 </head>
 <body class="p-1">
@@ -81,7 +83,7 @@
                 </select>
             </div>
             
-            <button id="btnScan" onclick="triggerScan()" class="bg-[#FF6B00] hover:bg-orange-600 text-white rounded p-1.5 flex-1 flex justify-center items-center transition-colors cursor-pointer relative z-10">
+            <button id="btnScan" onclick="triggerScan()" class="bg-[#FF6B00] text-white rounded p-1.5 flex-1 flex justify-center items-center transition-colors cursor-pointer relative z-10">
                 <svg class="pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 12v8"></path>
                     <path d="m8 20 8 0"></path>
@@ -121,8 +123,20 @@
             { name: "Leclerc", address: "Zone de la Métairie, Graulhet", price: "1.840", dist: "5.2 KM" }
         ];
 
+        // Action de scan avec retour visuel
         function triggerScan() {
-            renderStations();
+            const btn = document.getElementById('btnScan');
+            const list = document.getElementById('station-list');
+            
+            // Effet visuel sur le bouton
+            btn.classList.add('scan-flash');
+            list.style.opacity = '0.3';
+            
+            setTimeout(() => {
+                btn.classList.remove('scan-flash');
+                renderStations(); // Recharge la liste
+                list.style.opacity = '1';
+            }, 300);
         }
 
         function updateDashboard(speed) {
@@ -160,29 +174,36 @@
             document.getElementById('avg_speed').innerText = Math.round(speedSum / speedCount);
         }
 
-        // --- GESTION DE L'INCLINAISON (AXES PAYSAGE) ---
-        // Dans l'orientation "Paysage" (USB à gauche, Caméra à droite), 
-        // l'inclinaison (pitch) du téléphone correspond à l'axe Gamma.
+        // --- GESTION DE L'INCLINAISON OPTIMISÉE POUR PAYSAGE ---
         window.addEventListener('deviceorientation', function(event) {
-            if (event.gamma !== null) {
-                // Arrondi pour éviter les tremblements
-                let angle = Math.round(event.gamma);
-                document.getElementById('valAngle').innerText = angle;
+            let isLandscape = window.innerWidth > window.innerHeight;
+            let rawAngle = 0;
+            
+            if (isLandscape) {
+                // En paysage, l'axe d'inclinaison est 'gamma'. On utilise Math.abs pour éviter les valeurs négatives inutiles.
+                rawAngle = Math.abs(event.gamma || 0);
+            } else {
+                // En portrait, c'est l'axe 'beta'
+                rawAngle = Math.abs(event.beta || 0);
             }
+            
+            document.getElementById('valAngle').innerText = Math.round(rawAngle);
         });
 
+        // Navigation GPS
         function openNav(app, name, address) {
             const query = encodeURIComponent(`${name} ${address}`);
             if (app === 'waze') {
-                window.open(`https://waze.com/ul?q=${query}&navigate=yes`, '_blank');
+                // Forcer l'ouverture de l'application native Waze avec le protocole waze://
+                window.open(`waze://?q=${query}&navigate=yes`, '_blank');
             } else if (app === 'gmaps') {
-                window.open(`http://googleusercontent.com/maps.google.com/5{query}`, '_blank');
+                // Laissé intact selon vos instructions (fonctionne bien)
+                window.open(`http://googleusercontent.com/maps.google.com/5${query}`, '_blank');
             }
         }
 
         function renderStations() {
             const container = document.getElementById('station-list');
-            
             if (!mockStations || mockStations.length === 0) return;
 
             container.innerHTML = mockStations.map(s => `
@@ -203,11 +224,7 @@
             `).join('');
         }
 
-        // Simulation de la vitesse (l'angle est maintenant géré par le capteur)
-        setInterval(() => {
-            updateDashboard(Math.floor(Math.random() * 130));
-        }, 3000);
-
+        setInterval(() => { updateDashboard(Math.floor(Math.random() * 130)); }, 3000);
         renderStations();
     </script>
 </body>
