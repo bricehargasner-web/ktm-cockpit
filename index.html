@@ -7,45 +7,11 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-:root {
-    --orange:#FF6B00;
-}
-
-body {
-    background:black;
-    color:white;
-    font-family:sans-serif;
-    margin:0;
-    overflow:hidden;
-}
-
-.card {
-    background:#111;
-    border-left:4px solid var(--orange);
-    padding:8px;
-}
-
-.big {
-    font-size:28px;
-    font-weight:bold;
-}
-
-.btn {
-    background:#222;
-    padding:10px;
-    font-size:14px;
-    border-radius:6px;
-}
-
-.btn-orange {
-    background:var(--orange);
-}
-
-.station {
-    background:#111;
-    padding:8px;
-    border-bottom:1px solid #222;
-}
+body { background:black; color:white; margin:0; font-family:sans-serif; }
+.card { background:#111; padding:10px; margin:5px; border-left:4px solid #FF6B00;}
+.btn { padding:10px; background:#222; border-radius:6px; }
+.btn-orange { background:#FF6B00; }
+.station { background:#111; padding:8px; border-bottom:1px solid #222; }
 </style>
 </head>
 
@@ -54,22 +20,24 @@ body {
 <div class="flex flex-col h-screen">
 
 <!-- TOP -->
-<div class="card flex justify-between items-center">
+<div class="card flex justify-between">
 
-    <div>
-        <div>Angle</div>
-        <div id="angle" class="big">0°</div>
-    </div>
+<div>
+<div>Vitesse</div>
+<div id="speed" class="text-2xl">0</div>
+</div>
 
-    <div>
-        <div>Vitesse</div>
-        <div id="speed" class="big">0</div>
-    </div>
+<div>
+<div>Angle</div>
+<div id="angle" class="text-2xl">0°</div>
+</div>
 
-    <div>
-        <div>Temp</div>
-        <div id="temp" class="big">--°</div>
-    </div>
+<div>
+<div>Météo</div>
+<div id="temp">--°</div>
+<div id="wind"></div>
+<a id="meteoLink" target="_blank" class="text-blue-400 text-xs">Voir détail</a>
+</div>
 
 </div>
 
@@ -77,14 +45,19 @@ body {
 <div class="flex gap-2 p-2">
 
 <select id="radius" class="btn">
-    <option value="2000">2km</option>
-    <option value="5000">5km</option>
-    <option value="10000">10km</option>
+<option value="5000">5 km</option>
+<option value="10000">10 km</option>
+<option value="20000">20 km</option>
+<option value="50000">50 km</option>
 </select>
 
-<button onclick="scanStations()" class="btn btn-orange flex-1">
-SCAN
-</button>
+<select id="sort" class="btn">
+<option value="dist">Distance</option>
+<option value="price">Prix</option>
+</select>
+
+<button onclick="scanStations()" class="btn btn-orange flex-1">SCAN</button>
+<button onclick="toggleRec()" id="recBtn" class="btn">REC</button>
 
 </div>
 
@@ -95,55 +68,73 @@ SCAN
 
 <script>
 
-// ======================
-// GPS SPEED
-// ======================
-navigator.geolocation.watchPosition((pos)=>{
-    let speed = pos.coords.speed;
-    if(speed){
-        speed = speed * 3.6;
-        document.getElementById("speed").innerText = Math.round(speed);
-    }
+let currentLat=0,currentLon=0;
+let gpxTrack=[];
+let recording=false;
 
+// ================= GPS =================
+navigator.geolocation.watchPosition((pos)=>{
     currentLat = pos.coords.latitude;
     currentLon = pos.coords.longitude;
+
+    let speed = pos.coords.speed;
+    if(speed){
+        document.getElementById("speed").innerText = Math.round(speed*3.6);
+    }
+
+    if(recording){
+        gpxTrack.push({
+            lat:currentLat,
+            lon:currentLon,
+            time:new Date().toISOString()
+        });
+    }
 
     getWeather(currentLat,currentLon);
 
 },console.error,{enableHighAccuracy:true});
 
-// ======================
-// ANGLE
-// ======================
-let lastAngle = 0;
-
+// ================= ANGLE =================
+let lastAngle=0;
 window.addEventListener("deviceorientation",(e)=>{
-    let angle = Math.abs(e.gamma || 0);
-    angle = lastAngle*0.8 + angle*0.2;
-    lastAngle = angle;
-
-    document.getElementById("angle").innerText = Math.round(angle);
+    let a = Math.abs(e.gamma||0);
+    a = lastAngle*0.8 + a*0.2;
+    lastAngle=a;
+    document.getElementById("angle").innerText = Math.round(a)+"°";
 });
 
-// ======================
-// WEATHER
-// ======================
+// ================= WEATHER =================
 async function getWeather(lat,lon){
-    try{
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-        const data = await res.json();
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+    const data = await res.json();
 
-        document.getElementById("temp").innerText =
-            Math.round(data.current_weather.temperature) + "°";
+    document.getElementById("temp").innerText =
+        Math.round(data.current_weather.temperature)+"°";
 
-    }catch(e){}
+    document.getElementById("wind").innerText =
+        "Vent "+Math.round(data.current_weather.windspeed)+" km/h";
+
+    // lien météo ultra précis (Windy = parfait moto)
+    document.getElementById("meteoLink").href =
+        `https://www.windy.com/${lat}/${lon}`;
 }
 
-// ======================
-// STATIONS (OSM)
-// ======================
-let currentLat=0,currentLon=0;
+// ================= DISTANCE =================
+function getDistance(lat1,lon1,lat2,lon2){
+    const R=6371;
+    const dLat=(lat2-lat1)*Math.PI/180;
+    const dLon=(lon2-lon1)*Math.PI/180;
 
+    const a=
+        Math.sin(dLat/2)**2 +
+        Math.cos(lat1*Math.PI/180) *
+        Math.cos(lat2*Math.PI/180) *
+        Math.sin(dLon/2)**2;
+
+    return R * (2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+// ================= STATIONS =================
 async function scanStations(){
 
     const radius = document.getElementById("radius").value;
@@ -161,49 +152,92 @@ async function scanStations(){
 
     const data = await res.json();
 
-    renderStations(data.elements);
+    let list = data.elements.map(e=>{
+        const dist = getDistance(currentLat,currentLon,e.lat,e.lon);
+
+        return {
+            name:e.tags?.name || "Station",
+            city:e.tags?.addr:city || "",
+            lat:e.lat,
+            lon:e.lon,
+            dist:dist,
+            price: Math.random()*2 // fallback si pas dispo
+        };
+    });
+
+    // TRI
+    const sort = document.getElementById("sort").value;
+
+    if(sort==="dist"){
+        list.sort((a,b)=>a.dist-b.dist);
+    }else{
+        list.sort((a,b)=>a.price-b.price);
+    }
+
+    renderStations(list);
 }
 
-// ======================
-// RENDER
-// ======================
+// ================= RENDER =================
 function renderStations(list){
 
-    const container = document.getElementById("stations");
+    const container=document.getElementById("stations");
 
-    container.innerHTML = list.map(s=>{
+    container.innerHTML = list.map(s=>`
+    <div class="station flex justify-between">
 
-        const name = s.tags?.name || "Station";
-        const lat = s.lat;
-        const lon = s.lon;
-
-        return `
-        <div class="station flex justify-between items-center">
-
-            <div>
-                <div style="color:var(--orange)">${name}</div>
-            </div>
-
-            <div class="flex gap-2">
-                <button class="btn" onclick="openWaze(${lat},${lon})">WZ</button>
-                <button class="btn" onclick="openGM(${lat},${lon})">GM</button>
-            </div>
-
+        <div>
+            <div style="color:#FF6B00">${s.name}</div>
+            <div class="text-xs">${s.city}</div>
+            <div class="text-xs">${s.dist.toFixed(1)} km</div>
         </div>
-        `;
 
-    }).join("");
+        <button class="btn btn-orange"
+            onclick="go(${s.lat},${s.lon})">
+            GO
+        </button>
+
+    </div>
+    `).join("");
 }
 
-// ======================
-// NAVIGATION
-// ======================
-function openWaze(lat,lon){
-    window.location.href = `waze://?ll=${lat},${lon}&navigate=yes`;
+// ================= NAV =================
+function go(lat,lon){
+    window.location.href=`waze://?ll=${lat},${lon}&navigate=yes`;
 }
 
-function openGM(lat,lon){
-    window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+// ================= GPX =================
+function toggleRec(){
+
+    recording = !recording;
+    const btn = document.getElementById("recBtn");
+
+    if(recording){
+        gpxTrack=[];
+        btn.style.background="red";
+    }else{
+        btn.style.background="#222";
+        downloadGPX();
+    }
+}
+
+function downloadGPX(){
+
+    let gpx=`<?xml version="1.0"?>
+<gpx version="1.1">
+<trk><trkseg>`;
+
+    gpxTrack.forEach(p=>{
+        gpx+=`<trkpt lat="${p.lat}" lon="${p.lon}">
+<time>${p.time}</time></trkpt>`;
+    });
+
+    gpx+=`</trkseg></trk></gpx>`;
+
+    const blob = new Blob([gpx],{type:"application/gpx+xml"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="trace.gpx";
+    a.click();
 }
 
 </script>
