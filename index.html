@@ -3,21 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Adventure Dash V14</title>
+    <title>KTM Adventure Dash V15</title>
     
     <style>
         :root {
+            /* Variables globales - Thème Nuit (Par défaut) */
             --bg-color: #000000;
             --panel-bg: #111111;
+            --sub-bg: #080808;
             --ktm-orange: #FF6600;
             --text-main: #ffffff;
             --text-dim: #888888;
             --border-rad: 2px;
+            --gpx-panel-bg: rgba(85,0,0,0.3); /* Légère teinte rouge pour le panel GPX */
+        }
+        
+        /* Classe de Thème Jour - KTM Day */
+        body.day-mode {
+            --bg-color: #ffffff;
+            --panel-bg: #f5f5f5;
+            --sub-bg: #e0e0e0;
+            --ktm-orange: #FF6600; /* Garde l'orange KTM dominant */
+            --text-main: #000000;
+            --text-dim: #555555;
+            --gpx-panel-bg: rgba(255,102,0,0.1);
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* Anti-aliasing pour écrans mobiles (Correction du flou) */
         body { 
             background-color: var(--bg-color); 
             color: var(--text-main); 
@@ -26,46 +39,79 @@
             padding: 5px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            transition: background 0.3s, color 0.3s; /* Transition fluide entre modes */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         /* Police agressive uniquement pour les gros compteurs */
-        .val-main, .val-unit, .btn-rec, .panel > button:not(.btn-settings):not(.sort-btn) {
+        .val-main, .val-unit, .panel > button:not(.btn-settings):not(.sort-btn), #btn-rec-small {
             font-family: 'Impact', 'Arial Black', sans-serif; 
             letter-spacing: 0.5px;
         }
         
         #dashboard { display: flex; flex-direction: column; gap: 6px; height: 100vh; }
         
-        .panel { background-color: var(--panel-bg); border-radius: var(--border-rad); padding: 10px; position: relative; border-top: 2px solid #333; }
+        .panel { background-color: var(--panel-bg); border-radius: var(--border-rad); padding: 10px; position: relative; border-top: 2px solid #333; transition: background 0.3s; }
         .panel.accent-orange { border-top-color: var(--ktm-orange); background: linear-gradient(180deg, rgba(255,102,0,0.1) 0%, rgba(0,0,0,0) 50%); }
         
         .title { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; letter-spacing: normal; }
-        .val-main { font-size: 3.5rem; text-align: center; margin: -5px 0; color: var(--text-main); }
+        .val-main { font-size: 3.5rem; text-align: center; margin: -5px 0; color: var(--text-main); transition: color 0.3s;}
         .val-unit { font-size: 1rem; color: var(--ktm-orange); }
-        .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); background: #080808; padding: 5px; border: 1px solid #222; letter-spacing: normal; }
-        .val-sub span strong { color: var(--text-main); font-size: 0.9rem; }
+        .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); background: var(--sub-bg); padding: 5px; border: 1px solid #222; letter-spacing: normal; transition: background 0.3s; }
+        .val-sub span strong { color: var(--text-main); font-size: 0.9rem; transition: color 0.3s;}
         
         button { background-color: #222; color: var(--text-main); border: 1px solid #444; padding: 6px 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; transition: 0.2s; font-weight: bold; }
+        body.day-mode button { background-color: #e0e0e0; color: #000; border-color: #bbb; }
         button:active { background-color: var(--ktm-orange); border-color: var(--ktm-orange); color: #000; }
         
         .btn-reset { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); font-size: 0.6rem; padding: 3px 6px; letter-spacing: normal; }
+        body.day-mode .btn-reset { background: white; }
         .btn-settings { width: 100%; background-color: #333; margin-top: 5px; border-color: #555; padding: 10px; letter-spacing: normal;}
         
-        .btn-rec { background-color: #550000; border-color: #ff0000; width: 100%; padding: 12px; font-size: 1rem; margin-top: 5px;}
-        .btn-rec.active { background-color: #ff0000; color: #fff; animation: pulse 1s infinite; }
-        #gpx-status { text-align: center; font-size: 0.7rem; color: var(--ktm-orange); margin-top: 4px; letter-spacing: normal; }
+        /* Panel GPX - Nouvelle interface compacte */
+        #panel-gpx { 
+            background-color: var(--gpx-panel-bg); 
+            border-top: none; 
+            padding: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 15px; 
+            font-size: 0.8rem; 
+            font-weight: bold; 
+            transition: background 0.3s;
+        }
+        #btn-rec-small { 
+            background-color: #550000; 
+            border: 2px solid #ff0000; 
+            color: #ff0000; 
+            width: 50px; 
+            height: 30px; 
+            font-size: 0.8rem; 
+            padding: 0; 
+            line-height: 1; 
+            border-radius: 4px;
+        }
+        #btn-rec-small.active { 
+            background-color: #ff0000; 
+            color: #fff; 
+            animation: pulse 1s infinite; 
+        }
+        .gpx-data { font-size: 0.8rem; font-weight: bold; }
+        .gpx-unit { font-weight: normal; color: var(--text-dim); margin-left: 2px;}
 
         .info-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 5px; font-weight: bold; letter-spacing: normal; }
         
         /* Interrupteur Tri Stations */
         .sort-toggle { display: none; gap: 4px; margin-top: 6px; }
         .sort-btn { flex: 1; padding: 8px; font-family: -apple-system, sans-serif; font-size: 0.75rem; background: #1a1a1a; color: var(--text-dim); border: 1px solid #333; letter-spacing: normal; }
+        body.day-mode .sort-btn { background: #eee; border-color: #ccc;}
         .sort-btn.active { background: var(--ktm-orange); color: #000; border-color: var(--ktm-orange); }
 
         /* Zone liste stations - Polices natives pour netteté absolue */
         #stations-list { margin-top: 5px; max-height: 200px; overflow-y: auto; letter-spacing: normal; }
         .station-item { background: #0a0a0a; border-left: 3px solid #333; padding: 6px; margin-bottom: 4px; }
+        body.day-mode .station-item { background: #fff; border-color: #eee; }
         .station-item.has-fuel { border-left-color: var(--ktm-orange); }
         .station-header { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; }
         .station-price { color: var(--ktm-orange); }
@@ -74,12 +120,23 @@
         .station-actions button { letter-spacing: normal; font-size: 0.7rem; font-family: -apple-system, sans-serif;}
         
         /* Modal Paramètres */
-        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; letter-spacing: normal; }
-        .settings-block { background: #111; padding: 15px; border: 1px solid var(--ktm-orange); margin-bottom: 15px; }
+        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; letter-spacing: normal; transition: background 0.3s; }
+        body.day-mode #settings-modal { background: rgba(255,255,255,0.98); color: #000; }
+        .settings-block { background: #111; padding: 15px; border: 1px solid var(--ktm-orange); margin-bottom: 15px; transition: background 0.3s; }
+        body.day-mode .settings-block { background: #f9f9f9; border-color: #eee; }
         .settings-label { display: block; font-size: 0.8rem; color: var(--ktm-orange); margin-bottom: 10px; text-transform: uppercase; font-weight: bold; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; margin-bottom: 10px; font-size: 1rem; }
+        body.day-mode select, body.day-mode input[type="range"] { background: #fff; color: #000; border-color: #ccc;}
         #debug-gyro { font-size: 0.7rem; color: #00ff00; background: #000; padding: 5px; font-family: monospace; }
         
+        /* Interrupteur Jour/Nuit (Style Switch) */
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; border: 1px solid #444; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--ktm-orange); }
+        input:checked + .slider:before { transform: translateX(26px); background-color: #000; }
+
         /* Croix de fermeture Flottante */
         .btn-close { position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #000; border: 2px solid var(--ktm-orange); border-radius: 50%; color: var(--ktm-orange); font-size: 1.5rem; font-family: Arial, sans-serif; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 2000; box-shadow: 0 0 15px rgba(0,0,0,0.9); cursor: pointer; letter-spacing: normal;}
         .btn-close:active { background: var(--ktm-orange); color: #000; }
@@ -123,9 +180,10 @@
             </div>
         </div>
 
-        <div class="panel" style="padding: 0; border: none; background: transparent;">
-            <button id="btn-record" class="btn-rec" onclick="toggleRecording()">REC TRACE GPX</button>
-            <div id="gpx-status">Points enregistrés : <span id="gpx-count">0</span></div>
+        <div class="panel" id="panel-gpx">
+            <button id="btn-rec-small" onclick="toggleRecording()">REC</button>
+            <span class="gpx-data"><span id="gpx-dist">0.0</span><span class="gpx-unit">km</span></span>
+            <span class="gpx-data"><span id="gpx-points">0</span><span class="gpx-unit">pts</span></span>
         </div>
 
         <div class="panel">
@@ -137,8 +195,8 @@
             <button onclick="findStations()" style="width:100%; margin-top:5px; border-color:var(--ktm-orange); font-family: 'Impact', sans-serif; letter-spacing:0.5px;">SCAN STATIONS</button>
             
             <div class="sort-toggle" id="sort-controls">
-                <button id="sort-price" class="sort-btn active" onclick="setSort('price')">💰 MOINS CHER</button>
-                <button id="sort-dist" class="sort-btn" onclick="setSort('dist')">📍 PLUS PROCHE</button>
+                <button id="sort-price" class="sort-btn active" onclick="setSort('price')">moINS CHER</button>
+                <button id="sort-dist" class="sort-btn" onclick="setSort('dist')">pLUS PROCHE</button>
             </div>
             
             <div id="stations-list"></div>
@@ -150,6 +208,16 @@
         
         <h2 style="color:var(--ktm-orange); margin-bottom:15px; margin-top:10px; font-weight:bold;">RÉGLAGES</h2>
         
+        <div class="settings-block">
+            <label class="settings-label" style="display: flex; justify-content: space-between; align-items: center;">
+                Mode Jour/Nuit (Day Mode)
+                <label class="switch">
+                    <input type="checkbox" id="mode-switch" onchange="toggleColorMode()">
+                    <span class="slider"></span>
+                </label>
+            </label>
+        </div>
+
         <div class="settings-block">
             <label class="settings-label">Carburant recherché</label>
             <select id="input-fuel" onchange="updateSettings()">
@@ -167,12 +235,17 @@
         <div class="settings-block">
             <label class="settings-label">Capteur d'inclinaison (Axe de calcul)</label>
             <select id="input-axis" onchange="updateSettings()">
-                <option value="beta" selected>Forcer Axe X (Valeur Beta - B)</option>
+                <option value="beta">Forcer Axe X (Valeur Beta - B)</option>
                 <option value="auto">Automatique</option>
                 <option value="gamma">Forcer Axe Y (Valeur Gamma - G)</option>
             </select>
-            <div id="debug-gyro" style="margin-top: 10px;">Gyroscope: En attente...</div>
+            <div id="debug-gyro" style="margin-top: 10px; border:1px solid #333; transition: border-color 0.3s">Gyroscope: En attente...</div>
             <div id="debug-gps" style="font-size:0.7rem; color:#00ff00; background:#000; padding:5px; margin-top:5px; font-family:monospace;">GPS: En attente...</div>
+        </div>
+
+        <div class="settings-block" style="text-align:center;">
+            <label class="settings-label">Musique (YTm)</label>
+            <button onclick="launchMusic()" style="background:transparent; border:1px solid #FF0000; color:#FF0000; padding:10px 15px; font-size:1.1rem; border-radius:10px; font-family:'Impact', sans-serif;">▶ YTm</button>
         </div>
         
         <div style="height: 50px;"></div>
@@ -185,24 +258,39 @@
         const CONFIG = {
             carburantCible: 'SP98',          
             rayonRechercheKm: 20,
-            axeInclinaison: 'beta', // Axe Beta (X) forcé par défaut
+            axeInclinaison: 'beta', // Axe Beta (X) forcé par Brice
             lienMeteo: 'https://www.meteoetradar.com/carte-meteo', 
             filtreAngleDeg: 2, 
+            angleSmoothing: 0.15, // Coefficient de lissage (Plus petit = plus lent, moins baveux)
             apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
         };
 
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, max: 0, sum: 0, count: 0, offset: 0, initialized: false },
-            gpx: { active: false, points: [] },
+            angle: { smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, initialized: false },
+            gpx: { active: false, points: [], distance: 0, prevPoint: null },
             weatherLoaded: false,
             stationsData: [], 
-            currentSort: 'price' 
+            currentSort: 'price',
+            isDayMode: false
         };
 
         /* =========================================================
-           GESTION INTERFACE ET PARAMÈTRES
+           GESTION INTERFACE, PARAMÈTRES & MODE JOUR/NUIT
         ========================================================= */
+        // Chargement du mode couleur sauvegardé
+        if(localStorage.getItem('ktm_dash_day_mode') === 'true') {
+            STATE.isDayMode = true;
+            document.body.classList.add('day-mode');
+            document.getElementById('mode-switch').checked = true;
+        }
+
+        function toggleColorMode() {
+            STATE.isDayMode = !STATE.isDayMode;
+            document.body.classList.toggle('day-mode');
+            localStorage.setItem('ktm_dash_day_mode', STATE.isDayMode);
+        }
+
         function updateUI() {
             document.getElementById('ui-fuel-type').innerText = CONFIG.carburantCible;
             document.getElementById('ui-radius').innerText = CONFIG.rayonRechercheKm;
@@ -230,6 +318,15 @@
             box.innerText = msg;
             box.style.display = 'block';
             setTimeout(() => { box.style.display = 'none'; }, 4000);
+        }
+
+        // Formule de Haversine pour calculer la distance GPS localement
+        function calcDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         /* =========================================================
@@ -260,7 +357,15 @@
                             lat: pos.coords.latitude, lon: pos.coords.longitude, 
                             ele: pos.coords.altitude || 0, time: new Date().toISOString()
                         });
-                        document.getElementById('gpx-count').innerText = STATE.gpx.points.length;
+                        document.getElementById('gpx-points').innerText = STATE.gpx.points.length;
+                        
+                        // Calcul de la distance parcourue (V15)
+                        if (STATE.gpx.prevPoint) {
+                            let stepDist = calcDistanceKm(STATE.gpx.prevPoint.lat, STATE.gpx.prevPoint.lon, pos.coords.latitude, pos.coords.longitude);
+                            STATE.gpx.distance += stepDist;
+                            document.getElementById('gpx-dist').innerText = STATE.gpx.distance.toFixed(1);
+                        }
+                        STATE.gpx.prevPoint = { lat: pos.coords.latitude, lon: pos.coords.longitude };
                     }
 
                     if(!STATE.weatherLoaded) fetchWeather(STATE.gps.lat, STATE.gps.lon);
@@ -281,37 +386,44 @@
         }
 
         /* =========================================================
-           MOTEUR GYROSCOPE (INCLINAISON)
+           MOTEUR GYROSCOPE (INCLINAISON BORNÉE & FILTRÉE)
         ========================================================= */
         function handleOrientation(event) {
-            let rawBeta = event.beta ? Math.round(event.beta) : 0;
-            let rawGamma = event.gamma ? Math.round(event.gamma) : 0;
+            let rawBeta = event.beta ? event.beta : 0;
+            let rawGamma = event.gamma ? event.gamma : 0;
             
-            let activeAxis;
+            let currentAxisRaw;
             
             if (CONFIG.axeInclinaison === 'beta') {
-                activeAxis = rawBeta;
+                currentAxisRaw = rawBeta;
             } else if (CONFIG.axeInclinaison === 'gamma') {
-                activeAxis = rawGamma;
+                currentAxisRaw = rawGamma;
             } else {
                 let isLandscape = window.innerWidth > window.innerHeight;
-                activeAxis = isLandscape ? rawBeta : rawGamma; 
+                currentAxisRaw = isLandscape ? rawBeta : rawGamma; 
             }
-            
-            let correctedAngle = Math.round(Math.abs(Math.abs(activeAxis) - Math.abs(STATE.angle.offset)));
-            
-            let modeAxe = CONFIG.axeInclinaison === 'auto' ? 'Auto' : (CONFIG.axeInclinaison === 'beta' ? 'Forcé:B' : 'Forcé:G');
-            document.getElementById('debug-gyro').innerText = `Brut B:${rawBeta}° G:${rawGamma}° | Mode: ${modeAxe} | Calcul:${correctedAngle}°`;
-            
-            document.getElementById('angle-val').innerText = correctedAngle;
 
-            if (correctedAngle >= CONFIG.filtreAngleDeg) {
-                STATE.angle.current = correctedAngle;
-                if (correctedAngle > STATE.angle.max) {
-                    STATE.angle.max = correctedAngle;
+            // Filtre numérique passe-bas (Lissage V15)
+            // smoothed = (alpha * raw) + ((1 - alpha) * prev_smoothed)
+            STATE.angle.smoothed = (CONFIG.angleSmoothing * currentAxisRaw) + ((1 - CONFIG.angleSmoothing) * STATE.angle.smoothed);
+            
+            // Calcul de l'angle corrigé par rapport à l'offset de calibration
+            // Et bornage strict entre 0 et 85 degrés maxi (V15)
+            let rawCorrected = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
+            let finalAngle = Math.min(Math.round(rawCorrected), 85);
+            
+            // Affichage debug
+            let modeAxe = CONFIG.axeInclinaison === 'auto' ? 'Auto' : (CONFIG.axeInclinaison === 'beta' ? 'Forcé:B' : 'Forcé:G');
+            document.getElementById('debug-gyro').innerText = `Brut B:${Math.round(rawBeta)} G:${Math.round(rawGamma)} | Mode: ${modeAxe} | Lissé:${Math.round(STATE.angle.smoothed)} | Final:${finalAngle}° (Max 85)`;
+            
+            document.getElementById('angle-val').innerText = finalAngle;
+
+            if (finalAngle >= CONFIG.filtreAngleDeg) {
+                if (finalAngle > STATE.angle.max) {
+                    STATE.angle.max = finalAngle;
                     document.getElementById('angle-max').innerText = STATE.angle.max;
                 }
-                STATE.angle.sum += correctedAngle;
+                STATE.angle.sum += finalAngle;
                 STATE.angle.count++;
                 document.getElementById('angle-moy').innerText = Math.round(STATE.angle.sum / STATE.angle.count);
             }
@@ -339,37 +451,41 @@
             }
         }
 
+        // Calibration native du zéro (V15)
         function performResetAngle() {
-            STATE.angle.offset = 0; 
+            // Stocke la valeur brute actuelle lissée comme la position 0° (Offset)
+            STATE.angle.offset = STATE.angle.smoothed; 
             STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0;
             document.getElementById('angle-val').innerText = 0;
             document.getElementById('angle-max').innerText = 0;
             document.getElementById('angle-moy').innerText = 0;
-            showAlert("Angle calibré (Attente mouvement)");
+            showAlert("Angle calibré sur la position actuelle (0°)");
         }
 
         /* =========================================================
            MOTEUR GPX
         ========================================================= */
         function toggleRecording() {
-            const btn = document.getElementById('btn-record');
+            const btn = document.getElementById('btn-rec-small');
             if (!STATE.gpx.active) {
                 if(!STATE.gps.lat) return showAlert("Attente du signal GPS pour démarrer l'enregistrement.");
                 STATE.gpx.active = true;
                 STATE.gpx.points = [];
-                document.getElementById('gpx-count').innerText = "0";
-                btn.innerText = "STOP & DL TRACE";
+                STATE.gpx.distance = 0; // Reset distance (V15)
+                STATE.gpx.prevPoint = null; // Reset prevPoint (V15)
+                document.getElementById('gpx-points').innerText = "0";
+                document.getElementById('gpx-dist').innerText = "0.0";
                 btn.classList.add('active');
             } else {
                 STATE.gpx.active = false;
-                btn.innerText = "REC TRACE GPX";
                 btn.classList.remove('active');
                 
-                if (confirm(`Enregistrement terminé (${STATE.gpx.points.length} points). Voulez-vous télécharger le fichier GPX sur votre téléphone ?`)) {
+                if (confirm(`Enregistrement terminé (${STATE.gpx.points.length} points, ${STATE.gpx.distance.toFixed(1)} km). Voulez-vous télécharger le fichier GPX sur votre téléphone ?`)) {
                     downloadGPX();
                 } else {
                     STATE.gpx.points = [];
-                    document.getElementById('gpx-count').innerText = "0";
+                    document.getElementById('gpx-points').innerText = "0";
+                    document.getElementById('gpx-dist').innerText = "0.0";
                     showAlert("Trace effacée.");
                 }
             }
@@ -447,12 +563,11 @@
 
                     let lat = coords ? coords[1] : st.geom[0];
                     let lon = coords ? coords[0] : st.geom[1];
+                    
                     let prixCible = st[targetField] ? parseFloat(st[targetField]) : null;
 
-                    const dLat = (lat - STATE.gps.lat) * Math.PI / 180;
-                    const dLon = (lon - STATE.gps.lon) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STATE.gps.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    // Calcul distance Haversine
+                    const distKm = calcDistanceKm(STATE.gps.lat, STATE.gps.lon, lat, lon);
 
                     if (distKm <= CONFIG.rayonRechercheKm) {
                         STATE.stationsData.push({
@@ -522,7 +637,7 @@
         }
 
         /* =========================================================
-           NAVIGATION INTENTS (MAJ OSMAND+)
+           NAVIGATION INTENTS & MUSIQUE
         ========================================================= */
         function navApp(lat, lon, app) {
             if(app === 'waze') {
@@ -533,6 +648,11 @@
                 // Force l'ouverture exclusive du package payant "OsmAnd+"
                 window.location.href = `intent:geo:${lat},${lon}?q=${lat},${lon}#Intent;package=net.osmand.plus;end;`;
             }
+        }
+
+        function launchMusic() {
+            // Tente de lancer directement l'application YouTube Music (Package Intent)
+            window.location.href = `intent://#Intent;scheme=https;package=com.google.android.apps.youtube.music;end;`;
         }
     </script>
 </body>
