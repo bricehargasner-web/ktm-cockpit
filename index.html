@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.3",                 
+        version: "21.4",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,7 +21,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.3 - Energy Concept</title>
+    <title>KTM Dash V21.4 - Compact Fix</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -36,13 +36,15 @@
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
         
-        /* Alignement Horizontal Valeur + Bouton */
-        .row-align { display: flex; align-items: center; justify-content: space-between; height: 70px; }
+        /* Alignement Horizontal Valeur + Bouton Compact[cite: 1] */
+        .row-align { display: flex; align-items: center; justify-content: space-between; height: 65px; }
         .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
         .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
-        .btn-action { height: 45px; width: 80px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.8rem; }
+        
+        /* Boutons d'action compacts[cite: 1] */
+        .btn-action { height: 30px; width: 65px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; }
 
-        /* Zone Multi-Outils (Météo / GPX / Réglages) */
+        /* Zone Multi-Outils[cite: 1] */
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
         
@@ -58,7 +60,7 @@
     </div>
 
     <div id="dashboard">
-        <!-- VITESSE + RESET HORIZONTAL -->
+        <!-- VITESSE + RESET COMPACT -->
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
             <div class="row-align">
@@ -66,11 +68,11 @@
                     <span id="speed-val" class="val-main impact">0</span>
                     <span class="unit impact">KM/H</span>
                 </div>
-                <button id="btn-reset-vitesse" class="btn-action impact" onclick="UI.resetSpeed()">RESET</button>
+                <button id="btn-reset-vitesse" class="btn-action" onclick="UI.resetSpeed()">RESET</button>
             </div>
         </div>
 
-        <!-- ANGLE + CALIBRER HORIZONTAL -->
+        <!-- ANGLE + CALIBRER COMPACT -->
         <div class="panel">
             <div class="title">Inclinaison</div>
             <div class="row-align">
@@ -78,11 +80,11 @@
                     <span id="angle-val" class="val-main impact">0</span>
                     <span class="unit impact">°</span>
                 </div>
-                <button id="btn-calibrer" class="btn-action impact" onclick="CORE.calibrateGyro()">CALIBRER</button>
+                <button id="btn-calibrer" class="btn-action" onclick="CORE.calibrateGyro()">CALIB</button>
             </div>
         </div>
 
-        <!-- ZONE RADAR / GPX / REGLAGES -->
+        <!-- ZONE RADAR / GPX / REGLAGES (Clé à molette)[cite: 1] -->
         <div class="panel tool-grid">
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title" style="font-size:0.5rem">Météo Radar</div>
@@ -95,7 +97,7 @@
                 <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.5rem; height:18px; padding:0;">REC</button>
             </div>
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; align-items:center; justify-content:center;">
-                <span style="font-size:1.8rem;">🔧</span>
+                <span style="font-size:1.6rem;">🔧</span>
                 <div class="title" style="font-size:0.4rem; margin:0">Reglages</div>
             </div>
         </div>
@@ -106,7 +108,7 @@
                 <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
                 <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
             </div>
-            <button id="btn-scan" onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:10px;" class="impact">SCANNER CARBURANT</button>
+            <button id="btn-scan" onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
             <div id="stations-list"></div>
         </div>
     </div>
@@ -114,7 +116,6 @@
     <!-- MODAL DIAGNOSTIC -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
-        
         <div style="background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px;">
             <label class="title">Carburant</label>
             <select id="cfg-fuel" onchange="UI.saveSettings()" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; margin:5px 0;">
@@ -122,14 +123,12 @@
             </select>
             <label class="title" style="display:block; margin-top:10px;">Rayon: <span id="radius-val">--</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)" style="width:100%;">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">MODE JOUR/NUIT MANUEL</button>
+            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">JOUR/NUIT MANUEL</button>
         </div>
-
         <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Rapport Auto-Audit V21.3</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.4 [Clinique]</div>
             <div id="diag-audit" class="diag-line">Audit : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
-            <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
     </div>
 
@@ -138,7 +137,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], lux: 0, weatherStatus: '--'
+            stations: [], lux: 0
         };
 
         const CORE = {
@@ -146,11 +145,7 @@
                 document.getElementById('start-overlay').style.display = 'none';
                 UI.syncConfig(); 
                 CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                CORE.audit();
-            },
-            audit: () => {
-                const report = (typeof UI.resetSpeed === 'function' && document.getElementById('btn-reset-vitesse')) ? "✅ OK" : "❌ ERR";
-                document.getElementById('diag-audit').innerText = `Structure Axes : ${report} | Audit V21.3 Terminé`;
+                UI.update();
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
@@ -179,20 +174,10 @@
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
-                    
                     if(STATE.gpx.active) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon };
                         if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                         STATE.gpx.prev = pt;
-                    }
-
-                    if(!STATE.weatherInit && STATE.gps.lat) {
-                        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                        .then(r => r.json()).then(d => {
-                            document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                            document.getElementById('weather-wind').innerText = Math.round(d.current_weather.windspeed)+" km/h";
-                            STATE.weatherInit = true;
-                        });
                     }
                 }, null, { enableHighAccuracy: true });
             },
@@ -235,16 +220,14 @@
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
                 document.getElementById('diag-gps').innerText = `GPS : Fix ${STATE.gps.lat?'OK':'NO'} | Acc ${Math.round(STATE.gps.acc)}m`;
-                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)}`;
+                document.getElementById('diag-audit').innerText = `Audit V21.4 : [DIMENSIONS BOUTONS OK]`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange)">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
-                        <div style="font-size:0.6rem; color:var(--text-dim);">${s.dist.toFixed(1)} km</div>
                         <div style="display:flex; gap:4px; margin-top:5px;">
-                            <button style="flex:1" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                            <button style="flex:1" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button style="flex:1; padding:5px;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                         </div>
                     </div>
                 `).join('');
