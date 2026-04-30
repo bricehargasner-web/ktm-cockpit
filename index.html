@@ -3,13 +3,13 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.15-Axis-Corrected",          
+        version: "22.16-OsmAnd-Restored",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 45,               
         angleSeuilPalier: 10,            
-        rejectionTangage: 80,            // Maintien du seuil de blocage à 80°[cite: 4]
+        rejectionTangage: 80,            
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,             
         deltaMaxAngle: 10,               
@@ -23,7 +23,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.15 - Corrected</title>
+    <title>KTM Dash V22.16 - OsmAnd</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -134,7 +134,7 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.15</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.16</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Luminosité : -- Lux</div>
@@ -305,6 +305,7 @@
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>`).join('');
             },
