@@ -8,7 +8,7 @@
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,            
         deltaMaxAngle: 15,               
-        seuilLuxJour: 60,                // Seuil pour le mode Jour[cite: 1]
+        seuilLuxJour: 60,                
         heurePassageNuit: 20,            
         heurePassageJour: 7,             
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
@@ -20,12 +20,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V19.2 - Energy Concept</title>
+    <title>KTM Dash V19.7 - Gesture Unlocked</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; }
+        
+        /* Overlay de démarrage pour forcer le "Gesture" */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; }
+
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 6px 10px; position: relative; border-top: 2px solid #333; margin-bottom: 4px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
@@ -38,16 +43,18 @@
         body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
-        .station-item strong { color: var(--text-main); }
-        .rec-active { background: #ff0000 !important; animation: blink 1s infinite; color: #fff !important; }
-        @keyframes blink { 50% { opacity: 0.5; } }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px; }
     </style>
 </head>
 
 <body>
+    <div id="start-overlay">
+        <button id="btn-start" onclick="CORE.unlockAll()">DÉMARRER DASHBOARD</button>
+    </div>
+
     <div id="dashboard">
+        <!-- VITESSE -->
         <div class="panel accent-orange">
             <button style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.5rem; padding:2px 5px;" onclick="UI.resetSpeed()">RESET</button>
             <div class="title">Vitesse GPS</div>
@@ -55,8 +62,9 @@
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
+        <!-- ANGLE -->
         <div class="panel">
-            <button style="position:absolute; top:6px; right:8px; background:var(--ktm-orange); color:#000; border:none; font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER / ACTIVER</button>
+            <button style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER</button>
             <div class="title">Inclinaison</div>
             <div class="val-container"><span id="angle-val" class="val-main impact">0</span><span class="val-unit impact">°</span></div>
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
@@ -69,7 +77,7 @@
                 <div id="weather-wind" style="font-size:0.65rem; color:var(--text-dim)">Vent: -- km/h</div>
             </div>
             <div style="text-align:right">
-                <div class="title">Distance GPX</div>
+                <div class="title">Trace GPX</div>
                 <div id="gpx-dist" style="font-size:1.5rem; font-weight:bold; color:var(--ktm-orange);">0.0 <small>KM</small></div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.6rem; width:80px; height:24px; margin-top:2px;">REC</button>
             </div>
@@ -88,7 +96,7 @@
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="margin-bottom:15px; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div style="background:#000; padding:10px; border:1px solid #333;">
-            <div class="title" style="color:#0f0; margin-bottom:8px;">Mouchard de Diagnostic</div>
+            <div class="title" style="color:#0f0; margin-bottom:8px;">Diagnostic Gesture Gate</div>
             <div id="diag-light" class="diag-line">Lux : --</div>
             <div id="diag-gyro" class="diag-line">Gyro : Attente...</div>
             <div id="diag-gps" class="diag-line">GPS : Recherche...</div>
@@ -101,10 +109,33 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], weatherStatus: 'Init...', lux: 0, luxSource: 'Init...'
+            stations: [], weatherStatus: 'Init...', lux: 0, luxSource: 'Gesture Bloqué'
         };
 
         const CORE = {
+            // Fonction appelée par le bouton START pour débloquer les permissions[cite: 1]
+            unlockAll: () => {
+                document.getElementById('start-overlay').style.display = 'none';
+                CORE.initGyro();
+                CORE.initLight();
+                CORE.initGPS();
+            },
+
+            initLight: () => {
+                if ('AmbientLightSensor' in window) {
+                    try {
+                        const sensor = new AmbientLightSensor();
+                        sensor.onreading = () => {
+                            STATE.lux = sensor.illuminance;
+                            STATE.luxSource = "Flux ACTIF";
+                            UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
+                        };
+                        sensor.onerror = (e) => { STATE.luxSource = "ERREUR : " + e.error.name; };
+                        sensor.start();
+                    } catch (e) { STATE.luxSource = "API Restreinte"; }
+                } else { STATE.luxSource = "Non Supporté"; }
+            },
+
             processAngle: (raw) => {
                 STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
                 let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
@@ -116,20 +147,53 @@
                     STATE.angle.sum += STATE.angle.current; STATE.angle.count++;
                 }
             },
+
             calibrateGyro: () => {
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(s => { if(s === 'granted') CORE.initGyro(); });
-                } else CORE.initGyro();
                 STATE.angle.offset = STATE.angle.smoothed || 0;
                 STATE.angle.max = STATE.angle.sum = STATE.angle.count = 0;
             },
+
             initGyro: () => {
-                window.addEventListener('deviceorientation', (e) => {
-                    STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
-                    let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
-                    if (raw !== null && !isNaN(raw)) CORE.processAngle(raw);
-                }, true);
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission().then(s => {
+                        if (s === 'granted') window.addEventListener('deviceorientation', e => CORE.handleGyro(e), true);
+                    });
+                } else {
+                    window.addEventListener('deviceorientation', e => CORE.handleGyro(e), true);
+                }
             },
+
+            handleGyro: (e) => {
+                STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
+                let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
+                if (raw !== null && !isNaN(raw)) CORE.processAngle(raw);
+            },
+
+            initGPS: () => {
+                navigator.geolocation.watchPosition(pos => {
+                    STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
+                    let kmh = Math.round((pos.coords.speed || 0) * 3.6);
+                    STATE.gps.speed = kmh;
+                    if(kmh > STATE.gps.max) STATE.gps.max = kmh;
+                    if(kmh > 2) { STATE.gps.sum += kmh; STATE.gps.count++; }
+                    if(STATE.gpx.active) {
+                        const pt = { lat: pos.coords.latitude, lon: pos.coords.longitude, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
+                        STATE.gpx.points.push(pt);
+                        if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
+                        STATE.gpx.prev = pt;
+                    }
+                    if(!STATE.weatherInit && STATE.gps.lat) {
+                        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                        .then(r => r.json()).then(d => {
+                            document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                            document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
+                            STATE.weatherStatus = 'OK'; STATE.weatherInit = true;
+                        }).catch(() => STATE.weatherStatus = 'Err API');
+                    }
+                    UI.update();
+                }, null, { enableHighAccuracy: true });
+            },
+
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
                 const btn = document.getElementById('btn-rec');
@@ -137,6 +201,7 @@
                 btn.innerText = STATE.gpx.active ? "STOP" : "REC";
                 if(!STATE.gpx.active && STATE.gpx.points.length > 0) CORE.saveGPX();
             },
+
             saveGPX: () => {
                 let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
                 STATE.gpx.points.forEach(p => xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`);
@@ -147,6 +212,7 @@
                 a.download = `Trace_KTM.gpx`;
                 a.click();
             },
+
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
@@ -160,6 +226,7 @@
                     UI.renderStations();
                 });
             },
+
             openDynamicWeather: () => {
                 const url = STATE.gps.lat ? `${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}` : CONFIG.urlMeteoBase;
                 window.open(url, '_blank');
@@ -183,7 +250,7 @@
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
                 
-                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)} (${STATE.luxSource})`;
+                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)} | Statut : ${STATE.luxSource}`;
                 document.getElementById('diag-gyro').innerText = `Gyro : B:${Math.round(STATE.angle.rawB)} G:${Math.round(STATE.angle.rawG)}`;
                 document.getElementById('diag-gps').innerText = `GPS : Fix:${STATE.gps.lat?'OK':'NO'} | Acc:${Math.round(STATE.gps.acc)}m`;
                 document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherStatus}`;
@@ -207,48 +274,10 @@
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
 
-        // GESTION LUMIÈRE[cite: 1]
-        const hour = new Date().getHours();
-        const isDayTime = (hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
-        UI.setTheme(isDayTime);
-        STATE.luxSource = "Horaire";
+        // Init thème par défaut par heure[cite: 1]
+        const h = new Date().getHours();
+        UI.setTheme(h > CONFIG.heurePassageJour && h < CONFIG.heurePassageNuit);
 
-        if ('AmbientLightSensor' in window) {
-            try {
-                const sensor = new AmbientLightSensor();
-                sensor.onreading = () => {
-                    STATE.lux = sensor.illuminance;
-                    STATE.luxSource = "Flux Réel";
-                    UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
-                };
-                sensor.start();
-            } catch (e) { STATE.luxSource = "Bloqué/Simulé"; }
-        }
-
-        navigator.geolocation.watchPosition(pos => {
-            STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
-            let kmh = Math.round((pos.coords.speed || 0) * 3.6);
-            STATE.gps.speed = kmh;
-            if(kmh > STATE.gps.max) STATE.gps.max = kmh;
-            if(kmh > 2) { STATE.gps.sum += kmh; STATE.gps.count++; }
-            if(STATE.gpx.active) {
-                const pt = { lat: pos.coords.latitude, lon: pos.coords.longitude, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
-                STATE.gpx.points.push(pt);
-                if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
-                STATE.gpx.prev = pt;
-            }
-            if(!STATE.weatherInit && STATE.gps.lat) {
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r => r.json()).then(d => {
-                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                    document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
-                    STATE.weatherStatus = 'OK'; STATE.weatherInit = true;
-                }).catch(() => STATE.weatherStatus = 'Err API');
-            }
-            UI.update();
-        }, null, { enableHighAccuracy: true });
-
-        CORE.initGyro();
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
 </body>
