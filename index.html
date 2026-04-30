@@ -8,7 +8,7 @@
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,            
         deltaMaxAngle: 15,               
-        seuilLuxJour: 60,                
+        seuilLuxJour: 60,                // Seuil Lux configurable ici[cite: 1]
         heurePassageNuit: 20,            
         heurePassageJour: 7,             
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
@@ -20,7 +20,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V19 - Super Diagnostic</title>
+    <title>KTM Dash V19.1 - Lux Diag</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -47,7 +47,6 @@
 
 <body>
     <div id="dashboard">
-        <!-- VITESSE -->
         <div class="panel accent-orange">
             <button style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.5rem; padding:2px 5px;" onclick="UI.resetSpeed()">RESET</button>
             <div class="title">Vitesse GPS</div>
@@ -55,7 +54,6 @@
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- ANGLE -->
         <div class="panel">
             <button style="position:absolute; top:6px; right:8px; background:var(--ktm-orange); color:#000; border:none; font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER / ACTIVER</button>
             <div class="title">Inclinaison (Gyro)</div>
@@ -63,21 +61,19 @@
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- METEO & GPX -->
-        <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; padding: 6px 10px;">
+        <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title">Météo Radar</div>
                 <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
                 <div id="weather-wind" style="font-size:0.65rem; color:var(--text-dim)">Vent: -- km/h</div>
             </div>
             <div style="text-align:right">
-                <div class="title">Trace GPX</div>
+                <div class="title">Distance GPX</div>
                 <div id="gpx-dist" style="font-size:1.5rem; font-weight:bold; color:var(--ktm-orange);">0.0 <small>KM</small></div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.6rem; width:80px; height:24px; margin-top:2px;">REC</button>
             </div>
         </div>
 
-        <!-- STATIONS -->
         <div class="panel">
             <div class="title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>] <span id="ui-info-radius">--</span>KM</span>
@@ -88,7 +84,6 @@
         </div>
     </div>
 
-    <!-- MODAL RÉGLAGES & SUPER MOUCHARD -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="margin-bottom:15px; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         
@@ -104,10 +99,10 @@
 
         <div style="background:#000; padding:10px; border:1px solid #333;">
             <div class="title" style="color:#0f0; margin-bottom:8px;">Mouchard de Diagnostic</div>
+            <div id="diag-light" class="diag-line">Lux : En attente capteur...</div>
             <div id="diag-gyro" class="diag-line">Gyro : Attente données...</div>
             <div id="diag-gps" class="diag-line">GPS : Recherche fix...</div>
             <div id="diag-meteo" class="diag-line">Météo : Non initialisée</div>
-            <div id="diag-gpx" class="diag-line">GPX : Inactif</div>
             <div id="diag-theme" class="diag-line">Thème : Init...</div>
         </div>
     </div>
@@ -117,45 +112,36 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], weatherStatus: 'Attente GPS'
+            stations: [], weatherStatus: 'Attente GPS',
+            lux: 0, luxSource: 'N/A'
         };
 
         const CORE = {
-            // Rétablissement de la détection d'angle robuste[cite: 2]
             processAngle: (raw) => {
                 STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
                 let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
-                
-                if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) {
-                    val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
-                }
-                
+                if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
                 STATE.angle.lastValid = val;
                 STATE.angle.current = Math.min(Math.round(val), CONFIG.limiteAngle || 85);
-
                 if(STATE.angle.current > 3) {
                     if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                     STATE.angle.sum += STATE.angle.current; STATE.angle.count++;
                 }
             },
-
             calibrateGyro: () => {
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission().then(s => { if(s === 'granted') CORE.initGyro(); });
-                } else { CORE.initGyro(); }
+                } else CORE.initGyro();
                 STATE.angle.offset = STATE.angle.smoothed || 0;
                 STATE.angle.max = STATE.angle.sum = STATE.angle.count = 0;
             },
-
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    STATE.angle.rawB = e.beta;
-                    STATE.angle.rawG = e.gamma;
+                    STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
                     let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
                     if (raw !== null && !isNaN(raw)) CORE.processAngle(raw);
                 }, true);
             },
-
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
                 const btn = document.getElementById('btn-rec');
@@ -163,9 +149,8 @@
                 btn.innerText = STATE.gpx.active ? "STOP" : "REC";
                 if(!STATE.gpx.active && STATE.gpx.points.length > 0) CORE.saveGPX();
             },
-
             saveGPX: () => {
-                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash_V19"><trk><trkseg>`;
+                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
                 STATE.gpx.points.forEach(p => xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`);
                 xml += `</trkseg></trk></gpx>`;
                 const blob = new Blob([xml], {type: 'application/gpx+xml'});
@@ -175,7 +160,6 @@
                 a.click();
                 STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
             },
-
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
@@ -189,7 +173,6 @@
                     UI.renderStations();
                 });
             },
-
             openDynamicWeather: () => {
                 const url = STATE.gps.lat ? `${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}` : CONFIG.urlMeteoBase;
                 window.open(url, '_blank');
@@ -202,9 +185,7 @@
                 const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             },
-
             update: () => {
-                // UI Principale
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
                 document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
@@ -215,14 +196,13 @@
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
 
-                // Mouchard de Diagnostic[cite: 1]
+                // Mouchard de Diagnostic enrichi avec LUX[cite: 1]
+                document.getElementById('diag-light').innerText = `Luminosité : ${Math.round(STATE.lux)} Lux (${STATE.luxSource})`;
                 document.getElementById('diag-gyro').innerText = `Gyro: B:${Math.round(STATE.angle.rawB)} G:${Math.round(STATE.angle.rawG)} | Off:${Math.round(STATE.angle.offset)}`;
-                document.getElementById('diag-gps').innerText = `GPS: Fix:${STATE.gps.lat ? 'OK' : 'NO'} | Acc:${Math.round(STATE.gps.acc)}m | Sat:${STATE.gps.count}`;
+                document.getElementById('diag-gps').innerText = `GPS: Fix:${STATE.gps.lat ? 'OK' : 'NO'} | Acc:${Math.round(STATE.gps.acc)}m`;
                 document.getElementById('diag-meteo').innerText = `Météo: ${STATE.weatherStatus}`;
-                document.getElementById('diag-gpx').innerText = `GPX: ${STATE.gpx.active ? 'REC' : 'STOP'} | Points:${STATE.gpx.points.length}`;
-                document.getElementById('diag-theme').innerText = `Thème: ${document.body.classList.contains('day-mode') ? 'JOUR' : 'NUIT'}`;
+                document.getElementById('diag-theme').innerText = `Thème: ${document.body.classList.contains('day-mode') ? 'JOUR' : 'NUIT'} (Seuil:${CONFIG.seuilLuxJour})`;
             },
-
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
@@ -236,11 +216,7 @@
                     </div>
                 `).join('');
             },
-
-            openSettings: () => { 
-                document.getElementById('cfg-radius-val').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('settings-modal').style.display = 'flex'; 
-            },
+            openSettings: () => { document.getElementById('cfg-radius-val').innerText = CONFIG.rayonRechercheKm; document.getElementById('settings-modal').style.display = 'flex'; },
             closeSettings: () => { document.getElementById('settings-modal').style.display = 'none'; },
             saveSettings: () => {
                 CONFIG.carburantCible = document.getElementById('cfg-fuel').value;
@@ -255,46 +231,48 @@
 
         // GPS & MÉTÉO[cite: 1, 2]
         navigator.geolocation.watchPosition(pos => {
-            STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
-            STATE.gps.acc = pos.coords.accuracy;
+            STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
             let kmh = Math.round((pos.coords.speed || 0) * 3.6);
             STATE.gps.speed = kmh;
             if(kmh > STATE.gps.max) STATE.gps.max = kmh;
             if(kmh > 2) { STATE.gps.sum += kmh; STATE.gps.count++; }
-            
             if(STATE.gpx.active) {
                 const pt = { lat: pos.coords.latitude, lon: pos.coords.longitude, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
                 STATE.gpx.points.push(pt);
                 if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                 STATE.gpx.prev = pt;
             }
-            
             if(!STATE.weatherInit && STATE.gps.lat) {
                 STATE.weatherStatus = 'Chargement...';
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
                     document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
-                    STATE.weatherStatus = 'OK';
-                    STATE.weatherInit = true;
+                    STATE.weatherStatus = 'OK'; STATE.weatherInit = true;
                 }).catch(() => STATE.weatherStatus = 'Erreur API');
             }
             UI.update();
-        }, (e) => {
-            STATE.gps.lat = null;
-            document.getElementById('diag-gps').innerText = `GPS: ERREUR (${e.message})`;
-        }, { enableHighAccuracy: true });
+        }, null, { enableHighAccuracy: true });
 
-        // Thème automatique[cite: 1]
+        // GESTION LUMIÈRE AVEC MOUCHARD LUX[cite: 1]
         const hour = new Date().getHours();
-        UI.setTheme(hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
+        const isDayTime = (hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
+        UI.setTheme(isDayTime);
+        STATE.luxSource = "Horaire";
+
         if ('AmbientLightSensor' in window) {
-            const sensor = new AmbientLightSensor();
-            sensor.onreading = () => UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
-            sensor.start();
+            try {
+                const sensor = new AmbientLightSensor();
+                sensor.onreading = () => {
+                    STATE.lux = sensor.illuminance;
+                    STATE.luxSource = "Capteur Matériel";
+                    UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
+                };
+                sensor.start();
+            } catch (e) { STATE.luxSource = "Bloqué/Incompatible"; }
         }
 
-        CORE.initGyro(); // Initialisation auto du capteur
+        CORE.initGyro();
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
 </body>
