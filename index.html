@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+<!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        carburantCible: 'SP98',          // SP98, SP95, E10, Gazole, E85
-        rayonRechercheKm: 20,            
+        carburantCible: 'SP98',          
+        rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
         angleSmoothing: 0.1,             
-        deltaMaxAngle: 15,               
+        deltaMaxAngle: 12,               
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
@@ -16,7 +17,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V18.1</title>
+    <title>KTM Dash V18.2 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -31,15 +32,16 @@
         .val-unit { font-size: 1.1rem; color: var(--ktm-orange); width: 60px; margin-left: 5px; }
         .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; background: var(--sub-bg); padding: 4px; margin-top: 4px; border: 1px solid #333; }
         button { background: #222; color: #fff; border: 1px solid #444; padding: 8px; cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.7rem; }
-        .sort-bar { display: flex; gap: 4px; margin: 5px 0; }
-        .sort-bar button { flex: 1; font-size: 0.6rem; background: #1a1a1a; }
-        .sort-bar button.active { background: var(--ktm-orange); color: #000; }
+        body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
+        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        /* Correction visibilité ville en mode jour[cite: 1] */
+        .station-item strong { color: var(--text-main); }
         .station-actions { display: flex; gap: 4px; margin-top: 8px; }
-        .station-actions button { flex: 1; font-size: 0.6rem; padding: 6px 0; }
         .rec-active { background: #ff0000 !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
+        body.day-mode #settings-modal { background: rgba(255,255,255,0.98); }
     </style>
 </head>
 
@@ -62,7 +64,7 @@
         <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title">Météo Radar</div>
-                <div style="font-size:1.1rem; font-weight:bold;"><span id="weather-temp">--</span> <span id="weather-desc" style="font-size:0.6rem; color:var(--text-dim)">--</span></div>
+                <div style="font-size:1.1rem; font-weight:bold;"><span id="weather-temp">--</span></div>
                 <div id="weather-wind" style="font-size:0.65rem; color:var(--text-dim)">Vent: -- km/h</div>
             </div>
             <div style="text-align:right">
@@ -73,12 +75,12 @@
         </div>
 
         <div class="panel">
-            <div class="title" style="display:flex; justify-content:space-between">Stations <span onclick="UI.openSettings()">⚙️ RÉGLAGES</span></div>
-            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border-color: var(--ktm-orange);" class="impact">SCANNER CARBURANT</button>
-            <div class="sort-bar" id="sort-bar" style="display:none">
-                <button id="sort-price" class="active" onclick="UI.setSort('price')">PRIX ↑</button>
-                <button id="sort-dist" onclick="UI.setSort('dist')">DIST ↑</button>
+            <!-- Ajout des infos de recherche dans le titre[cite: 1] -->
+            <div class="title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>STATIONS [<span id="ui-info-fuel">--</span>] <span id="ui-info-radius">--</span>KM</span>
+                <span onclick="UI.openSettings()" style="cursor:pointer; color:var(--ktm-orange)">⚙️ RÉGLAGES</span>
             </div>
+            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border-color: var(--ktm-orange);" class="impact">SCANNER CARBURANT</button>
             <div id="stations-list"></div>
         </div>
     </div>
@@ -102,7 +104,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], sortBy: 'price'
+            stations: [], sortBy: 'price', weatherInit: false
         };
 
         const CORE = {
@@ -142,22 +144,20 @@
                 const blob = new Blob([xml], {type: 'application/gpx+xml'});
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `Trace_Moto.gpx`;
+                a.download = `Trace_KTM_${new Date().toISOString().slice(0,10)}.gpx`;
                 a.click();
                 STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
             },
             fetchStations: () => {
                 if(!STATE.gps.lat) return;
-                const list = document.getElementById('stations-list');
-                list.innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN...</div>";
+                document.getElementById('stations-list').innerHTML = "<div style='text-align:center; padding:10px; color:#888;'>SCAN...</div>";
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`).then(r => r.json()).then(data => {
                     const fuelKey = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
                         nom: r.fields.nom || r.fields.ville, adresse: r.fields.adresse, prix: r.fields[fuelKey],
                         lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: UI.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
-                    }));
-                    document.getElementById('sort-bar').style.display = 'flex';
+                    })).sort((a,b) => (a.prix || 9) - (b.prix || 9));
                     UI.renderStations();
                 });
             },
@@ -181,17 +181,18 @@
                 document.getElementById('angle-max').innerText = STATE.angle.max;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
                 document.getElementById('gpx-dist').innerHTML = `${STATE.gpx.distance.toFixed(1)} <small>KM</small>`;
+                document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
+                document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
             },
             renderStations: () => {
-                const sorted = [...STATE.stations].sort((a,b) => STATE.sortBy === 'price' ? (a.prix || 9) - (b.prix || 9) : a.dist - b.dist);
-                document.getElementById('stations-list').innerHTML = sorted.map(s => `
+                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
-                        <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange)">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
-                        <div style="font-size:0.6rem; color:#888;">${s.dist.toFixed(1)} km - ${s.adresse}</div>
-                        <div class="station-actions">
-                            <button onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                            <button onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
+                        <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange); font-weight:bold;">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
+                        <div style="font-size:0.6rem; color:var(--text-dim);">${s.dist.toFixed(1)} km - ${s.adresse}</div>
+                        <div class="station-actions" style="display:flex; gap:4px; margin-top:5px;">
+                            <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                            <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>
                 `).join('');
@@ -199,8 +200,7 @@
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveFuel: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.update(); },
-            updateRadius: v => { CONFIG.rayonRechercheKm = v; document.getElementById('radius-val').innerText = v; },
-            setSort: m => { STATE.sortBy = m; UI.renderStations(); },
+            updateRadius: v => { CONFIG.rayonRechercheKm = v; document.getElementById('radius-val').innerText = v; UI.update(); },
             resetSpeed: () => { STATE.gps.max = STATE.gps.sum = STATE.gps.count = 0; UI.update(); },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay, src, val) => {
@@ -209,14 +209,19 @@
             }
         };
 
-        const hour = new Date().getHours();
-        UI.setTheme(hour > 7 && hour < 20, "Horaire", hour+"h");
-        if ('AmbientLightSensor' in window) {
-            const sensor = new AmbientLightSensor();
-            sensor.onreading = () => UI.setTheme(sensor.illuminance > 60, "Lux", Math.round(sensor.illuminance));
-            sensor.start();
+        // Fix météo corrigé[cite: 1]
+        function updateWeather(lat, lon) {
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+            .then(r => r.json()).then(d => {
+                document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature) + "°C";
+                document.getElementById('weather-wind').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
+                STATE.weatherInit = true;
+            }).catch(e => console.error("Meteo error", e));
         }
 
+        const hour = new Date().getHours();
+        UI.setTheme(hour > 7 && hour < 20, "Horaire", hour+"h");
+        
         navigator.geolocation.watchPosition(pos => {
             STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
             let kmh = Math.round((pos.coords.speed || 0) * 3.6);
@@ -229,15 +234,10 @@
                 if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                 STATE.gpx.prev = pt;
             }
-            if(STATE.gps.count === 1) {
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r=>r.json()).then(d=>{
-                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                    document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
-                });
-            }
+            if(!STATE.weatherInit) updateWeather(STATE.gps.lat, STATE.gps.lon);
             UI.update();
         }, null, { enableHighAccuracy: true });
+
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
 </body>
