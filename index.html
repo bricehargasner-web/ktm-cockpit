@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.12-Sort-Labels",          
+        version: "22.13-Active-Sort",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -24,7 +24,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.12 - Sort Display</title>
+    <title>KTM Dash V22.13 - Active Sort</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -60,6 +60,8 @@
         .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
+        .sort-btn { cursor: pointer; text-decoration: underline; }
+        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -111,10 +113,11 @@
                 <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
             </div>
             <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
-            <!-- LABELS DE TRI (NOUVEAU)[cite: 1] -->
+            
+            <!-- LABELS DE TRI ACTIFS[cite: 1] -->
             <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
-                <span>Tri par Distance</span>
-                <span>Tri par Prix</span>
+                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
+                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
             </div>
             <div id="stations-list"></div>
         </div>
@@ -133,7 +136,7 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.12</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.13</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Luminosité : -- Lux</div>
@@ -202,9 +205,9 @@
                         nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
                         lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
-                    })).sort((a,b) => (a.prix || 9) - (b.prix || 9));
-                    document.getElementById('stations-labels').style.display = 'flex'; // Affiche les tris[cite: 1]
-                    UI.renderStations();
+                    }));
+                    UI.sortStations('prix'); // Tri par défaut[cite: 1]
+                    document.getElementById('stations-labels').style.display = 'flex';
                 });
             },
             toggleRecording: () => {
@@ -273,6 +276,15 @@
                     document.querySelector('.a4').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
                     document.querySelector('.a5').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
+            },
+            // NOUVELLE FONCTION DE TRI[cite: 1]
+            sortStations: (criteria) => {
+                if (criteria === 'prix') {
+                    STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9));
+                } else {
+                    STATE.stations.sort((a,b) => a.dist - b.dist);
+                }
+                UI.renderStations();
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
