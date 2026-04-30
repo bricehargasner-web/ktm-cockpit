@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
-<!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.9",                 
+        version: "21.11",                // Fix Alignement RESET/CALIB - REC Standard
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
         angleSmoothing: 0.1,             
-        deltaMaxAngle: 15,               
+        deltaMaxAngle: 12,               
         seuilLuxJour: 60,                
         heurePassageNuit: 20,            
         heurePassageJour: 7,             
@@ -21,7 +20,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.9 - Final Precision</title>
+    <title>KTM Dash V21.11 - Visual Balance</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -32,38 +31,52 @@
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
 
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
-        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; }
+        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 85px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
         
-        .row-align { display: flex; align-items: center; justify-content: space-between; height: 65px; }
-        .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
+        .row-align { display: flex; align-items: center; justify-content: center; height: 65px; position: relative; }
+        .val-main { font-size: 4.5rem; line-height: 1; text-align: center; }
         .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
         
-        /* Boutons d'action resserrés et symétriques[cite: 1] */
+        /* RESET & CALIB REPOSITIONNÉS EN HAUT */
         .btn-action { 
-            height: 26px; 
+            position: absolute;
+            top: -5px; 
+            right: 0;
+            height: 24px; 
             width: auto; 
-            min-width: 55px;
-            padding: 0 5px;
+            min-width: 50px;
+            padding: 0 6px;
             font-weight: bold; 
             border: 0.5px solid var(--ktm-orange); 
             color: var(--ktm-orange); 
-            background: transparent; 
+            background: rgba(0,0,0,0.3); 
             cursor: pointer; 
-            font-size: 0.6rem; 
+            font-size: 0.55rem; 
             text-transform: uppercase;
-            margin-top: -12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }
 
-        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
+        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; min-height: 65px; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
         
-        /* Visibilité REC en mode jour[cite: 1] */
-        body.day-mode #btn-rec { color: #000; border-color: #ccc; }
+        /* BOUTON REC STANDARD */
+        #btn-rec {
+            font-size: 0.5rem;
+            height: 18px;
+            padding: 0;
+            width: 100%;
+            margin-top: 2px;
+            border: 0.5px solid var(--ktm-orange);
+            background: #222;
+            color: #fff;
+        }
+
+        body.day-mode #btn-rec { color: #000; border-color: #ccc; background: #ddd; }
 
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
@@ -86,16 +99,16 @@
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
             <div class="row-align">
-                <div style="display:flex; align-items: baseline;"><span id="speed-val" class="val-main impact">0</span><span class="unit impact">KM/H</span></div>
                 <button id="btn-reset-vitesse" class="btn-action" onclick="UI.resetSpeed()">RESET</button>
+                <div style="display:flex; align-items: baseline;"><span id="speed-val" class="val-main impact">0</span><span class="unit impact">KM/H</span></div>
             </div>
         </div>
 
         <div class="panel">
             <div class="title">Inclinaison</div>
             <div class="row-align">
-                <div style="display:flex; align-items: baseline;"><span id="angle-val" class="val-main impact">0</span><span class="unit impact">°</span></div>
                 <button id="btn-calibrer" class="btn-action" onclick="CORE.calibrateGyro()">CALIB</button>
+                <div style="display:flex; align-items: baseline;"><span id="angle-val" class="val-main impact">0</span><span class="unit impact">°</span></div>
             </div>
         </div>
 
@@ -108,7 +121,7 @@
             <div class="tool-item" style="text-align:center">
                 <div class="title" style="font-size:0.5rem">Trace GPX</div>
                 <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
-                <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.5rem; height:18px; padding:0; width:100%;">REC</button>
+                <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
             </div>
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; align-items:center; justify-content:center;">
                 <span style="font-size:1.6rem;">🔧</span>
