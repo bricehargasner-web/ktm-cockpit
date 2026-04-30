@@ -3,15 +3,15 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.19-Axis-Corrected",          
+        version: "22.20-Face-User-Fix",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 45,               
         angleSeuilPalier: 10,            
-        // --- PARAMETRES DE PRECISION ---
         angleZoneMorte: 2,               
-        axeInclinaison: 'gamma',         // Correction pour mode paysage horizontal[cite: 1]
+        // --- AXE DÉDIÉ FACE UTILISATEUR ---
+        axeInclinaison: 'gamma',         
         angleSmoothing: 0.15,             
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
@@ -21,7 +21,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.19 - Axis Fix</title>
+    <title>KTM Dash V22.20</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -58,7 +58,7 @@
     <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button></div>
 
     <div id="dashboard" style="display: none;">
-        <!-- VITESSE -->
+        <!-- VITESSE GPS -->
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
             <div class="main-display">
@@ -71,9 +71,9 @@
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- ANGLE RE-AXÉ -->
+        <!-- ANGLE FACE UTILISATEUR -->
         <div class="panel">
-            <div class="title">Inclinaison Landscape</div>
+            <div class="title">Inclinaison Portrait-Horizon</div>
             <div class="main-display">
                 <svg class="bargraph-svg" viewBox="0 0 100 60">
                     <rect class="bar a1" x="0" y="10" width="15" height="50" /><rect class="bar a2" x="20" y="25" width="15" height="35" /><rect class="bar a3" x="40" y="35" width="15" height="25" /><rect class="bar a4" x="60" y="25" width="15" height="35" /><rect class="bar a5" x="80" y="10" width="15" height="50" />
@@ -84,7 +84,7 @@
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- OUTILS -->
+        <!-- OUTILS GPX / SCANNER CARBURANT -->
         <div class="panel tool-grid">
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
             <div class="tool-item" style="text-align:center">
@@ -95,19 +95,18 @@
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
         </div>
 
-        <!-- STATIONS -->
         <div class="panel">
-            <div class="title">Stations</div>
+            <div class="title">Stations Proches</div>
             <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
             <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
-                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri Distance</span>
-                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri Prix</span>
+                <span style="cursor:pointer" onclick="UI.sortStations('dist')">Tri Distance</span>
+                <span style="cursor:pointer" onclick="UI.sortStations('prix')">Tri Prix</span>
             </div>
             <div id="stations-list"></div>
         </div>
     </div>
 
-    <!-- REGLAGES + MOUCHARD -->
+    <!-- REGLAGES -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
@@ -124,7 +123,7 @@
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, max: 0 },
-            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
+            gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
         const CORE = {
@@ -132,26 +131,25 @@
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 
-                // Demande d'autorisation pour iPhone/iOS[cite: 2]
+                // Demande d'autorisation pour capteurs[cite: 2]
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(permissionState => {
-                        if (permissionState === 'granted') { CORE.initGyro(); }
+                    DeviceOrientationEvent.requestPermission().then(res => {
+                        if (res === 'granted') CORE.initGyro();
                     });
                 } else { CORE.initGyro(); }
                 
-                CORE.initLight(); CORE.initGPS();
+                CORE.initGPS();
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    // Utilisation de Gamma pour le roulis en mode paysage[cite: 1]
-                    let roll = e.gamma; 
+                    // Inversion de l'axe Gamma pour le mode paysage face utilisateur[cite: 1]
+                    let roll = e.gamma * -1; 
 
                     if (roll !== null) {
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * roll) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || roll));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         
                         STATE.angle.current = Math.abs(valPure) < CONFIG.angleZoneMorte ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
-                        
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
                     }
@@ -176,7 +174,7 @@
                         dist: UI.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
                     document.getElementById('stations-labels').style.display = 'flex';
-                    UI.sortStations('prix');
+                    UI.sortStations('prix');[cite: 2]
                 });
             },
             calcDist: (l1, n1, l2, n2) => {
