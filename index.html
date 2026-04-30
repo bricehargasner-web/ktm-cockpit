@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.19-Full-Integrity",          
+        version: "22.20-Full-Control",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -23,7 +23,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.19 - Energy Concept</title>
+    <title>KTM Dash V22.20 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -59,6 +59,8 @@
         .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
+        .sort-btn { cursor: pointer; text-decoration: underline; }
+        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -110,23 +112,29 @@
                 <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
             </div>
             <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
+            
+            <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
+                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
+                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
+            </div>
             <div id="stations-list"></div>
         </div>
     </div>
 
-    <!-- REGLAGES + MOUCHARD -->
+    <!-- REGLAGES + DIAGNOSTIC -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
             <label class="title">Carburant</label>
             <select id="cfg-fuel" onchange="UI.saveSettings()">
-                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option>
+                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
             </select>
             <label class="title">Rayon: <span id="radius-val">--</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
+            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.19</div>
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.20</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Lux : --</div>
@@ -152,7 +160,7 @@
                     const sensor = new AmbientLightSensor();
                     sensor.onreading = () => { 
                         STATE.lux = Math.round(sensor.illuminance); 
-                        document.body.classList.toggle('day-mode', STATE.lux > CONFIG.seuilLuxJour);
+                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJou);
                     };
                     sensor.start();
                 }
@@ -164,16 +172,12 @@
 
                     if (rawBeta !== null) {
                         if (rawGamma > CONFIG.rejectionTangage) {
-                            STATE.angle.current = 0;
-                            UI.updateBars('angle', 0);
-                            return;
+                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
                         }
-
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         
-                        // Calcul Moyenne Angle[cite: 5]
                         if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
@@ -188,8 +192,6 @@
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                    
-                    // Calcul Moyenne Vitesse[cite: 5]
                     if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
@@ -217,10 +219,10 @@
                         lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
-                    UI.renderStations();
+                    UI.sortStations('prix');
+                    document.getElementById('stations-labels').style.display = 'flex';
                 });
             },
-            resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
                 const btn = document.getElementById('btn-rec');
@@ -249,6 +251,8 @@
 
         const UI = {
             syncConfig: () => {
+                document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
+                document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
@@ -259,11 +263,8 @@
                 document.getElementById('angle-val').innerText = STATE.angle.current;
                 document.getElementById('angle-max').innerText = STATE.angle.max;
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
-                
-                // Calcul Moyennes[cite: 5]
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
-                
                 document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
                 document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
                 document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
@@ -281,8 +282,12 @@
                     document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
+            sortStations: (criteria) => {
+                if (criteria === 'prix') { STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9)); }
+                else { STATE.stations.sort((a,b) => a.dist - b.dist); }
+                UI.renderStations();
+            },
             renderStations: () => {
-                STATE.stations.sort((a,b) => a.prix - b.prix);
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div class="st-header">
@@ -299,7 +304,10 @@
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
-            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); }
+            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
+            resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
+            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
+            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
