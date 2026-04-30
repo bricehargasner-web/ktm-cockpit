@@ -3,13 +3,16 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        carburantCible: 'SP98',          
-        rayonRechercheKm: 10,            
-        axeInclinaison: 'beta',          
-        angleSmoothing: 0.1,             
-        deltaMaxAngle: 12,               
+        carburantCible: 'SP98',          // SP98, SP95, E10, Gazole, E85[cite: 1]
+        rayonRechercheKm: 20,            // Rayon de scan par défaut[cite: 1]
+        axeInclinaison: 'beta',          // beta (X) pour usage paysage[cite: 1]
+        angleSmoothing: 0.1,             // Lissage gyroscope moto[cite: 1]
+        deltaMaxAngle: 15,               // Filtre anti-vibrations (Delta Max)[cite: 1]
+        seuilLuxJour: 60,                // Seuil capteur luminosité (Plein soleil)[cite: 1]
+        heurePassageNuit: 20,            // Heure forcée mode nuit[cite: 1]
+        heurePassageJour: 7,             // Heure forcée mode jour[cite: 1]
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
-        refreshRate: 300,                
+        refreshRate: 300,                // Fréquence rafraîchissement UI
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
     };
 </script>
@@ -17,7 +20,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V18.2 - Energy Concept</title>
+    <title>KTM Dash V18.3 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -35,9 +38,7 @@
         body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
-        /* Correction visibilité ville en mode jour[cite: 1] */
         .station-item strong { color: var(--text-main); }
-        .station-actions { display: flex; gap: 4px; margin-top: 8px; }
         .rec-active { background: #ff0000 !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
@@ -64,7 +65,7 @@
         <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title">Météo Radar</div>
-                <div style="font-size:1.1rem; font-weight:bold;"><span id="weather-temp">--</span></div>
+                <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
                 <div id="weather-wind" style="font-size:0.65rem; color:var(--text-dim)">Vent: -- km/h</div>
             </div>
             <div style="text-align:right">
@@ -75,7 +76,6 @@
         </div>
 
         <div class="panel">
-            <!-- Ajout des infos de recherche dans le titre[cite: 1] -->
             <div class="title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>] <span id="ui-info-radius">--</span>KM</span>
                 <span onclick="UI.openSettings()" style="cursor:pointer; color:var(--ktm-orange)">⚙️ RÉGLAGES</span>
@@ -94,7 +94,7 @@
             </select>
             <label class="title" style="display:block; margin-top:15px;">Rayon: <span id="radius-val">20</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" value="20" oninput="UI.updateRadius(this.value)" style="width:100%;">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">MODE JOUR/NUIT</button>
+            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">MODE JOUR/NUIT MANUEL</button>
         </div>
         <div id="diag-box" style="margin-top:10px; font-family:monospace; font-size:0.65rem; color:#0f0;"></div>
     </div>
@@ -104,7 +104,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], sortBy: 'price', weatherInit: false
+            stations: [], weatherInit: false
         };
 
         const CORE = {
@@ -144,7 +144,7 @@
                 const blob = new Blob([xml], {type: 'application/gpx+xml'});
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `Trace_KTM_${new Date().toISOString().slice(0,10)}.gpx`;
+                a.download = `Trace_Moto.gpx`;
                 a.click();
                 STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
             },
@@ -189,7 +189,7 @@
                     <div class="station-item">
                         <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange); font-weight:bold;">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
                         <div style="font-size:0.6rem; color:var(--text-dim);">${s.dist.toFixed(1)} km - ${s.adresse}</div>
-                        <div class="station-actions" style="display:flex; gap:4px; margin-top:5px;">
+                        <div style="display:flex; gap:4px; margin-top:5px;">
                             <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
                             <button style="flex:1; font-size:0.6rem;" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
@@ -209,19 +209,18 @@
             }
         };
 
-        // Fix météo corrigé[cite: 1]
-        function updateWeather(lat, lon) {
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-            .then(r => r.json()).then(d => {
-                document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature) + "°C";
-                document.getElementById('weather-wind').innerText = "Vent: " + Math.round(d.current_weather.windspeed) + " km/h";
-                STATE.weatherInit = true;
-            }).catch(e => console.error("Meteo error", e));
-        }
+        const initTheme = () => {
+            const hour = new Date().getHours();
+            const isDayTime = (hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
+            UI.setTheme(isDayTime, "Horaire", hour+"h");
+            if ('AmbientLightSensor' in window) {
+                const sensor = new AmbientLightSensor();
+                sensor.onreading = () => UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour, "Lux", Math.round(sensor.illuminance));
+                sensor.start();
+            }
+        };
+        initTheme();
 
-        const hour = new Date().getHours();
-        UI.setTheme(hour > 7 && hour < 20, "Horaire", hour+"h");
-        
         navigator.geolocation.watchPosition(pos => {
             STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
             let kmh = Math.round((pos.coords.speed || 0) * 3.6);
@@ -234,10 +233,16 @@
                 if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                 STATE.gpx.prev = pt;
             }
-            if(!STATE.weatherInit) updateWeather(STATE.gps.lat, STATE.gps.lon);
+            if(!STATE.weatherInit) {
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                    document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
+                    STATE.weatherInit = true;
+                });
+            }
             UI.update();
         }, null, { enableHighAccuracy: true });
-
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
 </body>
