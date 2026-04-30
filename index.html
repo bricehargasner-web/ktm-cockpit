@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.5-Final",           
+        version: "21.6",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,33 +21,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.5 - Contrôle Final</title>
+    <title>KTM Dash V21.6 - Weather Fix</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
-        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
-
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
-        
-        /* Alignement Horizontal Valeur + Bouton Compact */
         .row-align { display: flex; align-items: center; justify-content: space-between; height: 65px; }
         .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
         .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
-        
-        /* Boutons d'action compacts */
         .btn-action { height: 30px; width: 65px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; }
-
-        /* Zone Multi-Outils (Météo / GPX / Clé réglages) */
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
-        
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
@@ -55,36 +46,25 @@
 </head>
 
 <body>
-    <div id="start-overlay">
-        <button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button>
-    </div>
+    <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button></div>
 
     <div id="dashboard">
-        <!-- VITESSE + RESET HORIZONTAL -->
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
             <div class="row-align">
-                <div style="display:flex; align-items: baseline;">
-                    <span id="speed-val" class="val-main impact">0</span>
-                    <span class="unit impact">KM/H</span>
-                </div>
+                <div style="display:flex; align-items: baseline;"><span id="speed-val" class="val-main impact">0</span><span class="unit impact">KM/H</span></div>
                 <button id="btn-reset-vitesse" class="btn-action" onclick="UI.resetSpeed()">RESET</button>
             </div>
         </div>
 
-        <!-- ANGLE + CALIBRER HORIZONTAL -->
         <div class="panel">
             <div class="title">Inclinaison</div>
             <div class="row-align">
-                <div style="display:flex; align-items: baseline;">
-                    <span id="angle-val" class="val-main impact">0</span>
-                    <span class="unit impact">°</span>
-                </div>
+                <div style="display:flex; align-items: baseline;"><span id="angle-val" class="val-main impact">0</span><span class="unit impact">°</span></div>
                 <button id="btn-calibrer" class="btn-action" onclick="CORE.calibrateGyro()">CALIB</button>
             </div>
         </div>
 
-        <!-- ZONE RADAR / GPX / RÉGLAGES (Clé à molette) -->
         <div class="panel tool-grid">
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title" style="font-size:0.5rem">Météo Radar</div>
@@ -102,7 +82,6 @@
             </div>
         </div>
 
-        <!-- CARBURANT -->
         <div class="panel">
             <div class="title" style="display:flex; justify-content:space-between;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
@@ -113,7 +92,6 @@
         </div>
     </div>
 
-    <!-- MODAL DIAGNOSTIC -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div style="background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px;">
@@ -126,10 +104,9 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.5 [Certifié]</div>
-            <div id="diag-rec" class="diag-line">Enregistreur GPX : --</div>
-            <div id="diag-audit" class="diag-line">Boutons & Axes : --</div>
-            <div id="diag-gps" class="diag-line">GPS Status : --</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.6</div>
+            <div id="diag-meteo" class="diag-line">Météo API : En attente...</div>
+            <div id="diag-gps" class="diag-line">Signal GPS : Recherche...</div>
         </div>
     </div>
 
@@ -138,15 +115,14 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], lux: 0
+            stations: [], lux: 0, weatherInit: false
         };
 
         const CORE = {
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
-                UI.syncConfig(); 
-                CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                UI.update();
+                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                setInterval(CORE.checkWeatherQueue, 10000); // Tente la météo toutes les 10s[cite: 1]
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
@@ -182,7 +158,24 @@
                         if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                         STATE.gpx.prev = pt;
                     }
+                    if(!STATE.weatherInit) CORE.checkWeatherQueue(); // Tente dès qu'un point arrive[cite: 1]
                 }, null, { enableHighAccuracy: true });
+            },
+            // GESTION RÉSILIENTE DE LA MÉTÉO[cite: 1]
+            checkWeatherQueue: () => {
+                if (STATE.weatherInit || !STATE.gps.lat) {
+                    document.getElementById('diag-meteo').innerText = "Météo API : Attente signal GPS...";
+                    return;
+                }
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                    document.getElementById('weather-wind').innerText = Math.round(d.current_weather.windspeed)+" km/h";
+                    STATE.weatherInit = true;
+                    document.getElementById('diag-meteo').innerText = "Météo API : OPÉRATIONNELLE";
+                }).catch(() => {
+                    document.getElementById('diag-meteo').innerText = "Météo API : Erreur (Nouvelle tentative...)";
+                });
             },
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
@@ -195,7 +188,6 @@
                     if (STATE.gpx.points.length > 0) CORE.saveGPX();
                 }
             },
-            // SAUVEGARDE GPX RÉTABLIE
             saveGPX: () => {
                 let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
                 STATE.gpx.points.forEach(p => {
@@ -240,19 +232,13 @@
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-                
-                // Rapport d'Audit Clinique
-                document.getElementById('diag-rec').innerText = `Enregistreur GPX : ${typeof CORE.saveGPX === 'function' ? 'OPÉRATIONNEL' : 'ERREUR'}`;
-                document.getElementById('diag-audit').innerText = `Structure Axes : ALIGNEMENT OK | BOUTONS COMPACTS OK`;
-                document.getElementById('diag-gps').innerText = `GPS : Fix ${STATE.gps.lat?'OK':'NO'} | Acc ${Math.round(STATE.gps.acc)}m`;
+                document.getElementById('diag-gps').innerText = `Signal GPS : Fix ${STATE.gps.lat?'OK':'NO'} | Acc ${Math.round(STATE.gps.acc)}m`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange)">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
-                        <div style="display:flex; gap:4px; margin-top:5px;">
-                            <button style="flex:1; padding:5px;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                        </div>
+                        <div style="display:flex; gap:4px; margin-top:5px;"><button style="flex:1; padding:5px;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button></div>
                     </div>`).join('');
             },
             openSettings: () => { document.getElementById('settings-modal').style.display = 'flex'; },
