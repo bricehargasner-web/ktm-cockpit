@@ -3,17 +3,17 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.14-Axis-Stabilized",          
+        version: "22.15-Pitch-Filter",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         // --- PARAMETRES DE STABILISATION ---
         vitesseMaxGraph: 150,            
         angleMaxGraph: 45,               
         angleSeuilPalier: 10,            
-        angleZoneMorte: 3,               // Ignore les inclinaisons < 3°[cite: 1]
-        rejectionTangage: 20,            // Ignore l'angle si le tel penche > 20° av/ar[cite: 1]
+        angleZoneMorte: 3,               
+        rejectionTangage: 25,            // Seuil d'annulation si basculement av/ar
         // -----------------------------------
-        axeInclinaison: 'beta',          
+        axeInclinaison: 'beta',          // Mode paysage (bord droit en bas)
         angleSmoothing: 0.15,             
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
@@ -23,7 +23,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.14 - Stability</title>
+    <title>KTM Dash V22.15 - Pitch Filter</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -33,6 +33,7 @@
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 110px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
+        .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
         .main-display { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; height: 65px; position: relative; }
         .bargraph-svg { width: 75px; height: 50px; }
@@ -73,9 +74,9 @@
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- ANGLE STABILISÉ -->
+        <!-- ANGLE -->
         <div class="panel">
-            <div class="title">Inclinaison Stabilisée</div>
+            <div class="title">Inclinaison Landscape</div>
             <div class="main-display">
                 <svg class="bargraph-svg" viewBox="0 0 100 60">
                     <rect class="bar a1" x="0" y="10" width="15" height="50" /><rect class="bar a2" x="20" y="25" width="15" height="35" /><rect class="bar a3" x="40" y="35" width="15" height="25" /><rect class="bar a4" x="60" y="25" width="15" height="35" /><rect class="bar a5" x="80" y="10" width="15" height="50" />
@@ -97,7 +98,7 @@
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
         </div>
 
-        <!-- STATIONS AVEC TRI -->
+        <!-- STATIONS -->
         <div class="panel">
             <div class="title" style="display:flex; justify-content:space-between;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
@@ -125,7 +126,7 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.14</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.15</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Luminosité : -- Lux</div>
@@ -147,17 +148,21 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let roll = e.beta; // Inclinaison virage[cite: 1]
-                    let pitch = Math.abs(e.gamma); // Tangage (av/ar)[cite: 1]
+                    let roll = e.beta; // Inclinaison virage
+                    let pitch = Math.abs(e.gamma); // Basculement av/ar
 
                     if (roll !== null) {
-                        // REJECTION D'AXE : Si le tangage est trop fort, on fige la mesure[cite: 1]
-                        if (pitch > CONFIG.rejectionTangage) return;
+                        // REJECTION SYMÉTRIQUE : On ignore si le tel bascule trop vers l'écran ou l'arrière
+                        if (pitch > CONFIG.rejectionTangage) {
+                            STATE.angle.current = 0;
+                            UI.updateBars('angle', 0);
+                            return;
+                        }
 
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * roll) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || roll));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         
-                        // ZONE MORTE : On ignore les petits mouvements[cite: 1]
+                        // ZONE MORTE
                         if (Math.abs(valPure) < CONFIG.angleZoneMorte) {
                             STATE.angle.current = 0;
                         } else {
@@ -196,17 +201,17 @@
                 const btn = document.getElementById('btn-rec');
                 btn.innerText = STATE.gpx.active ? "STOP" : "REC";
                 btn.style.background = STATE.gpx.active ? "#f00" : "#222";
+            },
+            calcDist: (l1, n1, l2, n2) => {
+                const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             }
         };
 
         const UI = {
             syncConfig: () => {
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
-            },
-            calcDist: (l1, n1, l2, n2) => {
-                const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             },
             sortStations: (crit) => {
                 STATE.stations.sort((a,b) => crit === 'prix' ? (a.prix - b.prix) : (a.dist - b.dist));
@@ -219,6 +224,10 @@
                             <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
                             <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'NC'}</div><div class="st-dist">${s.dist.toFixed(1)} km</div></div>
                         </div>
+                        <div class="st-nav">
+                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                        </div>
                     </div>`).join('');
             },
             updateBars: (type, val) => {
@@ -227,7 +236,7 @@
                     for(let i=1; i<=5; i++) document.querySelector(`.b${i}`).classList.toggle('active', p >= (i*20));
                 } else {
                     const absVal = Math.abs(val);
-                    document.querySelector('.a3').classList.add('active');
+                    document.querySelector('.a3').classList.toggle('active', true);
                     document.querySelector('.a2').classList.toggle('active', val < -CONFIG.angleZoneMorte && absVal > CONFIG.angleSeuilPalier);
                     document.querySelector('.a1').classList.toggle('active', val < -CONFIG.angleZoneMorte && absVal > (CONFIG.angleSeuilPalier * 2));
                     document.querySelector('.a4').classList.toggle('active', val > CONFIG.angleZoneMorte && absVal > CONFIG.angleSeuilPalier);
@@ -241,7 +250,9 @@
             },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
-            resetSpeed: () => STATE.gps.max = 0
+            resetSpeed: () => STATE.gps.max = 0,
+            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
+            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
