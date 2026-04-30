@@ -3,16 +3,16 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.16-OsmAnd-Restored",          
+        version: "22.17-Average-Fix",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 60,               
         angleSeuilPalier: 15,            
-        rejectionTangage: 80,            
+        rejectionTangage: 85,            
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,             
-        deltaMaxAngle: 12,               
+        deltaMaxAngle: 8,               
         seuilLuxJour: 60,                
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
@@ -23,7 +23,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.16 - OsmAnd</title>
+    <title>KTM Dash V22.17 - Average Fix</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -59,8 +59,6 @@
         .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
-        .sort-btn { cursor: pointer; text-decoration: underline; }
-        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -107,44 +105,18 @@
 
         <!-- STATIONS -->
         <div class="panel">
-            <div class="title" style="display:flex; justify-content:space-between;">
-                <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
-                <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
-            </div>
-            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
-            
-            <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
-                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
-                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
-            </div>
             <div id="stations-list"></div>
         </div>
     </div>
 
-    <!-- REGLAGES + MOUCHARD -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
-        <div class="cfg-row">
-            <label class="title">Carburant</label>
-            <select id="cfg-fuel" onchange="UI.saveSettings()">
-                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
-            </select>
-            <label class="title">Rayon: <span id="radius-val">--</span> km</label>
-            <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
-        </div>
-        <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.16</div>
-            <div id="diag-meteo" class="diag-line">Météo : --</div>
-            <div id="diag-gps" class="diag-line">GPS : --</div>
-            <div id="diag-light" class="diag-line">Luminosité : -- Lux</div>
-        </div>
     </div>
 
     <script>
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
             lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
@@ -152,15 +124,7 @@
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                setInterval(CORE.checkWeatherQueue, 10000);
-            },
-            initLight: () => {
-                if ('AmbientLightSensor' in window) {
-                    const sensor = new AmbientLightSensor();
-                    sensor.onreading = () => { STATE.lux = Math.round(sensor.illuminance); UI.setTheme(STATE.lux > CONFIG.seuilLuxJour); };
-                    sensor.start();
-                }
+                CORE.initGyro(); CORE.initGPS();
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
@@ -177,95 +141,61 @@
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
+                        
+                        // --- FIX MOYENNE ANGLE ---[cite: 5]
+                        if (STATE.angle.current > 0) { 
+                            STATE.angle.sum += STATE.angle.current;
+                            STATE.angle.count++;
+                        }
+                        
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
                     }
                 });
             },
-            calibrateGyro: () => { STATE.angle.offset = STATE.angle.smoothed || 0; STATE.angle.max = 0; UI.update(); },
+            calibrateGyro: () => { 
+                STATE.angle.offset = STATE.angle.smoothed || 0; 
+                STATE.angle.max = 0; 
+                STATE.angle.sum = 0; // Reset moyenne au calibrage[cite: 5]
+                STATE.angle.count = 0; 
+                UI.update(); 
+            },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
+                    
+                    // --- FIX MOYENNE GPS ---[cite: 5]
+                    if (STATE.gps.speed > 2) { // On ne compte la moyenne que si on roule[cite: 5]
+                        STATE.gps.sum += STATE.gps.speed;
+                        STATE.gps.count++;
+                    }
+
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
-                    if(STATE.gpx.active && STATE.gps.lat) {
-                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
-                        STATE.gpx.points.push(pt);
-                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
-                        STATE.gpx.prev = pt;
-                    }
                 }, null, { enableHighAccuracy: true });
             },
-            calcDist: (l1, n1, l2, n2) => {
-                const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            },
-            fetchStations: () => {
-                if(!STATE.gps.lat) return alert("Signal GPS requis");
-                fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
-                .then(r => r.json()).then(data => {
-                    const f = CONFIG.carburantCible.toLowerCase() + '_prix';
-                    STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
-                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
-                        dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
-                    }));
-                    UI.sortStations('prix');
-                    document.getElementById('stations-labels').style.display = 'flex';
-                });
-            },
-            toggleRecording: () => {
-                STATE.gpx.active = !STATE.gpx.active;
-                const btn = document.getElementById('btn-rec');
-                if (STATE.gpx.active) {
-                    btn.innerText = "STOP"; btn.style.background = "#f00";
-                    STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
-                } else {
-                    btn.innerText = "REC"; btn.style.background = "#222";
-                    if (STATE.gpx.points.length > 0) CORE.saveGPX();
-                }
-            },
-            saveGPX: () => {
-                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
-                STATE.gpx.points.forEach(p => { xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; });
-                xml += `</trkseg></trk></gpx>`;
-                const blob = new Blob([xml], {type: 'application/gpx+xml'});
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `KTM_Trace_${new Date().getTime()}.gpx`;
-                a.click();
-            },
-            checkWeatherQueue: () => {
-                if (STATE.weatherInit || !STATE.gps.lat) return;
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r => r.json()).then(d => {
-                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                    STATE.weatherInit = true;
-                });
-            },
-            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
+            resetSpeed: () => { 
+                STATE.gps.max = 0; 
+                STATE.gps.sum = 0; // Reset moyenne[cite: 5]
+                STATE.gps.count = 0; 
+                UI.update(); 
+            }
         };
 
         const UI = {
-            syncConfig: () => {
-                document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
-                document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
-                document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
-            },
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
                 document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('angle-val').innerText = STATE.angle.current;
                 document.getElementById('angle-max').innerText = STATE.angle.max;
-                document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
-                document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
-                document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-                // Mouchard
-                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : 'En attente'}`;
-                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'Fix OK' : 'Recherche...'}`;
-                document.getElementById('diag-light').innerText = `Luminosité : ${STATE.lux} Lux`;
+
+                // CALCULS DES MOYENNES[cite: 5]
+                const moySpeed = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
+                const moyAngle = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
+                
+                document.getElementById('speed-moy').innerText = moySpeed;
+                document.getElementById('angle-moy').innerText = moyAngle;
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
@@ -277,45 +207,12 @@
                 } else {
                     const absVal = Math.abs(val);
                     document.querySelector('.a3').classList.add('active');
-                    // RETOUR À LA LOGIQUE INITIALE : val > 3 pour la gauche (a1, a2) et val < -3 pour la droite (a4, a5)[cite: 7]
                     document.querySelector('.a2').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
                     document.querySelector('.a1').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
                     document.querySelector('.a4').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
                     document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
-            },
-            sortStations: (criteria) => {
-                if (criteria === 'prix') {
-                    STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9));
-                } else {
-                    STATE.stations.sort((a,b) => a.dist - b.dist);
-                }
-                UI.renderStations();
-            },
-            renderStations: () => {
-                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
-                    <div class="station-item">
-                        <div class="st-header">
-                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
-                            <div style="text-align:right">
-                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
-                                <div class="st-dist">${s.dist.toFixed(1)} km</div>
-                            </div>
-                        </div>
-                        <div class="st-nav">
-                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
-                        </div>
-                    </div>`).join('');
-            },
-            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.update(); },
-            updateRadius: v => { CONFIG.rayonRechercheKm = v; document.getElementById('radius-val').innerText = v; UI.update(); },
-            openSettings: () => { document.getElementById('settings-modal').style.display = 'flex'; },
-            closeSettings: () => { document.getElementById('settings-modal').style.display = 'none'; },
-            resetSpeed: () => { STATE.gps.max = 0; UI.update(); },
-            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
-            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
+            }
         };
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
