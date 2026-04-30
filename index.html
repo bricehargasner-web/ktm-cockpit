@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.7",                 
+        version: "21.8",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,26 +21,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.7 - Station Pro</title>
+    <title>KTM Dash V21.8 - Visual Adjust</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
+        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
+
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+        
         .row-align { display: flex; align-items: center; justify-content: space-between; height: 65px; }
         .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
         .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
-        .btn-action { height: 30px; width: 65px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; }
+        
+        /* Boutons d'action affinés et remontés[cite: 1] */
+        .btn-action { 
+            height: 28px; 
+            width: 60px; 
+            font-weight: bold; 
+            border: 0.5px solid var(--ktm-orange); /* Encadrement réduit[cite: 1] */
+            color: var(--ktm-orange); 
+            background: transparent; 
+            cursor: pointer; 
+            font-size: 0.6rem; 
+            text-transform: uppercase;
+            margin-top: -12px; /* Remontés de quelques mm[cite: 1] */
+        }
+
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
         
-        /* Fiche Station Service[cite: 1] */
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
         .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
@@ -50,7 +66,6 @@
         .st-dist { font-size: 0.7rem; font-weight: bold; }
         .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
         .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; }
-        body.day-mode .btn-nav { background: #eee; color: #000; border-color: #ccc; }
 
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
@@ -115,11 +130,6 @@
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)" style="width:100%;">
             <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">JOUR/NUIT MANUEL</button>
         </div>
-        <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.7</div>
-            <div id="diag-meteo" class="diag-line">Météo : --</div>
-            <div id="diag-gps" class="diag-line">GPS : --</div>
-        </div>
     </div>
 
     <script>
@@ -145,7 +155,6 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
                     let raw = e.beta; 
                     if (raw !== null && !isNaN(raw)) {
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
@@ -162,7 +171,6 @@
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     if(STATE.gpx.active && STATE.gps.lat) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
                         STATE.gpx.points.push(pt);
@@ -201,7 +209,6 @@
                 a.download = `KTM_Trace_${new Date().getTime()}.gpx`;
                 a.click();
             },
-            // Fiches Stations Services Améliorées[cite: 1]
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
@@ -235,21 +242,13 @@
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : 'En attente'}`;
-                document.getElementById('diag-gps').innerText = `GPS : Fix ${STATE.gps.lat?'OK':'NO'}`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div class="st-header">
-                            <div>
-                                <div class="st-name">${s.nom}</div>
-                                <div class="st-city">${s.ville}</div>
-                            </div>
-                            <div style="text-align:right">
-                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
-                                <div class="st-dist">${s.dist.toFixed(1)} km</div>
-                            </div>
+                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
+                            <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div><div class="st-dist">${s.dist.toFixed(1)} km</div></div>
                         </div>
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
