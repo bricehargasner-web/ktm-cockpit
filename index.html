@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.2-Corrected-Axis",    
+        version: "22.3-Landscape-Fix",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         // --- PARAMETRES BARGRAPH ---
@@ -11,7 +11,7 @@
         angleMaxGraph: 45,               
         angleSeuilPalier: 10,            
         // ---------------------------
-        axeInclinaison: 'gamma',         // Correction d'axe pour l'inclinaison latérale[cite: 1]
+        axeInclinaison: 'beta',          // Axe beta pour mode paysage[cite: 1]
         angleSmoothing: 0.1,             
         deltaMaxAngle: 5,               
         seuilLuxJour: 60,                
@@ -26,7 +26,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.2 - Axis Fix</title>
+    <title>KTM Dash V22.3 - Landscape Fix</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -48,18 +48,11 @@
         .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; min-height: 65px; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
-        #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; margin-top: 2px; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; }
+        #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; margin-top: 2px; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; }
         body.day-mode #btn-rec { color: #000; border-color: #ccc; background: #ddd; }
-        .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
-        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
         .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
-        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
-        .st-city { font-size: 0.65rem; color: var(--text-dim); }
-        .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
-        .st-dist { font-size: 0.7rem; font-weight: bold; }
         .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
         .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; }
-        body.day-mode .btn-nav { background: #eee; color: #000; border-color: #ccc; }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
     </style>
 </head>
@@ -93,7 +86,7 @@
                 <svg class="bargraph-svg" viewBox="0 0 100 60">
                     <rect class="bar a1" x="0" y="10" width="15" height="50" />
                     <rect class="bar a2" x="20" y="25" width="15" height="35" />
-                    <rect class="bar a3" x="40" y="35" width="15" height="25" />
+                    <rect class="bar a3" x="40" y="35" width="15" height="25" /> <!-- Centre (0°) -->
                     <rect class="bar a4" x="60" y="25" width="15" height="35" />
                     <rect class="bar a5" x="80" y="10" width="15" height="50" />
                 </svg>
@@ -110,27 +103,24 @@
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
                 <div class="title" style="font-size:0.5rem">Météo Radar</div>
                 <div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div>
-                <div id="weather-wind" style="font-size:0.55rem; color:var(--text-dim)">-- km/h</div>
             </div>
             <div class="tool-item" style="text-align:center">
                 <div class="title" style="font-size:0.5rem">Trace GPX</div>
                 <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
             </div>
-            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; align-items:center; justify-content:center;">
+            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 <span style="font-size:1.6rem;">🔧</span>
             </div>
         </div>
 
-        <div class="panel">
-            <div id="stations-list"></div>
-        </div>
+        <div class="panel"><div id="stations-list"></div></div>
     </div>
 
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div style="background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px;">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:10px;">JOUR/NUIT MANUEL</button>
+            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:10px;">JOUR/NUIT MANUEL</button>
         </div>
     </div>
 
@@ -138,7 +128,7 @@
         const STATE = {
             gps: { lat: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, max: 0, sum: 0, count: 0 },
-            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }
         };
 
         const CORE = {
@@ -156,14 +146,17 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let raw = e.gamma; // Axe corrigé pour l'inclinaison latérale[cite: 1]
+                    let raw = e.beta; // Axe BETA pour paysage[cite: 1]
                     if (raw !== null && !isNaN(raw)) {
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
-                        let valBrute = STATE.angle.smoothed - STATE.angle.offset;
-                        STATE.angle.current = Math.min(Math.round(Math.abs(valBrute)), 85);
+                        let valSignee = STATE.angle.smoothed - STATE.angle.offset;
+                        
+                        // Valeur positive pour l'affichage[cite: 1]
+                        STATE.angle.current = Math.min(Math.round(Math.abs(valSignee)), 85);
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         if(STATE.angle.current > 3) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
-                        UI.updateBars('angle', valBrute);[cite: 1]
+                        
+                        UI.updateBars('angle', valSignee);[cite: 1]
                     }
                 });
             },
@@ -183,14 +176,13 @@
             },
             checkWeatherQueue: () => {
                 if (STATE.weatherInit || !STATE.gps.lat) return;
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lat}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
                     STATE.weatherInit = true;
                 });
             },
-            toggleRecording: () => { /* Logique GPX[cite: 1] */ },
-            fetchStations: () => { /* Logique Stations[cite: 1] */ }
+            toggleRecording: () => { /* Logique GPX[cite: 1] */ }
         };
 
         const UI = {
@@ -209,10 +201,12 @@
                 } else {
                     const absVal = Math.abs(val);
                     document.querySelector('.a3').classList.add('active'); // Centre[cite: 1]
+                    // Inclinaison Négative (Barres a2, a1)[cite: 1]
                     document.querySelector('.a2').classList.toggle('active', val < -2 && absVal > CONFIG.angleSeuilPalier);
                     document.querySelector('.a1').classList.toggle('active', val < -2 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    // Inclinaison Positive (Barres a4, a5)[cite: 1]
                     document.querySelector('.a4').classList.toggle('active', val > 2 && absVal > CONFIG.angleSeuilPalier);
-                    document.querySelector('.a5').classList.toggle('active', val > 2 && absVal > (CONFIG.angleSeuilPalier * 2));[cite: 1]
+                    document.querySelector('.a5').classList.toggle('active', val > 2 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
             resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; UI.update(); },
