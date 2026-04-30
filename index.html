@@ -3,14 +3,14 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.4-Fix-Start",          
+        version: "22.5-Axis-Isolation",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 45,               
         angleSeuilPalier: 10,            
         axeInclinaison: 'beta',          
-        angleSmoothing: 0.1,             
+        angleSmoothing: 0.15,             
         deltaMaxAngle: 5,               
         seuilLuxJour: 60,                
         heurePassageNuit: 20,            
@@ -24,31 +24,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.4 - Start Fix</title>
+    <title>KTM Dash V22.5 - Axis Isolation</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
-        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
-
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 110px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
-        
         .main-display { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; height: 65px; position: relative; }
         .bargraph-svg { width: 75px; height: 50px; }
         .bar { fill: var(--bar-off); transition: fill 0.1s ease; }
         .bar.active { fill: var(--ktm-orange); }
-
         .val-main { font-size: 4.2rem; line-height: 1; text-align: center; font-family: 'Impact', sans-serif; }
         .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; align-self: flex-end; padding-bottom: 10px; }
         .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
-        
         .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
         #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; }
@@ -56,10 +50,7 @@
 </head>
 
 <body>
-    <div id="start-overlay">
-        <button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button>
-        <div id="start-status" style="color: #555; font-size: 0.6rem; margin-top: 10px;">En attente d'interaction...</div>
-    </div>
+    <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button></div>
 
     <div id="dashboard" style="display: none;">
         <div class="panel accent-orange">
@@ -87,46 +78,27 @@
         </div>
 
         <div class="panel tool-grid">
-            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
-                <div class="title" style="font-size:0.5rem">Météo Radar</div>
-                <div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div>
-            </div>
-            <div class="tool-item" style="text-align:center">
-                <div class="title" style="font-size:0.5rem">Trace GPX</div>
-                <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
-                <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
-            </div>
-            <div class="tool-item" style="display:flex; align-items:center; justify-content:center;">
-                <span style="font-size:1.6rem;" onclick="UI.manualToggleTheme()">🔧</span>
-            </div>
+            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
+            <div class="tool-item" style="text-align:center"><div class="title" style="font-size:0.5rem">GPX</div><div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div><button id="btn-rec" onclick="CORE.toggleRecording()">REC</button></div>
+            <div class="tool-item" style="display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;" onclick="UI.manualToggleTheme()">🔧</span></div>
         </div>
+        <!-- SECTION STATIONS SERVICE RESTAURÉE -->
+        <div class="panel"><div id="stations-list"></div></div>
     </div>
 
     <script>
         const STATE = {
-            gps: { lat: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, max: 0, sum: 0, count: 0 },
-            lux: 0, weatherInit: false
+            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }
         };
 
         const CORE = {
-            unlockAll: async () => {
-                const status = document.getElementById('start-status');
-                try {
-                    status.innerText = "Initialisation...";
-                    // Affichage immédiat du dashboard pour éviter le blocage[cite: 1]
-                    document.getElementById('start-overlay').style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'block';
-                    
-                    // Lancement des capteurs un par un
-                    CORE.initGyro();
-                    CORE.initGPS();
-                    CORE.initLight();
-                    setInterval(CORE.checkWeatherQueue, 10000);
-                } catch (e) {
-                    console.error(e);
-                    status.innerText = "Erreur fatale. Rechargez la page.";
-                }
+            unlockAll: () => {
+                document.getElementById('start-overlay').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                setInterval(CORE.checkWeatherQueue, 10000);
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
@@ -137,23 +109,32 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let raw = e.beta; // Axe beta pour paysage[cite: 1]
-                    if (raw !== null && !isNaN(raw)) {
-                        STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
-                        let valSignee = STATE.angle.smoothed - STATE.angle.offset;
-                        STATE.angle.current = Math.min(Math.round(Math.abs(valSignee)), 85);
+                    // Isolation du roulis en mode paysage[cite: 1]
+                    // beta = inclinaison latérale si bord droit en haut
+                    // gamma = tangage (avant/arrière) à ignorer
+                    let rawBeta = e.beta;
+                    let rawGamma = e.gamma; 
+
+                    if (rawBeta !== null && !isNaN(rawBeta)) {
+                        // On applique un lissage et on ignore les parasites du tangage
+                        STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
+                        let valPure = STATE.angle.smoothed - STATE.angle.offset;
+                        
+                        // Zone morte de 2° pour éviter les interférences statiques[cite: 1]
+                        STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
+                        
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
-                        UI.updateBars('angle', valSignee);
+                        UI.updateBars('angle', valPure);
                     }
                 });
             },
             calibrateGyro: () => { 
                 STATE.angle.offset = STATE.angle.smoothed || 0; 
-                STATE.angle.max = 0;
+                STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0;
             },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
-                    STATE.gps.lat = pos.coords.latitude;
+                    STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
@@ -161,14 +142,14 @@
             },
             checkWeatherQueue: () => {
                 if (STATE.weatherInit || !STATE.gps.lat) return;
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lat}&current_weather=true`)
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
                     STATE.weatherInit = true;
                 });
             },
-            toggleRecording: () => { /* Logique GPX[cite: 1] */ },
-            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}`, '_blank'); }
+            toggleRecording: () => { /* Logique GPX standard[cite: 1] */ },
+            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
         };
 
         const UI = {
@@ -187,12 +168,11 @@
                     }
                 } else {
                     const absVal = Math.abs(val);
-                    const center = document.querySelector('.a3');
-                    if(center) center.classList.add('active');
-                    const a2 = document.querySelector('.a2'); if(a2) a2.classList.toggle('active', val < -2 && absVal > CONFIG.angleSeuilPalier);
-                    const a1 = document.querySelector('.a1'); if(a1) a1.classList.toggle('active', val < -2 && absVal > (CONFIG.angleSeuilPalier * 2));
-                    const a4 = document.querySelector('.a4'); if(a4) a4.classList.toggle('active', val > 2 && absVal > CONFIG.angleSeuilPalier);
-                    const a5 = document.querySelector('.a5'); if(a5) a5.classList.toggle('active', val > 2 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    document.querySelector('.a3').classList.add('active');
+                    document.querySelector('.a2').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a1').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    document.querySelector('.a4').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a5').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
             resetSpeed: () => { STATE.gps.max = 0; UI.update(); },
