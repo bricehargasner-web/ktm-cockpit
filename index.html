@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.18-Full-Clinical",          
+        version: "22.19-Full-Integrity",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -23,7 +23,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.18 - Energy Concept</title>
+    <title>KTM Dash V22.19 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -114,7 +114,7 @@
         </div>
     </div>
 
-    <!-- REGLAGES -->
+    <!-- REGLAGES + MOUCHARD -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
@@ -126,7 +126,8 @@
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.18</div>
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.19</div>
+            <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
@@ -172,7 +173,7 @@
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         
-                        // Echantillonnage Moyenne Angle[cite: 5]
+                        // Calcul Moyenne Angle[cite: 5]
                         if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
@@ -188,7 +189,7 @@
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
                     
-                    // Echantillonnage Moyenne Vitesse[cite: 5]
+                    // Calcul Moyenne Vitesse[cite: 5]
                     if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
@@ -207,6 +208,7 @@
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             },
             fetchStations: () => {
+                if(!STATE.gps.lat) return alert("Signal GPS requis");
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
@@ -233,11 +235,20 @@
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
                 a.download = `Trace_${new Date().getTime()}.gpx`; a.click();
-            }
+            },
+            checkWeatherQueue: () => {
+                if (STATE.weatherInit || !STATE.gps.lat) return;
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                    STATE.weatherInit = true;
+                });
+            },
+            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
         };
 
         const UI = {
-            syncConfig: () => { 
+            syncConfig: () => {
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
@@ -253,8 +264,9 @@
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
                 
-                document.getElementById('diag-gps').innerText = `GPS: ${STATE.gps.lat ? 'FIX' : 'SEARCH'}`;
-                document.getElementById('diag-light').innerText = `Lux: ${STATE.lux}`;
+                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
+                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
+                document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
@@ -275,7 +287,7 @@
                     <div class="station-item">
                         <div class="st-header">
                             <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
-                            <div style="text-align:right"><div class="st-price">${s.prix.toFixed(3)}€</div><div class="st-dist">${s.dist.toFixed(1)}km</div></div>
+                            <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div><div class="st-dist">${s.dist.toFixed(1)}km</div></div>
                         </div>
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
