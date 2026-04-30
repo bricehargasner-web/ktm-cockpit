@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.8",                 
+        version: "21.9",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,7 +21,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.8 - Visual Adjust</title>
+    <title>KTM Dash V21.9 - Final Precision</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -40,23 +40,31 @@
         .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
         .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
         
-        /* Boutons d'action affinés et remontés[cite: 1] */
+        /* Boutons d'action resserrés et symétriques[cite: 1] */
         .btn-action { 
-            height: 28px; 
-            width: 60px; 
+            height: 26px; 
+            width: auto; 
+            min-width: 55px;
+            padding: 0 5px;
             font-weight: bold; 
-            border: 0.5px solid var(--ktm-orange); /* Encadrement réduit[cite: 1] */
+            border: 0.5px solid var(--ktm-orange); 
             color: var(--ktm-orange); 
             background: transparent; 
             cursor: pointer; 
             font-size: 0.6rem; 
             text-transform: uppercase;
-            margin-top: -12px; /* Remontés de quelques mm[cite: 1] */
+            margin-top: -12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
         
+        /* Visibilité REC en mode jour[cite: 1] */
+        body.day-mode #btn-rec { color: #000; border-color: #ccc; }
+
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
         .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
@@ -68,7 +76,6 @@
         .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; }
 
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
-        .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
     </style>
 </head>
 
