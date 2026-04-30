@@ -8,7 +8,7 @@
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,            
         deltaMaxAngle: 15,               
-        seuilLuxJour: 60,                // Seuil Lux configurable ici[cite: 1]
+        seuilLuxJour: 60,                // Seuil pour le mode Jour[cite: 1]
         heurePassageNuit: 20,            
         heurePassageJour: 7,             
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
@@ -20,12 +20,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V19.1 - Lux Diag</title>
+    <title>KTM Dash V19.2 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; min-height: 100vh; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; }
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 6px 10px; position: relative; border-top: 2px solid #333; margin-bottom: 4px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
@@ -38,6 +38,7 @@
         body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        .station-item strong { color: var(--text-main); }
         .rec-active { background: #ff0000 !important; animation: blink 1s infinite; color: #fff !important; }
         @keyframes blink { 50% { opacity: 0.5; } }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
@@ -56,7 +57,7 @@
 
         <div class="panel">
             <button style="position:absolute; top:6px; right:8px; background:var(--ktm-orange); color:#000; border:none; font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER / ACTIVER</button>
-            <div class="title">Inclinaison (Gyro)</div>
+            <div class="title">Inclinaison</div>
             <div class="val-container"><span id="angle-val" class="val-main impact">0</span><span class="val-unit impact">°</span></div>
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
@@ -86,24 +87,12 @@
 
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="margin-bottom:15px; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
-        
-        <div style="background:#111; padding:12px; border:1px solid var(--ktm-orange); margin-bottom:15px;">
-            <label class="title">Carburant</label>
-            <select id="cfg-fuel" onchange="UI.saveSettings()" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; margin:5px 0;">
-                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
-            </select>
-            <label class="title">Rayon (km) : <span id="cfg-radius-val">20</span></label>
-            <input type="range" id="cfg-radius" min="5" max="50" step="5" value="20" oninput="UI.saveSettings()" style="width:100%;">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:10px; font-size:0.6rem;">FORCER MODE JOUR/NUIT</button>
-        </div>
-
         <div style="background:#000; padding:10px; border:1px solid #333;">
             <div class="title" style="color:#0f0; margin-bottom:8px;">Mouchard de Diagnostic</div>
-            <div id="diag-light" class="diag-line">Lux : En attente capteur...</div>
-            <div id="diag-gyro" class="diag-line">Gyro : Attente données...</div>
-            <div id="diag-gps" class="diag-line">GPS : Recherche fix...</div>
-            <div id="diag-meteo" class="diag-line">Météo : Non initialisée</div>
-            <div id="diag-theme" class="diag-line">Thème : Init...</div>
+            <div id="diag-light" class="diag-line">Lux : --</div>
+            <div id="diag-gyro" class="diag-line">Gyro : Attente...</div>
+            <div id="diag-gps" class="diag-line">GPS : Recherche...</div>
+            <div id="diag-meteo" class="diag-line">Météo : --</div>
         </div>
     </div>
 
@@ -112,8 +101,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], weatherStatus: 'Attente GPS',
-            lux: 0, luxSource: 'N/A'
+            stations: [], weatherStatus: 'Init...', lux: 0, luxSource: 'Init...'
         };
 
         const CORE = {
@@ -122,7 +110,7 @@
                 let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
                 if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
                 STATE.angle.lastValid = val;
-                STATE.angle.current = Math.min(Math.round(val), CONFIG.limiteAngle || 85);
+                STATE.angle.current = Math.min(Math.round(val), 85);
                 if(STATE.angle.current > 3) {
                     if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                     STATE.angle.sum += STATE.angle.current; STATE.angle.count++;
@@ -156,9 +144,8 @@
                 const blob = new Blob([xml], {type: 'application/gpx+xml'});
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `Trace_KTM_${new Date().getTime()}.gpx`;
+                a.download = `Trace_KTM.gpx`;
                 a.click();
-                STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
             },
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
@@ -195,13 +182,11 @@
                 document.getElementById('gpx-dist').innerHTML = `${STATE.gpx.distance.toFixed(1)} <small>KM</small>`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-
-                // Mouchard de Diagnostic enrichi avec LUX[cite: 1]
-                document.getElementById('diag-light').innerText = `Luminosité : ${Math.round(STATE.lux)} Lux (${STATE.luxSource})`;
-                document.getElementById('diag-gyro').innerText = `Gyro: B:${Math.round(STATE.angle.rawB)} G:${Math.round(STATE.angle.rawG)} | Off:${Math.round(STATE.angle.offset)}`;
-                document.getElementById('diag-gps').innerText = `GPS: Fix:${STATE.gps.lat ? 'OK' : 'NO'} | Acc:${Math.round(STATE.gps.acc)}m`;
-                document.getElementById('diag-meteo').innerText = `Météo: ${STATE.weatherStatus}`;
-                document.getElementById('diag-theme').innerText = `Thème: ${document.body.classList.contains('day-mode') ? 'JOUR' : 'NUIT'} (Seuil:${CONFIG.seuilLuxJour})`;
+                
+                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)} (${STATE.luxSource})`;
+                document.getElementById('diag-gyro').innerText = `Gyro : B:${Math.round(STATE.angle.rawB)} G:${Math.round(STATE.angle.rawG)}`;
+                document.getElementById('diag-gps').innerText = `GPS : Fix:${STATE.gps.lat?'OK':'NO'} | Acc:${Math.round(STATE.gps.acc)}m`;
+                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherStatus}`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
@@ -216,20 +201,30 @@
                     </div>
                 `).join('');
             },
-            openSettings: () => { document.getElementById('cfg-radius-val').innerText = CONFIG.rayonRechercheKm; document.getElementById('settings-modal').style.display = 'flex'; },
+            openSettings: () => { document.getElementById('settings-modal').style.display = 'flex'; },
             closeSettings: () => { document.getElementById('settings-modal').style.display = 'none'; },
-            saveSettings: () => {
-                CONFIG.carburantCible = document.getElementById('cfg-fuel').value;
-                CONFIG.rayonRechercheKm = document.getElementById('cfg-radius').value;
-                document.getElementById('cfg-radius-val').innerText = CONFIG.rayonRechercheKm;
-                UI.update();
-            },
             resetSpeed: () => { STATE.gps.max = STATE.gps.sum = STATE.gps.count = 0; UI.update(); },
-            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
 
-        // GPS & MÉTÉO[cite: 1, 2]
+        // GESTION LUMIÈRE[cite: 1]
+        const hour = new Date().getHours();
+        const isDayTime = (hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
+        UI.setTheme(isDayTime);
+        STATE.luxSource = "Horaire";
+
+        if ('AmbientLightSensor' in window) {
+            try {
+                const sensor = new AmbientLightSensor();
+                sensor.onreading = () => {
+                    STATE.lux = sensor.illuminance;
+                    STATE.luxSource = "Flux Réel";
+                    UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
+                };
+                sensor.start();
+            } catch (e) { STATE.luxSource = "Bloqué/Simulé"; }
+        }
+
         navigator.geolocation.watchPosition(pos => {
             STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
             let kmh = Math.round((pos.coords.speed || 0) * 3.6);
@@ -243,34 +238,15 @@
                 STATE.gpx.prev = pt;
             }
             if(!STATE.weatherInit && STATE.gps.lat) {
-                STATE.weatherStatus = 'Chargement...';
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
                     document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
                     STATE.weatherStatus = 'OK'; STATE.weatherInit = true;
-                }).catch(() => STATE.weatherStatus = 'Erreur API');
+                }).catch(() => STATE.weatherStatus = 'Err API');
             }
             UI.update();
         }, null, { enableHighAccuracy: true });
-
-        // GESTION LUMIÈRE AVEC MOUCHARD LUX[cite: 1]
-        const hour = new Date().getHours();
-        const isDayTime = (hour >= CONFIG.heurePassageJour && hour < CONFIG.heurePassageNuit);
-        UI.setTheme(isDayTime);
-        STATE.luxSource = "Horaire";
-
-        if ('AmbientLightSensor' in window) {
-            try {
-                const sensor = new AmbientLightSensor();
-                sensor.onreading = () => {
-                    STATE.lux = sensor.illuminance;
-                    STATE.luxSource = "Capteur Matériel";
-                    UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
-                };
-                sensor.start();
-            } catch (e) { STATE.luxSource = "Bloqué/Incompatible"; }
-        }
 
         CORE.initGyro();
         setInterval(UI.update, CONFIG.refreshRate);
