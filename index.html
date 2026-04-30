@@ -277,11 +277,11 @@
                 } else {
                     const absVal = Math.abs(val);
                     document.querySelector('.a3').classList.add('active');
-                    // LOGIQUE RECTIFIÉE : val < -3 pour la gauche (a1, a2) et val > 3 pour la droite (a4, a5)[cite: 7]
-                    document.querySelector('.a2').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
-                    document.querySelector('.a1').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
-                    document.querySelector('.a4').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
-                    document.querySelector('.a5').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    // RETOUR À LA LOGIQUE INITIALE : val > 3 pour la gauche (a1, a2) et val < -3 pour la droite (a4, a5)[cite: 7]
+                    document.querySelector('.a2').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a1').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    document.querySelector('.a4').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
             sortStations: (criteria) => {
