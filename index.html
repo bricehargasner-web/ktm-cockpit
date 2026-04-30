@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.6",                 
+        version: "21.7",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,7 +21,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.6 - Weather Fix</title>
+    <title>KTM Dash V21.7 - Station Pro</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -39,7 +39,19 @@
         .btn-action { height: 30px; width: 65px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; }
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
-        .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
+        
+        /* Fiche Station Service[cite: 1] */
+        .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
+        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
+        .st-city { font-size: 0.65rem; color: var(--text-dim); }
+        .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
+        .st-dist { font-size: 0.7rem; font-weight: bold; }
+        .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
+        .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; }
+        body.day-mode .btn-nav { background: #eee; color: #000; border-color: #ccc; }
+
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
     </style>
@@ -104,9 +116,9 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.6</div>
-            <div id="diag-meteo" class="diag-line">Météo API : En attente...</div>
-            <div id="diag-gps" class="diag-line">Signal GPS : Recherche...</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V21.7</div>
+            <div id="diag-meteo" class="diag-line">Météo : --</div>
+            <div id="diag-gps" class="diag-line">GPS : --</div>
         </div>
     </div>
 
@@ -122,7 +134,7 @@
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                setInterval(CORE.checkWeatherQueue, 10000); // Tente la météo toutes les 10s[cite: 1]
+                setInterval(CORE.checkWeatherQueue, 10000);
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
@@ -151,30 +163,21 @@
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
-                    
                     if(STATE.gpx.active && STATE.gps.lat) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
                         STATE.gpx.points.push(pt);
                         if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                         STATE.gpx.prev = pt;
                     }
-                    if(!STATE.weatherInit) CORE.checkWeatherQueue(); // Tente dès qu'un point arrive[cite: 1]
                 }, null, { enableHighAccuracy: true });
             },
-            // GESTION RÉSILIENTE DE LA MÉTÉO[cite: 1]
             checkWeatherQueue: () => {
-                if (STATE.weatherInit || !STATE.gps.lat) {
-                    document.getElementById('diag-meteo').innerText = "Météo API : Attente signal GPS...";
-                    return;
-                }
+                if (STATE.weatherInit || !STATE.gps.lat) return;
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
                     document.getElementById('weather-wind').innerText = Math.round(d.current_weather.windspeed)+" km/h";
                     STATE.weatherInit = true;
-                    document.getElementById('diag-meteo').innerText = "Météo API : OPÉRATIONNELLE";
-                }).catch(() => {
-                    document.getElementById('diag-meteo').innerText = "Météo API : Erreur (Nouvelle tentative...)";
                 });
             },
             toggleRecording: () => {
@@ -190,9 +193,7 @@
             },
             saveGPX: () => {
                 let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
-                STATE.gpx.points.forEach(p => {
-                    xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`;
-                });
+                STATE.gpx.points.forEach(p => { xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; });
                 xml += `</trkseg></trk></gpx>`;
                 const blob = new Blob([xml], {type: 'application/gpx+xml'});
                 const a = document.createElement('a');
@@ -200,13 +201,15 @@
                 a.download = `KTM_Trace_${new Date().getTime()}.gpx`;
                 a.click();
             },
+            // Fiches Stations Services Améliorées[cite: 1]
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || r.fields.ville, prix: r.fields[f], lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
+                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
+                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: UI.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     })).sort((a,b) => (a.prix || 9) - (b.prix || 9));
                     UI.renderStations();
@@ -232,13 +235,27 @@
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('diag-gps').innerText = `Signal GPS : Fix ${STATE.gps.lat?'OK':'NO'} | Acc ${Math.round(STATE.gps.acc)}m`;
+                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : 'En attente'}`;
+                document.getElementById('diag-gps').innerText = `GPS : Fix ${STATE.gps.lat?'OK':'NO'}`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
-                        <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange)">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
-                        <div style="display:flex; gap:4px; margin-top:5px;"><button style="flex:1; padding:5px;" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button></div>
+                        <div class="st-header">
+                            <div>
+                                <div class="st-name">${s.nom}</div>
+                                <div class="st-city">${s.ville}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
+                                <div class="st-dist">${s.dist.toFixed(1)} km</div>
+                            </div>
+                        </div>
+                        <div class="st-nav">
+                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
+                        </div>
                     </div>`).join('');
             },
             openSettings: () => { document.getElementById('settings-modal').style.display = 'flex'; },
