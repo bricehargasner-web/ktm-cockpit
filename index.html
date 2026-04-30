@@ -20,47 +20,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V19.9 - Final Fix</title>
+    <title>KTM Dash V19.9 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; }
+        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; }
+        #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
+
+        .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 6px 10px; position: relative; border-top: 2px solid #333; margin-bottom: 4px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
+        
+        /* Alignement Précis[cite: 1] */
         .val-container { display: flex; justify-content: center; align-items: center; height: 60px; }
-        .val-main { font-size: 4rem; text-align: center; width: 130px; line-height: 1; font-family: 'Impact'; }
-        .val-unit { font-size: 1.1rem; color: var(--ktm-orange); width: 60px; margin-left: 5px; font-family: 'Impact'; }
+        .val-main { font-size: 4rem; text-align: center; width: 130px; line-height: 1; }
+        .val-unit { font-size: 1.1rem; color: var(--ktm-orange); width: 60px; margin-left: 5px; }
+        
         .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; background: var(--sub-bg); padding: 4px; margin-top: 4px; border: 1px solid #333; }
         button { background: #222; color: #fff; border: 1px solid #444; padding: 8px; cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.7rem; }
         body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
+        
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        .station-item strong { color: var(--text-main); }
+        
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
+        body.day-mode #settings-modal { background: rgba(255,255,255,0.98); }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px; }
     </style>
 </head>
 
 <body>
     <div id="start-overlay">
-        <button id="btn-start" onclick="CORE.unlockAll()">DEMARRER DASHBOARD</button>
+        <button id="btn-start" onclick="CORE.unlockAll()">DÉMARRER V19.9</button>
     </div>
 
     <div id="dashboard">
         <div class="panel accent-orange">
             <button style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.5rem; padding:2px 5px;" onclick="UI.resetSpeed()">RESET</button>
             <div class="title">Vitesse GPS</div>
-            <div class="val-container"><span id="speed-val" class="val-main">0</span><span class="val-unit">KM/H</span></div>
+            <div class="val-container"><span id="speed-val" class="val-main impact">0</span><span class="val-unit impact">KM/H</span></div>
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
         <div class="panel">
             <button style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER</button>
             <div class="title">Inclinaison</div>
-            <div class="val-container"><span id="angle-val" class="val-main">0</span><span class="val-unit">°</span></div>
+            <div class="val-container"><span id="angle-val" class="val-main impact">0</span><span class="val-unit impact">°</span></div>
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
@@ -80,22 +90,30 @@
         <div class="panel">
             <div class="title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>] <span id="ui-info-radius">--</span>KM</span>
-                <span onclick="UI.openSettings()" style="cursor:pointer; color:var(--ktm-orange)">⚙️ REGLAGES / DIAG</span>
+                <span onclick="UI.openSettings()" style="cursor:pointer; color:var(--ktm-orange)">⚙️ RÉGLAGES</span>
             </div>
-            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border-color: var(--ktm-orange); font-family:'Impact'" class="impact">SCANNER CARBURANT</button>
+            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border-color: var(--ktm-orange);" class="impact">SCANNER CARBURANT</button>
             <div id="stations-list"></div>
         </div>
     </div>
 
+    <!-- RÉGLAGES[cite: 1] -->
     <div id="settings-modal">
-        <button onclick="UI.closeSettings()" style="margin-bottom:15px; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
-        <div style="background:#000; padding:10px; border:1px solid #333;">
-            <div class="title" style="color:#0f0; margin-bottom:8px;">Super Diagnostic V19.9</div>
+        <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
+        <div style="background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px;">
+            <label class="title">Selection Carburant</label>
+            <select id="cfg-fuel" onchange="UI.saveSettings()" style="width:100%; padding:10px; background:#222; color:#fff; border:1px solid #444; margin:5px 0;">
+                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
+            </select>
+            <label class="title" style="display:block; margin-top:10px;">Rayon: <span id="radius-val">20</span> km</label>
+            <input type="range" id="input-radius" min="5" max="50" step="5" value="20" oninput="UI.updateRadius(this.value)" style="width:100%;">
+            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px; font-size:0.6rem;">MODE JOUR/NUIT MANUEL</button>
+        </div>
+        <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
+            <div class="title" style="color:#0f0; margin-bottom:8px;">Mouchard Diagnostic</div>
             <div id="diag-light" class="diag-line">Lux : --</div>
-            <div id="diag-source" class="diag-line">Source Thème : --</div>
             <div id="diag-gyro" class="diag-line">Gyro : Attente...</div>
             <div id="diag-gps" class="diag-line">GPS : Recherche...</div>
-            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:10px; font-size:0.6rem;">TEST MANUEL JOUR/NUIT</button>
         </div>
     </div>
 
@@ -104,7 +122,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, acc: 0 },
             angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], lux: 0, luxSource: 'Recherche...'
+            stations: [], lux: 0, luxSource: 'Init...'
         };
 
         const CORE = {
@@ -120,34 +138,30 @@
                         const sensor = new AmbientLightSensor();
                         sensor.onreading = () => {
                             STATE.lux = sensor.illuminance;
-                            STATE.luxSource = "Capteur Physique";
+                            STATE.luxSource = "Capteur Réel";
                             UI.setTheme(sensor.illuminance > CONFIG.seuilLuxJour);
                         };
-                        sensor.onerror = () => { CORE.fallbackLight("Erreur API"); };
                         sensor.start();
-                    } catch (e) { CORE.fallbackLight("API Bloquée"); }
-                } else { CORE.fallbackLight("Non Supporté"); }
-            },
-            fallbackLight: (reason) => {
-                STATE.luxSource = reason + " (Mode Horaire)";
-                const h = new Date().getHours();
-                UI.setTheme(h >= CONFIG.heurePassageJour && h < CONFIG.heurePassageNuit);
+                    } catch (e) { STATE.luxSource = "Bloqué/Gestured"; }
+                } else { STATE.luxSource = "Non supporté"; }
             },
             initGyro: () => {
-                const handle = (e) => {
-                    STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
-                    let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
-                    if (raw !== null && !isNaN(raw)) {
-                        STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
-                        let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
-                        if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
-                        STATE.angle.lastValid = val;
-                        STATE.angle.current = Math.min(Math.round(val), 85);
-                    }
-                };
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(s => { if(s==='granted') window.addEventListener('deviceorientation', handle, true); });
-                } else { window.addEventListener('deviceorientation', handle, true); }
+                    DeviceOrientationEvent.requestPermission().then(s => {
+                        if (s === 'granted') window.addEventListener('deviceorientation', e => CORE.handleGyro(e), true);
+                    });
+                } else window.addEventListener('deviceorientation', e => CORE.handleGyro(e), true);
+            },
+            handleGyro: (e) => {
+                STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
+                let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
+                if (raw !== null && !isNaN(raw)) {
+                    STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
+                    let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
+                    if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
+                    STATE.angle.lastValid = val;
+                    STATE.angle.current = Math.min(Math.round(val), 85);
+                }
             },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
@@ -193,11 +207,11 @@
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
                 document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('angle-val').innerText = STATE.angle.current;
-                document.getElementById('gpx-dist').innerHTML = `${STATE.gpx.distance.toFixed(1)} <small>KM</small>`;
-                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)}`;
-                document.getElementById('diag-source').innerText = `Source : ${STATE.luxSource}`;
-                document.getElementById('diag-gyro').innerText = `Gyro : ${STATE.angle.rawB ? 'OK' : 'Attente'}`;
-                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'Fix' : 'Recherche'}`;
+                document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
+                document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
+                document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)} (${STATE.luxSource})`;
+                document.getElementById('diag-gyro').innerText = `Gyro : B:${Math.round(STATE.angle.rawB)} G:${Math.round(STATE.angle.rawG)}`;
+                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'Fix OK' : 'Recherche'}`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
@@ -212,8 +226,10 @@
             },
             openSettings: () => { document.getElementById('settings-modal').style.display = 'flex'; },
             closeSettings: () => { document.getElementById('settings-modal').style.display = 'none'; },
+            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.update(); },
+            updateRadius: v => { CONFIG.rayonRechercheKm = v; document.getElementById('radius-val').innerText = v; UI.update(); },
             resetSpeed: () => { STATE.gps.max = STATE.gps.sum = STATE.gps.count = 0; UI.update(); },
-            manualToggleTheme: () => { document.body.classList.toggle('day-mode'); STATE.luxSource = "Manuel (Forcé)"; },
+            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
         setInterval(UI.update, CONFIG.refreshRate);
