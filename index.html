@@ -3,16 +3,16 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        carburantCible: 'SP98',          // SP98, SP95, E10, Gazole, E85[cite: 1]
-        rayonRechercheKm: 20,            // Rayon de scan par défaut[cite: 1]
-        axeInclinaison: 'beta',          // beta (X) pour usage paysage[cite: 1]
-        angleSmoothing: 0.1,             // Lissage gyroscope moto[cite: 1]
-        deltaMaxAngle: 15,               // Filtre anti-vibrations (Delta Max)[cite: 1]
-        seuilLuxJour: 60,                // Seuil capteur luminosité (Plein soleil)[cite: 1]
-        heurePassageNuit: 20,            // Heure forcée mode nuit[cite: 1]
-        heurePassageJour: 7,             // Heure forcée mode jour[cite: 1]
+        carburantCible: 'SP98',          
+        rayonRechercheKm: 20,            
+        axeInclinaison: 'beta',          
+        angleSmoothing: 0.1,             
+        deltaMaxAngle: 15,               
+        seuilLuxJour: 60,                
+        heurePassageNuit: 20,            
+        heurePassageJour: 7,             
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
-        refreshRate: 300,                // Fréquence rafraîchissement UI
+        refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
     };
 </script>
@@ -20,7 +20,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V18.3 - Energy Concept</title>
+    <title>KTM Dash V18.4 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
@@ -102,15 +102,21 @@
     <script>
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0 },
+            angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, initialized: false },
             gpx: { active: false, points: [], distance: 0, prev: null },
             stations: [], weatherInit: false
         };
 
         const CORE = {
             processAngle: (raw) => {
+                // Correction NaN : Initialisation forcée si premier passage
+                if (isNaN(STATE.angle.smoothed)) STATE.angle.smoothed = raw || 0;
+                
                 STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * STATE.angle.smoothed);
                 let val = Math.abs(STATE.angle.smoothed - STATE.angle.offset);
+                
+                if (isNaN(val)) val = 0; // Sécurité finale NaN
+
                 if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid + (Math.sign(val - STATE.angle.lastValid) * 2);
                 STATE.angle.lastValid = val;
                 return Math.min(Math.round(val), CONFIG.limiteAngle);
@@ -119,17 +125,22 @@
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission().then(s => { if(s==='granted') CORE.bind(); });
                 } else CORE.bind();
-                STATE.angle.offset = STATE.angle.smoothed;
+                STATE.angle.offset = STATE.angle.smoothed || 0;
                 STATE.angle.max = STATE.angle.sum = STATE.angle.count = 0;
             },
-            bind: () => { window.addEventListener('deviceorientation', e => {
-                let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
-                STATE.angle.current = CORE.processAngle(raw);
-                if(STATE.angle.current > 3) {
-                    if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
-                    STATE.angle.sum += STATE.angle.current; STATE.angle.count++;
-                }
-            });},
+            bind: () => { 
+                if (STATE.angle.initialized) return;
+                window.addEventListener('deviceorientation', e => {
+                    let raw = (CONFIG.axeInclinaison === 'beta') ? e.beta : e.gamma;
+                    if (raw === null || isNaN(raw)) raw = 0;
+                    STATE.angle.current = CORE.processAngle(raw);
+                    if(STATE.angle.current > 3) {
+                        if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
+                        STATE.angle.sum += STATE.angle.current; STATE.angle.count++;
+                    }
+                });
+                STATE.angle.initialized = true;
+            },
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
                 const btn = document.getElementById('btn-rec');
@@ -177,8 +188,8 @@
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
                 document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
-                document.getElementById('angle-val').innerText = STATE.angle.current;
-                document.getElementById('angle-max').innerText = STATE.angle.max;
+                document.getElementById('angle-val').innerText = isNaN(STATE.angle.current) ? 0 : STATE.angle.current;
+                document.getElementById('angle-max').innerText = isNaN(STATE.angle.max) ? 0 : STATE.angle.max;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
                 document.getElementById('gpx-dist').innerHTML = `${STATE.gpx.distance.toFixed(1)} <small>KM</small>`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
@@ -233,7 +244,7 @@
                 if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                 STATE.gpx.prev = pt;
             }
-            if(!STATE.weatherInit) {
+            if(!STATE.weatherInit && STATE.gps.lat) {
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                 .then(r => r.json()).then(d => {
                     document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
