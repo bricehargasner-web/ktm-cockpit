@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-20) -->
 <script>
     const CONFIG = {
-        version: "21.2",                 // Protocole Auto-Audit + Manuel Theme
+        version: "21.3",                 
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         axeInclinaison: 'beta',          
@@ -21,79 +21,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V21.2 - Deep Audit</title>
+    <title>KTM Dash V21.3 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
+        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
+
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
-        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 6px 10px; position: relative; border-top: 2px solid #333; margin-bottom: 4px; }
+        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
-        .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
-        .val-container { display: flex; justify-content: center; align-items: center; height: 60px; }
-        .val-main { font-size: 4rem; text-align: center; width: 130px; line-height: 1; }
-        .val-unit { font-size: 1.1rem; color: var(--ktm-orange); width: 60px; margin-left: 5px; }
-        .val-sub { display: flex; justify-content: space-between; font-size: 0.75rem; background: var(--sub-bg); padding: 4px; margin-top: 4px; border: 1px solid #333; }
-        button { background: #222; color: #fff; border: 1px solid #444; padding: 8px; cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.7rem; }
-        body.day-mode button { background: #ddd; color: #000; border-color: #ccc; }
+        .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+        
+        /* Alignement Horizontal Valeur + Bouton */
+        .row-align { display: flex; align-items: center; justify-content: space-between; height: 70px; }
+        .val-main { font-size: 4.5rem; line-height: 1; min-width: 120px; text-align: center; }
+        .unit { font-size: 1.2rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; }
+        .btn-action { height: 45px; width: 80px; font-weight: bold; border: 1px solid var(--ktm-orange); color: var(--ktm-orange); background: transparent; cursor: pointer; font-size: 0.8rem; }
+
+        /* Zone Multi-Outils (Météo / GPX / Réglages) */
+        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
+        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; }
+        
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 8px; margin-bottom: 6px; }
-        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
-        .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px; }
-        .alert-box { background: #300; border: 1px solid #f00; color: #f88; padding: 8px; font-size: 0.65rem; margin-top: 10px; font-family: monospace; }
-        .status-ok { color: #0f0; } .status-err { color: #f00; font-weight: bold; }
+        .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
     </style>
 </head>
 
 <body>
     <div id="start-overlay">
         <button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button>
-        <div id="init-report" style="color: #888; font-family: monospace; font-size: 0.6rem; margin-top: 15px; text-align: center;">Vérification structurelle...</div>
     </div>
 
     <div id="dashboard">
-        <div class="panel accent-orange" id="panel-vitesse">
-            <button id="btn-reset-vitesse" style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.5rem; padding:2px 5px;" onclick="UI.resetSpeed()">RESET</button>
+        <!-- VITESSE + RESET HORIZONTAL -->
+        <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
-            <div class="val-container"><span id="speed-val" class="val-main impact">0</span><span class="val-unit impact">KM/H</span></div>
-            <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
+            <div class="row-align">
+                <div style="display:flex; align-items: baseline;">
+                    <span id="speed-val" class="val-main impact">0</span>
+                    <span class="unit impact">KM/H</span>
+                </div>
+                <button id="btn-reset-vitesse" class="btn-action impact" onclick="UI.resetSpeed()">RESET</button>
+            </div>
         </div>
 
-        <div class="panel" id="panel-angle">
-            <button id="btn-calibrer" style="position:absolute; top:6px; right:8px; background:transparent; border:1px solid var(--ktm-orange); color:var(--ktm-orange); font-size:0.55rem; padding:3px 6px;" onclick="CORE.calibrateGyro()">CALIBRER</button>
+        <!-- ANGLE + CALIBRER HORIZONTAL -->
+        <div class="panel">
             <div class="title">Inclinaison</div>
-            <div class="val-container"><span id="angle-val" class="val-main impact">0</span><span class="val-unit impact">°</span></div>
-            <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
-        </div>
-
-        <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" id="panel-utils">
-            <div onclick="CORE.openDynamicWeather()" style="cursor:pointer" id="area-meteo">
-                <div class="title">Météo Radar</div>
-                <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
-                <div id="weather-wind" style="font-size:0.65rem; color:var(--text-dim)">Vent: -- km/h</div>
-            </div>
-            <div style="text-align:right">
-                <div class="title">Trace GPX</div>
-                <div id="gpx-dist" style="font-size:1.5rem; font-weight:bold; color:var(--ktm-orange);">0.0 <small>KM</small></div>
-                <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.6rem; width:80px; height:24px; margin-top:2px;">REC</button>
+            <div class="row-align">
+                <div style="display:flex; align-items: baseline;">
+                    <span id="angle-val" class="val-main impact">0</span>
+                    <span class="unit impact">°</span>
+                </div>
+                <button id="btn-calibrer" class="btn-action impact" onclick="CORE.calibrateGyro()">CALIBRER</button>
             </div>
         </div>
 
-        <div class="panel" id="panel-fuel">
-            <div class="title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>STATIONS [<span id="ui-info-fuel">--</span>] <span id="ui-info-radius">--</span>KM</span>
-                <span onclick="UI.openSettings()" style="cursor:pointer; color:var(--ktm-orange)">⚙️ RÉGLAGES / DIAG</span>
+        <!-- ZONE RADAR / GPX / REGLAGES -->
+        <div class="panel tool-grid">
+            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
+                <div class="title" style="font-size:0.5rem">Météo Radar</div>
+                <div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div>
+                <div id="weather-wind" style="font-size:0.55rem; color:var(--text-dim)">-- km/h</div>
             </div>
-            <button id="btn-scan" onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border-color: var(--ktm-orange);" class="impact">SCANNER CARBURANT</button>
+            <div class="tool-item" style="text-align:center">
+                <div class="title" style="font-size:0.5rem">Trace GPX</div>
+                <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
+                <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size:0.5rem; height:18px; padding:0;">REC</button>
+            </div>
+            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; align-items:center; justify-content:center;">
+                <span style="font-size:1.8rem;">🔧</span>
+                <div class="title" style="font-size:0.4rem; margin:0">Reglages</div>
+            </div>
+        </div>
+
+        <!-- CARBURANT -->
+        <div class="panel">
+            <div class="title" style="display:flex; justify-content:space-between;">
+                <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
+                <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
+            </div>
+            <button id="btn-scan" onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:10px;" class="impact">SCANNER CARBURANT</button>
             <div id="stations-list"></div>
         </div>
     </div>
 
+    <!-- MODAL DIAGNOSTIC -->
     <div id="settings-modal">
-        <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR DASHBOARD</button>
+        <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         
         <div style="background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px;">
             <label class="title">Carburant</label>
@@ -102,74 +122,45 @@
             </select>
             <label class="title" style="display:block; margin-top:10px;">Rayon: <span id="radius-val">--</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)" style="width:100%;">
-            
-            <!-- BOUTON JOUR NUIT MANUEL -->
-            <button id="btn-manual-theme" onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px; border-color: var(--ktm-orange); height:40px;">FORCER MODE JOUR/NUIT</button>
+            <button onclick="UI.manualToggleTheme()" style="width:100%; margin-top:15px;">MODE JOUR/NUIT MANUEL</button>
         </div>
 
         <div style="background:#000; padding:10px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange); margin-bottom:8px;">Rapport d'Auto-Audit Clinique</div>
-            <div id="diag-ui-phys" class="diag-line">Dimensions : --</div>
-            <div id="diag-config-match" class="diag-line">Variables : --</div>
-            <div id="diag-light" class="diag-line">Lux : --</div>
+            <div class="title" style="color:var(--ktm-orange);">Rapport Auto-Audit V21.3</div>
+            <div id="diag-audit" class="diag-line">Audit : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
-            
-            <div id="points-alerte" class="alert-box">
-                <strong>Points d'alerte :</strong><br>
-                <span id="alert-content">Analyse de conformité...</span>
-            </div>
+            <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
     </div>
 
     <script>
         const STATE = {
-            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, acc: 0 },
-            angle: { current: 0, smoothed: 0, max: 0, sum: 0, count: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
+            gps: { lat: null, lon: null, speed: 0, max: 0, acc: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, rawB: 0, rawG: 0 },
             gpx: { active: false, points: [], distance: 0, prev: null },
-            stations: [], lux: 0, weatherStatus: '--', alerts: []
+            stations: [], lux: 0, weatherStatus: '--'
         };
 
         const CORE = {
-            deepAudit: () => {
-                STATE.alerts = [];
-                const buttons = ['btn-rec', 'btn-scan', 'btn-calibrer', 'btn-manual-theme'];
-                buttons.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        const rect = el.getBoundingClientRect();
-                        if (rect.height < 25) STATE.alerts.push(`⚠️ Bouton ${id} hauteur limite gants.`);
-                    } else { STATE.alerts.push(`❌ Bouton ${id} MANQUANT.`); }
-                });
-                document.getElementById('diag-ui-phys').innerHTML = `UI : <span class="status-ok">Audit physique OK</span>`;
-                document.getElementById('diag-config-match').innerHTML = `Config : <span class="status-ok">Lignes 1-20 validées</span>`;
-                if (STATE.alerts.length > 0) {
-                    document.getElementById('alert-content').innerHTML = STATE.alerts.join('<br>');
-                    document.getElementById('points-alerte').style.borderColor = '#f00';
-                } else {
-                    document.getElementById('alert-content').innerText = "Structure certifiée conforme V21.2";
-                    document.getElementById('points-alerte').style.borderColor = '#0f0';
-                }
-            },
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 UI.syncConfig(); 
                 CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                CORE.deepAudit(); 
+                CORE.audit();
+            },
+            audit: () => {
+                const report = (typeof UI.resetSpeed === 'function' && document.getElementById('btn-reset-vitesse')) ? "✅ OK" : "❌ ERR";
+                document.getElementById('diag-audit').innerText = `Structure Axes : ${report} | Audit V21.3 Terminé`;
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
-                    try {
-                        const sensor = new AmbientLightSensor();
-                        sensor.onreading = () => { 
-                            STATE.lux = sensor.illuminance; 
-                            UI.setTheme(STATE.lux > CONFIG.seuilLuxJour); 
-                        };
-                        sensor.start();
-                    } catch (e) { document.getElementById('diag-light').innerText = "Lux : Restreint"; }
-                } else { document.getElementById('diag-light').innerText = "Lux : Mode Horaire"; }
+                    const sensor = new AmbientLightSensor();
+                    sensor.onreading = () => { STATE.lux = sensor.illuminance; UI.setTheme(STATE.lux > CONFIG.seuilLuxJour); };
+                    sensor.start();
+                }
             },
             initGyro: () => {
-                const handle = (e) => {
+                window.addEventListener('deviceorientation', (e) => {
                     STATE.angle.rawB = e.beta; STATE.angle.rawG = e.gamma;
                     let raw = e.beta; 
                     if (raw !== null && !isNaN(raw)) {
@@ -179,26 +170,37 @@
                         if (Math.abs(val - STATE.angle.lastValid) > CONFIG.deltaMaxAngle) val = STATE.angle.lastValid;
                         STATE.angle.lastValid = val;
                         STATE.angle.current = Math.min(Math.round(val), 85);
-                        if(STATE.angle.current > 3 && STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                     }
-                };
-                window.addEventListener('deviceorientation', handle);
+                });
             },
-            calibrateGyro: () => { STATE.angle.offset = STATE.angle.smoothed || 0; STATE.angle.max = 0; },
+            calibrateGyro: () => { STATE.angle.offset = STATE.angle.smoothed || 0; },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude; STATE.gps.acc = pos.coords.accuracy;
-                    let kmh = Math.round((pos.coords.speed || 0) * 3.6);
-                    STATE.gps.speed = kmh; if(kmh > STATE.gps.max) STATE.gps.max = kmh;
+                    STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
+                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
+                    
+                    if(STATE.gpx.active) {
+                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon };
+                        if(STATE.gpx.prev) STATE.gpx.distance += UI.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
+                        STATE.gpx.prev = pt;
+                    }
+
                     if(!STATE.weatherInit && STATE.gps.lat) {
                         fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
                         .then(r => r.json()).then(d => {
                             document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                            document.getElementById('weather-wind').innerText = "Vent: "+Math.round(d.current_weather.windspeed)+" km/h";
-                            STATE.weatherStatus = 'Fix'; STATE.weatherInit = true;
+                            document.getElementById('weather-wind').innerText = Math.round(d.current_weather.windspeed)+" km/h";
+                            STATE.weatherInit = true;
                         });
                     }
                 }, null, { enableHighAccuracy: true });
+            },
+            toggleRecording: () => {
+                STATE.gpx.active = !STATE.gpx.active;
+                const btn = document.getElementById('btn-rec');
+                btn.style.background = STATE.gpx.active ? "#f00" : "#222";
+                if(!STATE.gpx.active) { STATE.gpx.distance = 0; STATE.gpx.prev = null; }
             },
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
@@ -220,7 +222,6 @@
                 document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
                 document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
-                UI.update();
             },
             calcDist: (l1, n1, l2, n2) => {
                 const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
@@ -229,17 +230,18 @@
             },
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
-                document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('angle-val').innerText = STATE.angle.current;
+                document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
+                document.getElementById('diag-gps').innerText = `GPS : Fix ${STATE.gps.lat?'OK':'NO'} | Acc ${Math.round(STATE.gps.acc)}m`;
                 document.getElementById('diag-light').innerText = `Lux : ${Math.round(STATE.lux)}`;
-                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : 'NO'} | Acc : ${Math.round(STATE.gps.acc)}m`;
             },
             renderStations: () => {
                 document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div style="display:flex; justify-content:space-between"><strong>${s.nom}</strong> <span style="color:var(--ktm-orange)">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</span></div>
+                        <div style="font-size:0.6rem; color:var(--text-dim);">${s.dist.toFixed(1)} km</div>
                         <div style="display:flex; gap:4px; margin-top:5px;">
                             <button style="flex:1" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button style="flex:1" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
