@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.16-Final-Stabilized",          
+        version: "22.17-Start-Security",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -11,7 +11,7 @@
         angleSeuilPalier: 10,            
         // --- PARAMETRES DE STABILISATION ---
         angleZoneMorte: 3,               
-        rejectionTangage: 25,            // Bloque l'angle si basculement av/ar parasite[cite: 3]
+        rejectionTangage: 25,            
         // -----------------------------------
         axeInclinaison: 'beta',          
         angleSmoothing: 0.15,             
@@ -28,7 +28,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.16 - Final Stabilized</title>
+    <title>KTM Dash V22.17</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -54,10 +54,6 @@
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
         .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
-        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
-        .st-city { font-size: 0.65rem; color: var(--text-dim); }
-        .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
-        .st-dist { font-size: 0.7rem; font-weight: bold; }
         .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
         .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; text-align: center; }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
@@ -65,7 +61,6 @@
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
         .sort-btn { cursor: pointer; text-decoration: underline; }
-        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -86,7 +81,7 @@
             <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- ANGLE STABILISÉ[cite: 3] -->
+        <!-- ANGLE -->
         <div class="panel">
             <div class="title">Inclinaison Landscape</div>
             <div class="main-display">
@@ -99,7 +94,7 @@
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- OUTILS[cite: 2] -->
+        <!-- OUTILS -->
         <div class="panel tool-grid">
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
             <div class="tool-item" style="text-align:center">
@@ -110,14 +105,13 @@
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
         </div>
 
-        <!-- STATIONS[cite: 2] -->
+        <!-- STATIONS -->
         <div class="panel">
             <div class="title" style="display:flex; justify-content:space-between;">
                 <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
                 <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
             </div>
             <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
-            
             <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
                 <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
                 <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
@@ -126,7 +120,7 @@
         </div>
     </div>
 
-    <!-- REGLAGES + MOUCHARD[cite: 2] -->
+    <!-- REGLAGES + MOUCHARD -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
@@ -139,7 +133,7 @@
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.16</div>
+            <div class="title" style="color:var(--ktm-orange);">Auto-Audit V22.17</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Luminosité : -- Lux</div>
@@ -149,15 +143,22 @@
     <script>
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, offset: 0, lastValid: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0 },
             lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
         const CORE = {
             unlockAll: () => {
+                // DISPARITION IMMÉDIATE DE L'OVERLAY[cite: 2]
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                
+                // LANCEMENT SÉCURISÉ DES CAPTEURS[cite: 2]
+                UI.syncConfig();
+                try { CORE.initGyro(); } catch(e) { console.error("Gyro Error"); }
+                try { CORE.initLight(); } catch(e) { console.error("Light Error"); }
+                try { CORE.initGPS(); } catch(e) { console.error("GPS Error"); }
+                
                 setInterval(CORE.checkWeatherQueue, 10000);
             },
             initLight: () => {
@@ -169,11 +170,11 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let roll = e.beta; // Inclinaison virage[cite: 2]
-                    let pitch = Math.abs(e.gamma); // Tangage (av/ar) pour rejet parasite[cite: 3]
+                    let roll = e.beta; 
+                    let pitch = Math.abs(e.gamma); // Tangage pour rejet parasite
 
                     if (roll !== null && !isNaN(roll)) {
-                        // REJECTION SYMÉTRIQUE : On ignore si le basculement av/ar est trop important[cite: 3]
+                        // REJECTION SYMÉTRIQUE
                         if (pitch > CONFIG.rejectionTangage) {
                             STATE.angle.current = 0;
                             UI.updateBars('angle', 0);
@@ -183,7 +184,7 @@
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * roll) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || roll));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         
-                        // ZONE MORTE[cite: 3]
+                        // ZONE MORTE
                         if (Math.abs(valPure) < CONFIG.angleZoneMorte) {
                             STATE.angle.current = 0;
                         } else {
@@ -225,7 +226,7 @@
                         lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
-                    UI.sortStations('prix');[cite: 2]
+                    UI.sortStations('prix');
                     document.getElementById('stations-labels').style.display = 'flex';
                 });
             },
@@ -318,7 +319,6 @@
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}?q=${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>`).join('');
             },
