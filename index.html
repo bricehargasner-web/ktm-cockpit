@@ -312,24 +312,32 @@
                 if (!STATE.gps.lat) return;
                 const diag = document.getElementById('diag-radar');
                 try {
-                    // Utilisation des valeurs en dur de CONFIG
-                    const url = `${CONFIG.apiRadars}?q=${STATE.gps.lat},${STATE.gps.lon}&distance=${CONFIG.radarRayonM}&size=100`;
+                    // Utilisation de l'API de recherche géographique de Data.gouv
+                    // On cherche les "radars" autour de votre position
+                    const url = `https://api-adresse.data.gouv.fr/search/?q=radar&lat=${STATE.gps.lat}&lon=${STATE.gps.lon}&type=housenumber&limit=5`;
+                    
                     const res = await fetch(url);
-                    if(!res.ok) throw new Error("Status " + res.status);
                     const data = await res.json();
                     
-                    if(diag) diag.innerText = `Radar API : OK (${data.total || 0} détecté)`;
-                    
-                    if (data.total > 0 && data.results[0]) {
-                        const r = data.results[0];
-                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude) * 1000;
-                        document.getElementById('radar-alert').style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(d);
+                    const total = data.features ? data.features.length : 0;
+                    if(diag) diag.innerText = `Radar API : OK (${total} zones)`;
+
+                    if (total > 0) {
+                        const r = data.features[0].geometry.coordinates;
+                        // Calcul de distance (Attention : l'API renvoie [Lon, Lat])
+                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r[1], r[0]) * 1000;
+                        
+                        if (d <= CONFIG.radarRayonM) {
+                            document.getElementById('radar-alert').style.display = 'block';
+                            document.getElementById('radar-dist').innerText = Math.round(d);
+                        } else {
+                            document.getElementById('radar-alert').style.display = 'none';
+                        }
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
                     }
                 } catch (e) {
-                    if(diag) diag.innerText = "Radar API : ERR " + e.message;
+                    if(diag) diag.innerText = "Radar API : Erreur Service";
                 }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
