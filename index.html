@@ -16,7 +16,9 @@
         seuilLuxJour: 60,                
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
-        apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
+        apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
+        radarRayonM: 2000,
+        apiRadars: 'https://opendata.koumoul.com/data-fair/api/v1/datasets/radars-fixes/lines'
     };
 </script>
 
@@ -67,6 +69,10 @@
 <body>
     <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button></div>
 
+        <!-- ALERTE RADAR -->
+    <div id="radar-alert" style="display:none; background: #f00; color: #fff; text-align: center; padding: 15px; font-family: 'Impact', sans-serif; border-bottom: 4px solid #fff; position: relative; z-index: 9999; font-size: 1.5rem;">
+        ⚠️ RADAR PROCHE : <span id="radar-dist">0</span> M
+    </div>
     <div id="dashboard" style="display: none;">
         <!-- VITESSE -->
         <div class="panel accent-orange">
@@ -135,6 +141,7 @@
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
             <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.20</div>
+            <div id="diag-radar" class="diag-line" style="color:#ff6600; font-weight:bold;">Radar API : --</div>
             <div id="diag-meteo" class="diag-line">Météo : --</div>
             <div id="diag-gps" class="diag-line">GPS : --</div>
             <div id="diag-light" class="diag-line">Lux : --</div>
@@ -301,6 +308,30 @@
                         </div>
                     </div>`).join('');
             },
+            checkRadars: async () => {
+                if (!STATE.gps.lat) return;
+                const diag = document.getElementById('diag-radar');
+                try {
+                    // Utilisation des valeurs en dur de CONFIG
+                    const url = `${CONFIG.apiRadars}?q=${STATE.gps.lat},${STATE.gps.lon}&distance=${CONFIG.radarRayonM}`;
+                    const res = await fetch(url);
+                    if(!res.ok) throw new Error("Status " + res.status);
+                    const data = await res.json();
+                    
+                    if(diag) diag.innerText = `Radar API : OK (${data.total || 0} détecté)`;
+                    
+                    if (data.total > 0 && data.results[0]) {
+                        const r = data.results[0];
+                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude) * 1000;
+                        document.getElementById('radar-alert').style.display = 'block';
+                        document.getElementById('radar-dist').innerText = Math.round(d);
+                    } else {
+                        document.getElementById('radar-alert').style.display = 'none';
+                    }
+                } catch (e) {
+                    if(diag) diag.innerText = "Radar API : ERR " + e.message;
+                }
+            },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
@@ -309,7 +340,7 @@
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
-        setInterval(UI.update, CONFIG.refreshRate);
+        setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
     </script>
 </body>
 </html>
