@@ -1,82 +1,129 @@
 <!DOCTYPE html>
 <html lang="fr">
-<!-- 1. CONFIGURATION (LIGNES 1-45) -->
+<!-- 1. CONFIGURATION & DONNÉES (LIGNES 1-65) -->
 <script>
     const CONFIG = {
-        version: "22.24-Graulhet-D83",          
+        version: "22.25-Full-Audio",          
         carburantCible: 'SP98',          
         rayonRadarM: 100, // Seuil d'alerte ajustable           
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
     };
 
-    // BASE DE DONNÉES RADARS : INCLUANT VOTRE POINT PRÉCIS
+    // BASE DE DONNÉES RADARS (COPIER-COLLER VOS 3500 POINTS ICI)
     const RADARS_DATA = [
-        {lat: 43.767694, lon: 2.042111, type: "Fixe 50 - Graulhet D83"}, // Coordonnées 43°46'03.7"N 2°02'31.6"E
+        {lat: 43.767694, lon: 2.042111, type: "Fixe 50 - Graulhet D83"},
         {lat: 43.7210, lon: 1.8315, type: "Fixe 80 - Briatexte"},
         {lat: 43.7915, lon: 1.9842, type: "Fixe 80 - Gaillac"},
-        {lat: 43.9215, lon: 2.1147, type: "Fixe 90 - Albi"}
+        {lat: 43.9215, lon: 2.1147, type: "Fixe 90 - Albi"},
+        {lat: 43.6083, lon: 2.2458, type: "Fixe 80 - Castres"},
+        {lat: 43.0080, lon: 1.6141, type: "Tronçon - Ariège"},
+        {lat: 48.8566, lon: 2.3522, type: "Fixe - Paris"},
+        // ... Insérez ici le reste de vos 3500 points
     ];
 </script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash - Test Local</title>
+    <title>KTM Dash V22.25 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --ktm-orange: #FF6600; --text-main: #fff; --danger: #ff0000; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-family: sans-serif; margin: 0; }
-        #radar-alert { display: none; background: var(--danger); color: #fff; padding: 25px; text-align: center; font-family: 'Impact', sans-serif; font-size: 1.8rem; border: 4px solid #fff; margin-bottom: 15px; animation: blink 0.6s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
-        .panel { background: var(--panel-bg); border-top: 2px solid var(--ktm-orange); padding: 15px; margin-bottom: 10px; border-radius: 4px; }
-        .val-main { font-size: 4rem; font-family: 'Impact'; display: block; text-align: right; }
-        #btn-start { width: 100%; padding: 25px; background: var(--ktm-orange); border: none; font-family: 'Impact'; font-size: 1.5rem; cursor: pointer; color: #000; }
-        #settings-modal { display: none; position: fixed; inset: 0; background: #000; z-index: 100; padding: 20px; flex-direction: column; }
-        .cfg-row { border: 1px solid var(--ktm-orange); padding: 15px; margin-top: 10px; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-family: sans-serif; margin: 0; overflow-x: hidden; }
+        
+        /* ALERTE VISUELLE CLIGNOTANTE */
+        #radar-alert { display: none; background: var(--danger); color: #fff; padding: 25px; text-align: center; font-family: 'Impact', sans-serif; font-size: 1.8rem; border: 4px solid #fff; margin-bottom: 15px; animation: blink 0.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .panel { background: var(--panel-bg); border-top: 2px solid var(--ktm-orange); padding: 15px; margin-bottom: 10px; border-radius: 4px; position: relative; }
+        .val-main { font-size: 4.2rem; font-family: 'Impact'; display: block; text-align: right; line-height: 1; }
+        .unit { color: var(--ktm-orange); font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+        
+        #btn-start { width: 100%; padding: 30px; background: var(--ktm-orange); border: none; font-family: 'Impact'; font-size: 2rem; cursor: pointer; color: #000; border-radius: 8px; }
+        #settings-modal { display: none; position: fixed; inset: 0; background: #000; z-index: 100; padding: 20px; flex-direction: column; overflow-y: auto; }
+        .cfg-row { border: 1px solid var(--ktm-orange); padding: 15px; margin-top: 10px; background: #0a0a0a; }
         select { width: 100%; padding: 15px; background: #222; color: #fff; border: 1px solid #444; margin-top: 10px; font-size: 1.1rem; }
     </style>
 </head>
 
 <body>
-    <div id="start-screen" style="display: flex; height: 90vh; align-items: center;">
-        <button id="btn-start" onclick="CORE.start()">VÉRIFIER RADAR LOCAL</button>
+    <div id="start-screen" style="display: flex; height: 95vh; align-items: center; justify-content: center; flex-direction: column;">
+        <button id="btn-start" onclick="CORE.start()">READY TO RACE</button>
+        <p style="color: #444; margin-top: 15px; font-size: 0.8rem;">V22.25 - Audio Alert Enabled</p>
     </div>
 
     <div id="dashboard" style="display: none;">
         <div id="radar-alert">⚠ <span id="radar-type">RADAR</span><br><span id="radar-dist-val">0</span> m</div>
         
+        <!-- VITESSE -->
         <div class="panel">
-            <span style="color:var(--ktm-orange); font-weight:bold; font-size:0.8rem;">VITESSE GPS</span>
+            <span class="unit">Vitesse GPS</span>
             <span id="speed-val" class="val-main">0</span>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem; color: #888;">
+                <span>MAX: <strong id="speed-max" style="color:#fff">0</strong></span>
+                <span id="gps-status" style="color:red">GPS: WAIT</span>
+            </div>
         </div>
 
-        <div class="panel" onclick="UI.openSettings()" style="cursor:pointer;">
-            <span style="color:var(--ktm-orange); font-weight:bold; font-size:0.8rem;">RÉGLAGES TEST 🔧</span>
-            <div id="diag-pos" style="font-family: monospace; font-size: 0.8rem; margin-top: 10px; color: #0f0;">ATTENTE SIGNAL...</div>
+        <!-- NAVIGATION & SETTINGS -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="panel" onclick="UI.openSettings()" style="text-align: center; cursor: pointer;">
+                <span class="unit">Menu</span><br>
+                <span style="font-size: 1.5rem;">🔧</span>
+            </div>
+            <div class="panel" style="text-align: center;">
+                <span class="unit">Radars</span><br>
+                <span id="radar-count-dash" style="font-size: 1.2rem; font-weight: bold;">0</span>
+            </div>
         </div>
     </div>
 
+    <!-- MODAL REGLAGES -->
     <div id="settings-modal">
-        <button onclick="UI.closeSettings()" style="padding: 15px; background: var(--ktm-orange); border:none; font-weight:bold; width: 100%; color:#000;">RETOUR</button>
+        <button onclick="UI.closeSettings()" style="padding: 15px; background: var(--ktm-orange); border:none; font-weight:bold; width: 100%; color:#000; font-family: 'Impact';">BACK TO DASH</button>
+        
         <div class="cfg-row">
-            <label style="color:var(--ktm-orange); font-weight:bold;">RAYON DE DÉTECTION (TEST)</label>
+            <label style="color:var(--ktm-orange); font-weight:bold; font-size: 0.8rem;">RAYON D'ALERTE (MÈTRES)</label>
             <select id="cfg-radar-dist" onchange="UI.saveSettings()">
-                <option value="100">100 mètres</option>
-                <option value="500">500 mètres</option>
-                <option value="2000">2 000 mètres (2 km)</option>
-                <option value="10000" selected>10 000 mètres (10 km)</option>
+                <option value="100">100 m</option>
+                <option value="500">500 m</option>
+                <option value="1000">1 000 m</option>
+                <option value="10000">10 000 m (TEST)</option>
             </select>
         </div>
-        <p style="color:#888; font-size:0.7rem; margin-top:10px;">Le radar D83 de Graulhet est configuré. Si vous êtes en ville, il doit apparaître en mode 10km.</p>
+
+        <div class="cfg-row" style="color: #0f0; font-family: monospace; font-size: 0.8rem;">
+            DIAGNOSTIC CLINIQUE :<br>
+            - Points : <span id="diag-count">--</span><br>
+            - Position : <span id="diag-pos">--</span><br>
+            - Audio : <span id="diag-audio">Prêt</span>
+        </div>
     </div>
 
     <script>
-        const STATE = { gps: { lat: null, lon: null, speed: 0 }, radar: null };
+        // INITIALISATION AUDIO (BELLER CLINIQUE)
+        const AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+        function playAlertSound() {
+            const osc = AUDIO_CTX.createOscillator();
+            const gain = AUDIO_CTX.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(880, AUDIO_CTX.currentTime); 
+            osc.connect(gain);
+            gain.connect(AUDIO_CTX.destination);
+            gain.gain.setValueAtTime(0.1, AUDIO_CTX.currentTime);
+            osc.start();
+            osc.stop(AUDIO_CTX.currentTime + 0.15);
+        }
+
+        const STATE = { gps: { lat: null, lon: null, speed: 0, max: 0 }, radar: null, lastAlertId: null };
 
         const CORE = {
             start: () => {
+                AUDIO_CTX.resume(); // Débloque l'audio sur mobile
                 document.getElementById('start-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('diag-count').innerText = RADARS_DATA.length;
+                document.getElementById('radar-count-dash').innerText = RADARS_DATA.length;
                 CORE.initGPS();
             },
             initGPS: () => {
@@ -84,6 +131,11 @@
                     STATE.gps.lat = pos.coords.latitude;
                     STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
+                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
+                    
+                    document.getElementById('gps-status').innerText = "GPS: FIX";
+                    document.getElementById('gps-status').style.color = "lime";
+                    
                     CORE.checkRadars();
                 }, null, { enableHighAccuracy: true });
             },
@@ -92,13 +144,20 @@
                 let proche = null;
                 let dMini = CONFIG.rayonRadarM / 1000;
 
-                RADARS_DATA.forEach(r => {
+                RADARS_DATA.forEach((r, idx) => {
                     const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.lat, r.lon);
                     if (d < dMini) {
                         dMini = d;
-                        proche = { ...r, distM: Math.round(d * 1000) };
+                        proche = { ...r, distM: Math.round(d * 1000), id: idx };
                     }
                 });
+
+                if (proche && STATE.lastAlertId !== proche.id) {
+                    playAlertSound(); // Sonnerie unique à l'entrée en zone
+                    STATE.lastAlertId = proche.id;
+                } else if (!proche) {
+                    STATE.lastAlertId = null;
+                }
                 STATE.radar = proche;
             },
             calcDist: (l1, n1, l2, n2) => {
@@ -113,7 +172,9 @@
         const UI = {
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
+                document.getElementById('speed-max').innerText = STATE.gps.max;
                 const alert = document.getElementById('radar-alert');
+                
                 if (STATE.radar) {
                     alert.style.display = 'block';
                     document.getElementById('radar-type').innerText = STATE.radar.type;
@@ -121,7 +182,7 @@
                 } else {
                     alert.style.display = 'none';
                 }
-                document.getElementById('diag-pos').innerText = STATE.gps.lat ? "LAT: " + STATE.gps.lat.toFixed(5) + " | LON: " + STATE.gps.lon.toFixed(5) : "GPS: RECHERCHE...";
+                document.getElementById('diag-pos').innerText = STATE.gps.lat ? STATE.gps.lat.toFixed(4) + "," + STATE.gps.lon.toFixed(4) : "WAITING...";
             },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
@@ -131,7 +192,6 @@
             }
         };
         setInterval(UI.update, CONFIG.refreshRate);
-        UI.saveSettings();
     </script>
 </body>
 </html>
