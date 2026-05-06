@@ -70,8 +70,9 @@
     <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">READY TO RACE</button></div>
 
         <!-- ALERTE RADAR -->
-    <div id="radar-alert" style="display:none; background: #f00; color: #fff; text-align: center; padding: 15px; font-family: 'Impact', sans-serif; border-bottom: 4px solid #fff; position: relative; z-index: 9999; font-size: 1.5rem;">
-        ⚠️ RADAR PROCHE : <span id="radar-dist">0</span> M
+    <div id="radar-alert" style="display:none; background: linear-gradient(90deg, #ff0000 0%, #330000 50%, #ff0000 100%); color: #fff; text-align: center; padding: 15px 0; font-family: 'Impact', sans-serif; font-size: 1.6em; z-index: 9999; border-bottom: 3px solid #fff;">
+        ⚠️ RADAR À <span id="radar-dist">0</span> M
+    </div>
     </div>
     <div id="dashboard" style="display: none;">
         <!-- VITESSE -->
@@ -316,12 +317,11 @@
                     const lon = STATE.gps.lon;
                     const radius = CONFIG.radarRayonM || 5000;
                     
-                    // Utilisation d'un serveur Overpass alternatif (Kumi Systems) souvent plus rapide
+                    // On utilise le serveur Kumi qui a fonctionné
                     const query = `[out:json][timeout:25];node["highway"="speed_camera"](around:${radius},${lat},${lon});out body;`;
                     const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
 
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error("Serveur occupé");
                     const data = await res.json();
                     
                     const count = data.elements ? data.elements.length : 0;
@@ -334,14 +334,18 @@
                             if (d < closestDist) closestDist = d;
                         });
 
-                        document.getElementById('radar-alert').style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
+                        // On affiche si le plus proche est dans le rayon
+                        if (closestDist <= radius) {
+                            document.getElementById('radar-alert').style.display = 'block';
+                            document.getElementById('radar-dist').innerText = Math.round(closestDist);
+                        } else {
+                            document.getElementById('radar-alert').style.display = 'none';
+                        }
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
                     }
                 } catch (e) {
                     if(diag) diag.innerText = "Radar API : Relance...";
-                    console.error("Erreur Overpass:", e.message);
                 }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
