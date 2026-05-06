@@ -312,40 +312,42 @@
                 if (!STATE.gps.lat) return;
                 const diag = document.getElementById('diag-radar');
                 try {
-                    const radius = CONFIG.radarRayonM || 5000;
-                    // Utilisation d'un moteur de recherche de proximité plus simple
-                    const url = `https://nominatim.openstreetmap.org/search?q=speed_camera&format=json&lat=${STATE.gps.lat}&lon=${STATE.gps.lon}&addressdetails=0&limit=10`;
-
-                    const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
-                    if (!res.ok) throw new Error("Serveur occupé");
+                    const lat = STATE.gps.lat;
+                    const lon = STATE.gps.lon;
+                    const radius = (CONFIG.radarRayonM || 5000) / 1000; // conversion km
                     
+                    // On définit une zone de recherche (Bounding Box) autour de vous
+                    const delta = 0.05; // Environ 5km autour
+                    const url = `https://nominatim.openstreetmap.org/search?q=[speed_camera]&format=json&viewbox=${lon-delta},${lat+delta},${lon+delta},${lat-delta}&bounded=1&limit=50`;
+
+                    const res = await fetch(url, { headers: { 'User-Agent': 'KTM-Dash-App' } });
                     const data = await res.json();
                     
-                    // Filtrage manuel de la distance pour être ultra précis
-                    const radarsProches = data.filter(item => {
-                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, parseFloat(item.lat), parseFloat(item.lon)) * 1000;
-                        return d <= radius;
-                    });
+                    if(diag) diag.innerText = `Radar API : OK (${data.length} détecté${data.length > 1 ? 's' : ''})`;
 
-                    const total = radarsProches.length;
-                    if(diag) diag.innerText = `Radar API : OK (${total} détecté${total > 1 ? 's' : ''})`;
+                    if (data.length > 0) {
+                        let closestDist = CONFIG.radarRayonM;
+                        let found = false;
 
-                    if (total > 0) {
-                        // On calcule la distance du plus proche parmi ceux filtrés
-                        let closestDist = radius;
-                        radarsProches.forEach(r => {
-                            const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, parseFloat(r.lat), parseFloat(r.lon)) * 1000;
-                            if (d < closestDist) closestDist = d;
+                        data.forEach(r => {
+                            const d = CORE.calcDist(lat, lon, parseFloat(r.lat), parseFloat(r.lon)) * 1000;
+                            if (d <= CONFIG.radarRayonM) {
+                                if (d < closestDist) closestDist = d;
+                                found = true;
+                            }
                         });
 
-                        document.getElementById('radar-alert').style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
+                        if (found) {
+                            document.getElementById('radar-alert').style.display = 'block';
+                            document.getElementById('radar-dist').innerText = Math.round(closestDist);
+                        } else {
+                            document.getElementById('radar-alert').style.display = 'none';
+                        }
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
                     }
                 } catch (e) {
-                    if(diag) diag.innerText = "Radar API : Relance...";
-                    console.log("Erreur Radar:", e.message);
+                    if(diag) diag.innerText = "Radar API : Erreur synchro";
                 }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
