@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.25-Full-Control",          
+        version: "22.26-Full-Control",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -17,16 +17,17 @@
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
-        // PARAMETRES MOTO ENERGY CONCEPT
-        consoMoy: 5.8,       
-        autonomieMax: 280
+        // VARIABLES DYNAMIQUES MOTO
+        consoMoy: 5.8,       // L/100km réglable
+        autonomieMax: 280,   // Capacité totale théorique en KM
+        reserveSeuil: 50     // Alerte rouge sous 50km
     };
 </script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.25 - Energy Concept</title>
+    <title>KTM Dash V22.26 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -92,7 +93,7 @@
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- ECO-RANGE -->
+        <!-- ECO-RANGE : CALCULS DYNAMIQUES -->
         <div class="panel">
             <div class="title">Autonomie & Consommation</div>
             <div style="display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; padding: 5px 0;">
@@ -101,8 +102,9 @@
                     <div class="title" style="font-size: 0.5rem; margin: 0;">KM RESTANTS</div>
                 </div>
                 <div style="text-align: right; border-left: 1px solid #333; padding-left: 10px;">
-                    <div class="title" style="font-size: 0.5rem;">BRÛLÉ : <span id="fuel-burn" style="color:#fff">0.0 L</span></div>
-                    <div class="title" style="font-size: 0.5rem;">CONSO : <span style="color:#fff" id="ui-conso-moy">--</span> L/100</div>
+                    <div class="title" style="font-size: 0.5rem;">RENDEMENT : <span id="fuel-efficiency" style="color:#0f0">--</span> KM/L</div>
+                    <div class="title" style="font-size: 0.5rem;">BRÛLÉ : <span id="fuel-burn" style="color:#fff">0.00 L</span></div>
+                    <div class="title" style="font-size: 0.5rem;">CONSO : <span id="ui-conso-moy" style="color:#fff">--</span> L/100</div>
                 </div>
             </div>
         </div>
@@ -143,10 +145,9 @@
             <input type="number" id="cfg-conso" step="0.1" onchange="UI.saveSettings()">
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">MODE JOUR/NUIT</button>
         </div>
-        <!-- DIAGNOSTIC[cite: 1] -->
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Diagnostic Technique</div>
-            <div id="diag-osmand" class="diag-line">OsmAnd+ : Lien prêt (Intent)</div>
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.26</div>
+            <div id="diag-osmand" class="diag-line">OsmAnd+ : Intent OK</div>
             <div id="diag-gps" class="diag-line">Signal GPS : --</div>
             <div id="diag-data" class="diag-line">Flux Stations : --</div>
         </div>
@@ -161,13 +162,17 @@
 
         const ECO_MATHS = {
             update: () => {
-                const dist = STATE.gpx.distance;
+                const dist = STATE.gpx.distance;[cite: 1]
                 const brule = (dist * CONFIG.consoMoy) / 100;
-                const restant = CONFIG.autonomieMax - dist;
-                document.getElementById('fuel-burn').innerText = brule.toFixed(1) + " L";
-                const rangeElem = document.getElementById('fuel-range');
-                rangeElem.innerText = Math.max(0, Math.round(restant)) + " KM";
-                rangeElem.style.color = restant < 50 ? "#f00" : "var(--ktm-orange)";
+                const kmL = CONFIG.consoMoy > 0 ? (100 / CONFIG.consoMoy).toFixed(1) : "--";
+                const restant = CONFIG.autonomieMax - dist;[cite: 1]
+                
+                document.getElementById('fuel-burn').innerText = brule.toFixed(2) + " L";
+                document.getElementById('fuel-efficiency').innerText = kmL;
+                
+                const rElem = document.getElementById('fuel-range');
+                rElem.innerText = Math.max(0, Math.round(restant));
+                rElem.style.color = restant < CONFIG.reserveSeuil ? "#f00" : "var(--ktm-orange)";[cite: 1]
             }
         };
 
@@ -176,13 +181,13 @@
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 UI.syncConfig(); CORE.initGyro(); CORE.initGPS();
-                setInterval(ECO_MATHS.update, 2000);
+                setInterval(ECO_MATHS.update, 1000);[cite: 1]
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
                     let rawBeta = e.beta; 
                     if (rawBeta !== null) {
-                        STATE.angle.smoothed = (0.15 * rawBeta) + (0.85 * (STATE.angle.smoothed || rawBeta));
+                        STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
                         let valPure = STATE.angle.smoothed - (STATE.angle.offset || 0);
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         if(STATE.angle.current > (STATE.angle.max || 0)) STATE.angle.max = STATE.angle.current;
@@ -198,9 +203,10 @@
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
                     document.getElementById('diag-gps').innerText = `Signal GPS : FIX (${STATE.gps.lat.toFixed(4)})`;
+                    
                     if(STATE.gpx.active && STATE.gps.lat) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon };
-                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
+                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);[cite: 1]
                         STATE.gpx.prev = pt;
                     }
                 }, null, { enableHighAccuracy: true });
