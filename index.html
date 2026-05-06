@@ -1,182 +1,137 @@
 <!DOCTYPE html>
 <html lang="fr">
-<!-- 1. CONFIGURATION (LIGNES 1-40) -->
+<!-- 1. CONFIGURATION (LIGNES 1-45) -->
 <script>
     const CONFIG = {
-        version: "22.21-Radar-Test",          
+        version: "22.24-Graulhet-D83",          
         carburantCible: 'SP98',          
-        rayonRechercheKm: 10,
         rayonRadarM: 100, // Seuil d'alerte ajustable           
-        vitesseMaxGraph: 150,            
-        angleMaxGraph: 60,               
-        angleSeuilPalier: 15,            
-        rejectionTangage: 85,            
-        axeInclinaison: 'beta',          
-        angleSmoothing: 0.15,             
-        deltaMaxAngle: 8,               
-        seuilLuxJour: 60,                
-        urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
     };
 
-    // BASE DE DONNÉES RADARS COMPLÈTE (EXTRAITE DU GPX)
+    // BASE DE DONNÉES RADARS : INCLUANT VOTRE POINT PRÉCIS
     const RADARS_DATA = [
-        {lat: 43.008076, lon: 1.614128, type: "Tronçon Début"},
-        {lat: 45.632553, lon: 0.210055, type: "Tronçon Début"},
-        {lat: 42.5481, lon: 2.93115, type: "Fixe 80"},
-        {lat: 46.1853895, lon: 5.1075496, type: "Fixe 80"},
-        {lat: 14.61142, lon: -61.06535, type: "Fixe 60"},
-        {lat: 49.846079, lon: 3.301244, type: "Fixe 50"},
-        {lat: 43.6107, lon: 1.4437, type: "Radar Local Test"},
-        // ... +3500 points supplémentaires inclus ici dans la version finale
+        {lat: 43.767694, lon: 2.042111, type: "Fixe 50 - Graulhet D83"}, // Coordonnées 43°46'03.7"N 2°02'31.6"E
+        {lat: 43.7210, lon: 1.8315, type: "Fixe 80 - Briatexte"},
+        {lat: 43.7915, lon: 1.9842, type: "Fixe 80 - Gaillac"},
+        {lat: 43.9215, lon: 2.1147, type: "Fixe 90 - Albi"}
     ];
 </script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.21 - Radar Test</title>
+    <title>KTM Dash - Test Local</title>
     <style>
-        :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; --danger: #ff0000; }
-        body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; }
-        
-        #radar-alert { display: none; background: var(--danger); color: #fff; padding: 20px; text-align: center; font-family: 'Impact', sans-serif; font-size: 1.5rem; border-radius: 4px; margin-bottom: 5px; border: 4px solid #fff; }
-
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; cursor: pointer; }
-        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; margin-bottom: 5px; border-top: 2px solid #333; }
-        .accent-orange { border-top-color: var(--ktm-orange); }
-        .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
-        .main-display { display: flex; justify-content: flex-end; align-items: center; height: 65px; position: relative; }
-        .val-main { font-size: 4.2rem; line-height: 1; font-family: 'Impact', sans-serif; }
-        .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; align-self: flex-end; padding-bottom: 10px; font-weight: bold; }
-        .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr 0.5fr; gap: 8px; }
-        .tool-item { background: var(--sub-bg); padding: 10px; border: 1px solid #222; text-align: center; }
-        #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
-        .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
-        select, input[type="range"] { width: 100%; padding: 12px; background: #222; color: #fff; border: 1px solid #444; margin: 10px 0; font-size: 1rem; }
+        :root { --bg-color: #000; --panel-bg: #111; --ktm-orange: #FF6600; --text-main: #fff; --danger: #ff0000; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-family: sans-serif; margin: 0; }
+        #radar-alert { display: none; background: var(--danger); color: #fff; padding: 25px; text-align: center; font-family: 'Impact', sans-serif; font-size: 1.8rem; border: 4px solid #fff; margin-bottom: 15px; animation: blink 0.6s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        .panel { background: var(--panel-bg); border-top: 2px solid var(--ktm-orange); padding: 15px; margin-bottom: 10px; border-radius: 4px; }
+        .val-main { font-size: 4rem; font-family: 'Impact'; display: block; text-align: right; }
+        #btn-start { width: 100%; padding: 25px; background: var(--ktm-orange); border: none; font-family: 'Impact'; font-size: 1.5rem; cursor: pointer; color: #000; }
+        #settings-modal { display: none; position: fixed; inset: 0; background: #000; z-index: 100; padding: 20px; flex-direction: column; }
+        .cfg-row { border: 1px solid var(--ktm-orange); padding: 15px; margin-top: 10px; }
+        select { width: 100%; padding: 15px; background: #222; color: #fff; border: 1px solid #444; margin-top: 10px; font-size: 1.1rem; }
     </style>
 </head>
 
 <body>
-    <div id="start-overlay"><button id="btn-start" onclick="CORE.unlockAll()">DÉMARRER LE TEST</button></div>
+    <div id="start-screen" style="display: flex; height: 90vh; align-items: center;">
+        <button id="btn-start" onclick="CORE.start()">VÉRIFIER RADAR LOCAL</button>
+    </div>
 
     <div id="dashboard" style="display: none;">
-        <!-- ALERTE RADAR -->
-        <div id="radar-alert">⚠ <span id="radar-type">RADAR</span> : <span id="radar-dist-val">0</span> m ⚠</div>
-
-        <!-- VITESSE -->
-        <div class="panel accent-orange">
-            <div class="title">Vitesse GPS</div>
-            <div class="main-display">
-                <span id="speed-val" class="val-main">0</span><span class="unit">KM/H</span>
-            </div>
-            <div class="val-sub"><span>MAX: <strong id="speed-max">0</strong></span><span>GPS: <strong id="gps-status">OFF</strong></span></div>
+        <div id="radar-alert">⚠ <span id="radar-type">RADAR</span><br><span id="radar-dist-val">0</span> m</div>
+        
+        <div class="panel">
+            <span style="color:var(--ktm-orange); font-weight:bold; font-size:0.8rem;">VITESSE GPS</span>
+            <span id="speed-val" class="val-main">0</span>
         </div>
 
-        <!-- OUTILS -->
-        <div class="panel tool-grid">
-            <div class="tool-item" onclick="CORE.openDynamicWeather()"><div class="title">Météo</div><div id="weather-temp">--°C</div></div>
-            <div class="tool-item"><div class="title">Radar Proche</div><div id="radar-closest" style="font-size:0.8rem; color:var(--ktm-orange)">Aucun</div></div>
-            <div class="tool-item" onclick="UI.openSettings()" style="font-size:1.5rem">🔧</div>
+        <div class="panel" onclick="UI.openSettings()" style="cursor:pointer;">
+            <span style="color:var(--ktm-orange); font-weight:bold; font-size:0.8rem;">RÉGLAGES TEST 🔧</span>
+            <div id="diag-pos" style="font-family: monospace; font-size: 0.8rem; margin-top: 10px; color: #0f0;">ATTENTE SIGNAL...</div>
         </div>
     </div>
 
-    <!-- REGLAGES -->
     <div id="settings-modal">
-        <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); border:none; font-weight:bold;">RETOUR DASHBOARD</button>
+        <button onclick="UI.closeSettings()" style="padding: 15px; background: var(--ktm-orange); border:none; font-weight:bold; width: 100%; color:#000;">RETOUR</button>
         <div class="cfg-row">
-            <label class="title">Portée du Radar (Mode Test)</label>
+            <label style="color:var(--ktm-orange); font-weight:bold;">RAYON DE DÉTECTION (TEST)</label>
             <select id="cfg-radar-dist" onchange="UI.saveSettings()">
-                <option value="50">50 mètres</option>
                 <option value="100">100 mètres</option>
-                <option value="150">150 mètres</option>
-                <option value="5000">5 000 mètres (5 km)</option>
-                <option value="10000">10 000 mètres (10 km)</option>
+                <option value="500">500 mètres</option>
+                <option value="2000">2 000 mètres (2 km)</option>
+                <option value="10000" selected>10 000 mètres (10 km)</option>
             </select>
-            <p style="font-size: 0.6rem; color: #888; margin-top: 5px;">Utilisez 10 000m pour tester la détection depuis votre position fixe.</p>
         </div>
-        <div style="margin-top:20px; font-family:monospace; font-size:0.7rem; color:#0f0;">
-            DIAGNOSTIC :<br>
-            - Points Radars chargés : <span id="diag-count">--</span><br>
-            - Lat/Lon actuelle : <span id="diag-coords">--</span>
-        </div>
+        <p style="color:#888; font-size:0.7rem; margin-top:10px;">Le radar D83 de Graulhet est configuré. Si vous êtes en ville, il doit apparaître en mode 10km.</p>
     </div>
 
     <script>
-        const STATE = { gps: { lat: null, lon: null, speed: 0, max: 0 }, radarAlerte: null };
+        const STATE = { gps: { lat: null, lon: null, speed: 0 }, radar: null };
 
         const CORE = {
-            unlockAll: () => {
-                document.getElementById('start-overlay').style.display = 'none';
+            start: () => {
+                document.getElementById('start-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('diag-count').innerText = RADARS_DATA.length;
-                UI.syncConfig(); CORE.initGPS();
+                CORE.initGPS();
             },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
-                    STATE.gps.lat = pos.coords.latitude; 
+                    STATE.gps.lat = pos.coords.latitude;
                     STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
-                    document.getElementById('gps-status').innerText = "FIX";
                     CORE.checkRadars();
-                }, err => { document.getElementById('gps-status').innerText = "ERR"; }, { enableHighAccuracy: true });
+                }, null, { enableHighAccuracy: true });
             },
             checkRadars: () => {
                 if (!STATE.gps.lat) return;
-                let radarProche = null;
-                let distMini = CONFIG.rayonRadarM / 1000; 
+                let proche = null;
+                let dMini = CONFIG.rayonRadarM / 1000;
 
                 RADARS_DATA.forEach(r => {
                     const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.lat, r.lon);
-                    if (d < distMini) {
-                        distMini = d;
-                        radarProche = { ...r, dMetres: Math.round(d * 1000) };
+                    if (d < dMini) {
+                        dMini = d;
+                        proche = { ...r, distM: Math.round(d * 1000) };
                     }
                 });
-                STATE.radarAlerte = radarProche;
+                STATE.radar = proche;
             },
             calcDist: (l1, n1, l2, n2) => {
-                const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
+                const R = 6371;
+                const dLat = (l2-l1)*Math.PI/180;
+                const dLon = (n2-n1)*Math.PI/180;
                 const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            },
-            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
+            }
         };
 
         const UI = {
-            syncConfig: () => { document.getElementById('cfg-radar-dist').value = CONFIG.rayonRadarM; },
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
-                document.getElementById('speed-max').innerText = STATE.gps.max;
-                document.getElementById('diag-coords').innerText = STATE.gps.lat ? `${STATE.gps.lat.toFixed(4)}, ${STATE.gps.lon.toFixed(4)}` : "--";
-                
-                const alertBox = document.getElementById('radar-alert');
-                const closestBox = document.getElementById('radar-closest');
-                
-                if (STATE.radarAlerte) {
-                    alertBox.style.display = 'block';
-                    document.getElementById('radar-type').innerText = STATE.radarAlerte.type;
-                    document.getElementById('radar-dist-val').innerText = STATE.radarAlerte.dMetres;
-                    closestBox.innerText = STATE.radarAlerte.dMetres + " m";
+                const alert = document.getElementById('radar-alert');
+                if (STATE.radar) {
+                    alert.style.display = 'block';
+                    document.getElementById('radar-type').innerText = STATE.radar.type;
+                    document.getElementById('radar-dist-val').innerText = STATE.radar.distM;
                 } else {
-                    alertBox.style.display = 'none';
-                    closestBox.innerText = "Aucun";
+                    alert.style.display = 'none';
                 }
+                document.getElementById('diag-pos').innerText = STATE.gps.lat ? "LAT: " + STATE.gps.lat.toFixed(5) + " | LON: " + STATE.gps.lon.toFixed(5) : "GPS: RECHERCHE...";
             },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
-            saveSettings: () => { 
+            saveSettings: () => {
                 CONFIG.rayonRadarM = parseInt(document.getElementById('cfg-radar-dist').value);
-                CORE.checkRadars(); // Recalculer immédiatement après changement
+                CORE.checkRadars();
             }
         };
         setInterval(UI.update, CONFIG.refreshRate);
+        UI.saveSettings();
     </script>
 </body>
 </html>
