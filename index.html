@@ -3,11 +3,9 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.21-Radar-Edition",          
+        version: "22.20-Full-Control",          
         carburantCible: 'SP98',          
-        rayonRechercheKm: 10,
-        rayonRadarKm: 2,                 // Rayon de détection radar initial
-        apiRadars: 'https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines',
+        rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 60,               
         angleSeuilPalier: 15,            
@@ -25,31 +23,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.21 - Radar Detection</title>
+    <title>KTM Dash V22.20 - Energy Concept</title>
     <style>
-        :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; --danger: #ff0000; }
+        :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
-        
-        /* ALERT RADAR - VISIBILITÉ MOTO */
-        .radar-panel { transition: 0.5s; overflow: hidden; border: 2px solid #333; }
-        .radar-alert { background: var(--danger) !important; animation: blink 0.8s infinite; border: 4px solid #fff !important; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
-        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 100px; }
+        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 110px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
+        .main-display { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; height: 65px; position: relative; }
+        .bargraph-svg { width: 75px; height: 50px; }
+        .bar { fill: var(--bar-off); transition: fill 0.1s ease; }
+        .bar.active { fill: var(--ktm-orange); }
         .val-main { font-size: 4.2rem; line-height: 1; text-align: center; font-family: 'Impact', sans-serif; }
         .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; align-self: flex-end; padding-bottom: 10px; }
-        
+        .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
+        .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
+        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; margin-top: 2px; }
+        .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
+        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
+        .st-city { font-size: 0.65rem; color: var(--text-dim); }
+        .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
+        .st-dist { font-size: 0.7rem; font-weight: bold; }
+        .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
+        .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; text-align: center; }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
         select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
-        .radar-info { text-align: center; color: #fff; font-weight: bold; font-size: 1.2rem; }
+        .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
+        .sort-btn { cursor: pointer; text-decoration: underline; }
+        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -60,131 +71,245 @@
         <!-- VITESSE -->
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
-            <div style="display:flex; justify-content: center;"><span id="speed-val" class="val-main">0</span><span class="unit">KM/H</span></div>
+            <div class="main-display">
+                <svg class="bargraph-svg" viewBox="0 0 100 60">
+                    <rect class="bar b1" x="0" y="40" width="15" height="20" /><rect class="bar b2" x="20" y="30" width="15" height="30" /><rect class="bar b3" x="40" y="20" width="15" height="40" /><rect class="bar b4" x="60" y="10" width="15" height="50" /><rect class="bar b5" x="80" y="0" width="15" height="60" />
+                </svg>
+                <div style="display:flex; justify-content: flex-end; width: 100%;"><span id="speed-val" class="val-main">0</span><span class="unit">KM/H</span></div>
+                <button class="btn-action" onclick="CORE.resetSpeed()">RESET</button>
+            </div>
+            <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- RADAR ALERT (DYNAMIQUE) -->
-        <div id="radar-box" class="panel radar-panel">
-            <div class="title">Détection Radar</div>
-            <div id="radar-content" class="radar-info">
-                <div style="font-size: 0.8rem; color: var(--text-dim);">SCAN EN COURS...</div>
-                <div id="radar-dist-val" style="font-size: 3rem; font-family: 'Impact'; color: var(--ktm-orange);">--</div>
+        <!-- ANGLE -->
+        <div class="panel">
+            <div class="title">Inclinaison</div>
+            <div class="main-display">
+                <svg class="bargraph-svg" viewBox="0 0 100 60">
+                    <rect class="bar a1" x="0" y="10" width="15" height="50" /><rect class="bar a2" x="20" y="25" width="15" height="35" /><rect class="bar a3" x="40" y="35" width="15" height="25" /><rect class="bar a4" x="60" y="25" width="15" height="35" /><rect class="bar a5" x="80" y="10" width="15" height="50" />
+                </svg>
+                <div style="display:flex; justify-content: flex-end; width: 100%;"><span id="angle-val" class="val-main">0</span><span class="unit">°</span></div>
+                <button class="btn-action" onclick="CORE.calibrateGyro()">CALIB</button>
             </div>
+            <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
         <!-- OUTILS -->
-        <div class="panel" style="display: grid; grid-template-columns: 1fr 1fr 0.5fr; gap: 5px;">
-            <div class="panel" style="min-height:40px; margin:0;" onclick="UI.openSettings()">🔧 REGLAGES</div>
-            <div class="panel" style="min-height:40px; margin:0;" onclick="CORE.fetchRadars()">🔄 SCAN</div>
-            <div class="panel" style="min-height:40px; margin:0; text-align:center" id="weather-temp">--°C</div>
+        <div class="panel tool-grid">
+            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
+            <div class="tool-item" style="text-align:center">
+                <div class="title" style="font-size:0.5rem">Trace GPX</div>
+                <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
+                <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
+            </div>
+            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
+        </div>
+
+        <!-- STATIONS -->
+        <div class="panel">
+            <div class="title" style="display:flex; justify-content:space-between;">
+                <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
+                <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
+            </div>
+            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
+            
+            <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
+                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
+                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
+            </div>
+            <div id="stations-list"></div>
         </div>
     </div>
 
-    <!-- REGLAGES -->
+    <!-- REGLAGES + DIAGNOSTIC -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
-            <label class="title">Rayon Radars: <span id="radar-radius-ui">--</span> km</label>
-            <input type="range" id="input-radar-radius" min="0.5" max="10" step="0.5" oninput="UI.updateRadarRadius(this.value)">
-            
-            <label class="title">Rayon Stations: <span id="radius-val">--</span> km</label>
+            <label class="title">Carburant</label>
+            <select id="cfg-fuel" onchange="UI.saveSettings()">
+                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
+            </select>
+            <label class="title">Rayon: <span id="radius-val">--</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
+            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
+        </div>
+        <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.20</div>
+            <div id="diag-meteo" class="diag-line">Météo : --</div>
+            <div id="diag-gps" class="diag-line">GPS : --</div>
+            <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
     </div>
 
     <script>
         const STATE = {
-            gps: { lat: null, lon: null, speed: 0 },
-            radars: [],
-            nearestRadar: null
+            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
         const CORE = {
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                UI.syncConfig(); CORE.initGPS();
-                setInterval(CORE.fetchRadars, 30000); // Scan automatique toutes les 30s
+                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                setInterval(CORE.checkWeatherQueue, 10000);
+            },
+            initLight: () => {
+                if ('AmbientLightSensor' in window) {
+                    const sensor = new AmbientLightSensor();
+                    sensor.onreading = () => { 
+                        STATE.lux = Math.round(sensor.illuminance); 
+                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJou);
+                    };
+                    sensor.start();
+                }
+            },
+            initGyro: () => {
+                window.addEventListener('deviceorientation', (e) => {
+                    let rawBeta = e.beta; 
+                    let rawGamma = Math.abs(e.gamma); 
+
+                    if (rawBeta !== null) {
+                        if (rawGamma > CONFIG.rejectionTangage) {
+                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
+                        }
+                        STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
+                        let valPure = STATE.angle.smoothed - STATE.angle.offset;
+                        STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
+                        
+                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
+                        if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
+                        UI.updateBars('angle', valPure);
+                    }
+                });
+            },
+            calibrateGyro: () => { 
+                STATE.angle.offset = STATE.angle.smoothed || 0; 
+                STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0; 
             },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
-                    STATE.gps.lat = pos.coords.latitude; 
-                    STATE.gps.lon = pos.coords.longitude;
+                    STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                    UI.update();
-                    CORE.checkProximity();
+                    if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
+                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
+                    UI.updateBars('speed', STATE.gps.speed);
+                    
+                    if(STATE.gpx.active && STATE.gps.lat) {
+                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
+                        STATE.gpx.points.push(pt);
+                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
+                        STATE.gpx.prev = pt;
+                    }
                 }, null, { enableHighAccuracy: true });
-            },
-            fetchRadars: () => {
-                if(!STATE.gps.lat) return;
-                // Calcul de la zone de recherche pour l'API
-                const url = `${CONFIG.apiRadars}?q=`; 
-                // Note: Dans une version production, on filtrerait ici par coordonnées via l'API DataFair
-                fetch(url).then(r => r.json()).then(data => {
-                    STATE.radars = data.results.map(r => ({
-                        lat: r.lat, lon: r.lon, type: r.type_radar, vma: r.vitesse_limite
-                    }));
-                });
-            },
-            checkProximity: () => {
-                if(!STATE.radars.length || !STATE.gps.lat) return;
-                
-                let closest = null;
-                let minDist = Infinity;
-
-                STATE.radars.forEach(r => {
-                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.lat, r.lon);
-                    if(d < minDist) { minDist = d; closest = r; }
-                });
-
-                STATE.nearestRadar = { dist: minDist, data: closest };
-                UI.renderRadarAlert();
             },
             calcDist: (l1, n1, l2, n2) => {
                 const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
                 const a = Math.sin(dLat/2)**2 + Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            }
+            },
+            fetchStations: () => {
+                if(!STATE.gps.lat) return alert("Signal GPS requis");
+                fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
+                .then(r => r.json()).then(data => {
+                    const f = CONFIG.carburantCible.toLowerCase() + '_prix';
+                    STATE.stations = data.records.map(r => ({
+                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
+                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
+                        dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
+                    }));
+                    UI.sortStations('prix');
+                    document.getElementById('stations-labels').style.display = 'flex';
+                });
+            },
+            toggleRecording: () => {
+                STATE.gpx.active = !STATE.gpx.active;
+                const btn = document.getElementById('btn-rec');
+                btn.innerText = STATE.gpx.active ? "STOP" : "REC";
+                btn.style.background = STATE.gpx.active ? "#f00" : "#222";
+                if (!STATE.gpx.active && STATE.gpx.points.length > 0) CORE.saveGPX();
+            },
+            saveGPX: () => {
+                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
+                STATE.gpx.points.forEach(p => { xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; });
+                xml += `</trkseg></trk></gpx>`;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
+                a.download = `Trace_${new Date().getTime()}.gpx`; a.click();
+            },
+            checkWeatherQueue: () => {
+                if (STATE.weatherInit || !STATE.gps.lat) return;
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                    STATE.weatherInit = true;
+                });
+            },
+            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
         };
 
         const UI = {
             syncConfig: () => {
+                document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
                 document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('input-radar-radius').value = CONFIG.rayonRadarKm;
-                document.getElementById('radar-radius-ui').innerText = CONFIG.rayonRadarKm;
+                document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
+                document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
             },
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
+                document.getElementById('speed-max').innerText = STATE.gps.max;
+                document.getElementById('angle-val').innerText = STATE.angle.current;
+                document.getElementById('angle-max').innerText = STATE.angle.max;
+                document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
+                document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
+                document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
+                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
+                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
+                document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
             },
-            renderRadarAlert: () => {
-                const box = document.getElementById('radar-box');
-                const val = document.getElementById('radar-dist-val');
-                const content = document.getElementById('radar-content');
-                
-                if(STATE.nearestRadar && STATE.nearestRadar.dist <= CONFIG.rayonRadarKm) {
-                    box.classList.add('radar-alert');
-                    val.innerText = STATE.nearestRadar.dist.toFixed(2) + " KM";
-                    val.style.color = "#fff";
-                    content.innerHTML = `
-                        <div style="font-size:1.5rem; color:#fff; font-weight:bold;">⚠️ RADAR À</div>
-                        <div style="font-size:4rem; font-family:'Impact'; color:#fff;">${STATE.nearestRadar.dist.toFixed(2)}</div>
-                        <div style="font-size:1.2rem; color:#fff;">LIMITE: ${STATE.nearestRadar.data.vma || '--'} KM/H</div>
-                    `;
+            updateBars: (type, val) => {
+                if (type === 'speed') {
+                    const p = (val / CONFIG.vitesseMaxGraph) * 100;
+                    for(let i=1; i<=5; i++) document.querySelector(`.b${i}`).classList.toggle('active', p >= (i*20));
                 } else {
-                    box.classList.remove('radar-alert');
-                    val.style.color = "var(--ktm-orange)";
-                    content.innerHTML = `
-                        <div style="font-size: 0.8rem; color: var(--text-dim);">AUCUN RADAR PROCHE</div>
-                        <div style="font-size: 2rem; font-family: 'Impact'; color: var(--ktm-orange);">PAS DE DANGER</div>
-                    `;
+                    const absVal = Math.abs(val);
+                    document.querySelector('.a3').classList.add('active');
+                    document.querySelector('.a2').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a1').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    document.querySelector('.a4').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
+                    document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
-            updateRadarRadius: v => { CONFIG.rayonRadarKm = parseFloat(v); UI.syncConfig(); },
+            sortStations: (criteria) => {
+                if (criteria === 'prix') { STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9)); }
+                else { STATE.stations.sort((a,b) => a.dist - b.dist); }
+                UI.renderStations();
+            },
+            renderStations: () => {
+                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
+                    <div class="station-item">
+                        <div class="st-header">
+                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
+                            <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div><div class="st-dist">${s.dist.toFixed(1)}km</div></div>
+                        </div>
+                        <div class="st-nav">
+                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
+                        </div>
+                    </div>`).join('');
+            },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
-            closeSettings: () => document.getElementById('settings-modal').style.display = 'none'
+            closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
+            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
+            resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
+            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
+            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
+        setInterval(UI.update, CONFIG.refreshRate);
     </script>
 </body>
 </html>
