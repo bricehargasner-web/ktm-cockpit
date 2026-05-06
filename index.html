@@ -314,40 +314,40 @@
                 try {
                     const lat = STATE.gps.lat;
                     const lon = STATE.gps.lon;
-                    const radius = (CONFIG.radarRayonM || 5000) / 1000; // conversion km
                     
-                    // On définit une zone de recherche (Bounding Box) autour de vous
-                    const delta = 0.05; // Environ 5km autour
-                    const url = `https://nominatim.openstreetmap.org/search?q=[speed_camera]&format=json&viewbox=${lon-delta},${lat+delta},${lon+delta},${lat-delta}&bounded=1&limit=50`;
+                    // Rayon de recherche (on prend 10km pour être sûr d'avoir un résultat test)
+                    const radius = 10000; 
+                    
+                    // On utilise le mot-clé 'camera' qui est plus large dans la base OSM
+                    const url = `https://nominatim.openstreetmap.org/search?q=speed+camera&format=json&viewbox=${lon-0.1},${lat+0.1},${lon+0.1},${lat-0.1}&bounded=1&limit=50`;
 
-                    const res = await fetch(url, { headers: { 'User-Agent': 'KTM-Dash-App' } });
+                    const res = await fetch(url);
                     const data = await res.json();
                     
-                    if(diag) diag.innerText = `Radar API : OK (${data.length} détecté${data.length > 1 ? 's' : ''})`;
+                    // Filtrage manuel par distance pour le bandeau d'alerte
+                    let closestDist = radius;
+                    let count = 0;
 
-                    if (data.length > 0) {
-                        let closestDist = CONFIG.radarRayonM;
-                        let found = false;
-
+                    if (data && data.length > 0) {
                         data.forEach(r => {
                             const d = CORE.calcDist(lat, lon, parseFloat(r.lat), parseFloat(r.lon)) * 1000;
-                            if (d <= CONFIG.radarRayonM) {
+                            if (d <= radius) {
+                                count++;
                                 if (d < closestDist) closestDist = d;
-                                found = true;
                             }
                         });
+                    }
 
-                        if (found) {
-                            document.getElementById('radar-alert').style.display = 'block';
-                            document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                        } else {
-                            document.getElementById('radar-alert').style.display = 'none';
-                        }
+                    if(diag) diag.innerText = `Radar API : OK (${count} détecté${count > 1 ? 's' : ''})`;
+
+                    if (count > 0 && closestDist <= (CONFIG.radarRayonM || 5000)) {
+                        document.getElementById('radar-alert').style.display = 'block';
+                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
                     }
                 } catch (e) {
-                    if(diag) diag.innerText = "Radar API : Erreur synchro";
+                    if(diag) diag.innerText = "Radar API : Erreur Service";
                 }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
