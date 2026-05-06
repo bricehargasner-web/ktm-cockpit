@@ -312,24 +312,29 @@
                 if (!STATE.gps.lat) return;
                 const diag = document.getElementById('diag-radar');
                 try {
-                    // Rayon de recherche (on utilise votre CONFIG)
                     const radius = CONFIG.radarRayonM || 5000;
+                    // Utilisation d'un moteur de recherche de proximité plus simple
+                    const url = `https://nominatim.openstreetmap.org/search?q=speed_camera&format=json&lat=${STATE.gps.lat}&lon=${STATE.gps.lon}&addressdetails=0&limit=10`;
+
+                    const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+                    if (!res.ok) throw new Error("Serveur occupé");
                     
-                    // Requete Overpass : cherche les radars (speed_camera) autour de la position
-                    const query = `[out:json];node["highway"="speed_camera"](around:${radius},${STATE.gps.lat},${STATE.gps.lon});out;`;
-                    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-                    
-                    const res = await fetch(url);
                     const data = await res.json();
                     
-                    const total = data.elements ? data.elements.length : 0;
+                    // Filtrage manuel de la distance pour être ultra précis
+                    const radarsProches = data.filter(item => {
+                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, parseFloat(item.lat), parseFloat(item.lon)) * 1000;
+                        return d <= radius;
+                    });
+
+                    const total = radarsProches.length;
                     if(diag) diag.innerText = `Radar API : OK (${total} détecté${total > 1 ? 's' : ''})`;
 
                     if (total > 0) {
-                        // Calcul de la distance du plus proche
+                        // On calcule la distance du plus proche parmi ceux filtrés
                         let closestDist = radius;
-                        data.elements.forEach(node => {
-                            const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
+                        radarsProches.forEach(r => {
+                            const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, parseFloat(r.lat), parseFloat(r.lon)) * 1000;
                             if (d < closestDist) closestDist = d;
                         });
 
@@ -339,7 +344,8 @@
                         document.getElementById('radar-alert').style.display = 'none';
                     }
                 } catch (e) {
-                    if(diag) diag.innerText = "Radar API : Erreur Overpass";
+                    if(diag) diag.innerText = "Radar API : Relance...";
+                    console.log("Erreur Radar:", e.message);
                 }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
