@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.23-Full-Control",          
+        version: "22.25-Full-Control",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -17,6 +17,7 @@
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
+        // PARAMETRES MOTO ENERGY CONCEPT
         consoMoy: 5.8,       
         autonomieMax: 280
     };
@@ -25,7 +26,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.23 - Energy Concept</title>
+    <title>KTM Dash V22.25 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -128,7 +129,7 @@
         </div>
     </div>
 
-    <!-- REGLAGES + MOUCHARD -->
+    <!-- REGLAGES + DIAGNOSTIC -->
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
@@ -142,10 +143,10 @@
             <input type="number" id="cfg-conso" step="0.1" onchange="UI.saveSettings()">
             <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">MODE JOUR/NUIT</button>
         </div>
-        <!-- MOUCHARD DE DIAGNOSTIC -->
+        <!-- DIAGNOSTIC[cite: 1] -->
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Mouchard Diagnostic</div>
-            <div id="diag-osmand" class="diag-line">OsmAnd+ : En attente...</div>
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic Technique</div>
+            <div id="diag-osmand" class="diag-line">OsmAnd+ : Lien prêt (Intent)</div>
             <div id="diag-gps" class="diag-line">Signal GPS : --</div>
             <div id="diag-data" class="diag-line">Flux Stations : --</div>
         </div>
@@ -158,11 +159,24 @@
             gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
+        const ECO_MATHS = {
+            update: () => {
+                const dist = STATE.gpx.distance;
+                const brule = (dist * CONFIG.consoMoy) / 100;
+                const restant = CONFIG.autonomieMax - dist;
+                document.getElementById('fuel-burn').innerText = brule.toFixed(1) + " L";
+                const rangeElem = document.getElementById('fuel-range');
+                rangeElem.innerText = Math.max(0, Math.round(restant)) + " KM";
+                rangeElem.style.color = restant < 50 ? "#f00" : "var(--ktm-orange)";
+            }
+        };
+
         const CORE = {
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 UI.syncConfig(); CORE.initGyro(); CORE.initGPS();
+                setInterval(ECO_MATHS.update, 2000);
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
@@ -184,13 +198,12 @@
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
                     document.getElementById('diag-gps').innerText = `Signal GPS : FIX (${STATE.gps.lat.toFixed(4)})`;
-                    
                     if(STATE.gpx.active && STATE.gps.lat) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon };
                         if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                         STATE.gpx.prev = pt;
                     }
-                }, err => { document.getElementById('diag-gps').innerText = "Signal GPS : ERREUR"; }, { enableHighAccuracy: true });
+                }, null, { enableHighAccuracy: true });
             },
             calcDist: (l1, n1, l2, n2) => {
                 const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
@@ -208,7 +221,7 @@
                     }));
                     document.getElementById('diag-data').innerText = `Flux Stations : ${STATE.stations.length} trouvées`;
                     UI.renderStations();
-                }).catch(() => { document.getElementById('diag-data').innerText = "Flux Stations : ERREUR API"; });
+                });
             },
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
@@ -234,12 +247,6 @@
                 document.getElementById('angle-val').innerText = STATE.angle.current;
                 document.getElementById('angle-max').innerText = STATE.angle.max || 0;
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
-                
-                // Calcul Autonomie
-                const brule = (STATE.gpx.distance * CONFIG.consoMoy) / 100;
-                const restant = CONFIG.autonomieMax - STATE.gpx.distance;
-                document.getElementById('fuel-burn').innerText = brule.toFixed(1) + " L";
-                document.getElementById('fuel-range').innerText = Math.max(0, Math.round(restant)) + " KM";
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
@@ -261,16 +268,12 @@
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='osmand.api://navigate?lat=${s.lat}&lon=${s.lon}'">OSM+</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>`).join('');
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
-            openSettings: () => {
-                document.getElementById('settings-modal').style.display = 'flex';
-                // Test Intent OsmAnd pour le mouchard
-                document.getElementById('diag-osmand').innerText = "OsmAnd+ : Lien prêt (osmand.api://)";
-            },
+            openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { 
                 CONFIG.carburantCible = document.getElementById('cfg-fuel').value; 
