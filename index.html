@@ -3,7 +3,7 @@
 <!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.26-Full-Control",          
+        version: "22.20-Full-Control",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
@@ -16,18 +16,14 @@
         seuilLuxJour: 60,                
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
-        apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
-        // VARIABLES DYNAMIQUES MOTO
-        consoMoy: 5.8,       // L/100km réglable
-        autonomieMax: 280,   // Capacité totale théorique en KM
-        reserveSeuil: 50     // Alerte rouge sous 50km
+        apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2'
     };
 </script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.26 - Energy Concept</title>
+    <title>KTM Dash V22.20 - Energy Concept</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
@@ -35,31 +31,36 @@
         body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
-        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 100px; }
+        .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 110px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
         .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
-        .main-display { display: grid; grid-template-columns: 70px 1fr 50px; align-items: center; height: 60px; position: relative; }
-        .bargraph-svg { width: 70px; height: 45px; }
+        .main-display { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; height: 65px; position: relative; }
+        .bargraph-svg { width: 75px; height: 50px; }
         .bar { fill: var(--bar-off); transition: fill 0.1s ease; }
         .bar.active { fill: var(--ktm-orange); }
-        .val-main { font-size: 3.8rem; line-height: 1; text-align: center; font-family: 'Impact', sans-serif; }
-        .unit { font-size: 0.9rem; color: var(--ktm-orange); font-weight: bold; align-self: flex-end; padding-bottom: 8px; }
-        .val-sub { display: flex; justify-content: space-between; font-size: 0.65rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
-        .btn-action { position: absolute; top: -5px; right: 0; height: 22px; min-width: 48px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.5rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; min-height: 55px;}
-        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 50px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .val-main { font-size: 4.2rem; line-height: 1; text-align: center; font-family: 'Impact', sans-serif; }
+        .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; align-self: flex-end; padding-bottom: 10px; }
+        .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
+        .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
+        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; position: relative; }
         #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; margin-top: 2px; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
-        .st-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .st-name { font-weight: bold; font-size: 0.8rem; color: var(--text-main); }
+        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
+        .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
+        .st-city { font-size: 0.65rem; color: var(--text-dim); }
         .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
+        .st-dist { font-size: 0.7rem; font-weight: bold; }
         .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
         .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; text-align: center; }
         #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
         .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
-        select, input[type="range"], input[type="number"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
+        select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
+        .sort-btn { cursor: pointer; text-decoration: underline; }
+        .sort-btn:hover { color: var(--ktm-orange); }
     </style>
 </head>
 
@@ -93,28 +94,12 @@
             <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- ECO-RANGE : CALCULS DYNAMIQUES -->
-        <div class="panel">
-            <div class="title">Autonomie & Consommation</div>
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; padding: 5px 0;">
-                <div>
-                    <div id="fuel-range" class="impact" style="font-size: 2.2rem; color: var(--ktm-orange); line-height: 1;">---</div>
-                    <div class="title" style="font-size: 0.5rem; margin: 0;">KM RESTANTS</div>
-                </div>
-                <div style="text-align: right; border-left: 1px solid #333; padding-left: 10px;">
-                    <div class="title" style="font-size: 0.5rem;">RENDEMENT : <span id="fuel-efficiency" style="color:#0f0">--</span> KM/L</div>
-                    <div class="title" style="font-size: 0.5rem;">BRÛLÉ : <span id="fuel-burn" style="color:#fff">0.00 L</span></div>
-                    <div class="title" style="font-size: 0.5rem;">CONSO : <span id="ui-conso-moy" style="color:#fff">--</span> L/100</div>
-                </div>
-            </div>
-        </div>
-
         <!-- OUTILS -->
         <div class="panel tool-grid">
-            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:0.9rem; font-weight:bold;">--°C</div></div>
+            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
             <div class="tool-item" style="text-align:center">
-                <div class="title" style="font-size:0.5rem">GPX</div>
-                <div id="gpx-dist" style="font-size:0.85rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
+                <div class="title" style="font-size:0.5rem">Trace GPX</div>
+                <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
             </div>
             <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
@@ -127,6 +112,11 @@
                 <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
             </div>
             <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
+            
+            <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
+                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
+                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
+            </div>
             <div id="stations-list"></div>
         </div>
     </div>
@@ -135,78 +125,81 @@
     <div id="settings-modal">
         <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
         <div class="cfg-row">
-            <label class="title">Carburant cible</label>
+            <label class="title">Carburant</label>
             <select id="cfg-fuel" onchange="UI.saveSettings()">
                 <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
             </select>
-            <label class="title">Rayon de recherche: <span id="radius-val">--</span> km</label>
+            <label class="title">Rayon: <span id="radius-val">--</span> km</label>
             <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
-            <label class="title">Conso Moyenne (L/100)</label>
-            <input type="number" id="cfg-conso" step="0.1" onchange="UI.saveSettings()">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">MODE JOUR/NUIT</button>
+            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
         </div>
         <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.26</div>
-            <div id="diag-osmand" class="diag-line">OsmAnd+ : Intent OK</div>
-            <div id="diag-gps" class="diag-line">Signal GPS : --</div>
-            <div id="diag-data" class="diag-line">Flux Stations : --</div>
+            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.20</div>
+            <div id="diag-meteo" class="diag-line">Météo : --</div>
+            <div id="diag-gps" class="diag-line">GPS : --</div>
+            <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
     </div>
 
     <script>
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, offset: 0, max: 0 },
-            gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
-        };
-
-        const ECO_MATHS = {
-            update: () => {
-                const dist = STATE.gpx.distance;[cite: 1]
-                const brule = (dist * CONFIG.consoMoy) / 100;
-                const kmL = CONFIG.consoMoy > 0 ? (100 / CONFIG.consoMoy).toFixed(1) : "--";
-                const restant = CONFIG.autonomieMax - dist;[cite: 1]
-                
-                document.getElementById('fuel-burn').innerText = brule.toFixed(2) + " L";
-                document.getElementById('fuel-efficiency').innerText = kmL;
-                
-                const rElem = document.getElementById('fuel-range');
-                rElem.innerText = Math.max(0, Math.round(restant));
-                rElem.style.color = restant < CONFIG.reserveSeuil ? "#f00" : "var(--ktm-orange)";[cite: 1]
-            }
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
         };
 
         const CORE = {
             unlockAll: () => {
                 document.getElementById('start-overlay').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                UI.syncConfig(); CORE.initGyro(); CORE.initGPS();
-                setInterval(ECO_MATHS.update, 1000);[cite: 1]
+                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                setInterval(CORE.checkWeatherQueue, 10000);
+            },
+            initLight: () => {
+                if ('AmbientLightSensor' in window) {
+                    const sensor = new AmbientLightSensor();
+                    sensor.onreading = () => { 
+                        STATE.lux = Math.round(sensor.illuminance); 
+                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJou);
+                    };
+                    sensor.start();
+                }
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
                     let rawBeta = e.beta; 
+                    let rawGamma = Math.abs(e.gamma); 
+
                     if (rawBeta !== null) {
+                        if (rawGamma > CONFIG.rejectionTangage) {
+                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
+                        }
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
-                        let valPure = STATE.angle.smoothed - (STATE.angle.offset || 0);
+                        let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
-                        if(STATE.angle.current > (STATE.angle.max || 0)) STATE.angle.max = STATE.angle.current;
+                        
+                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
+                        if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
                     }
                 });
             },
-            calibrateGyro: () => { STATE.angle.offset = STATE.angle.smoothed || 0; STATE.angle.max = 0; },
+            calibrateGyro: () => { 
+                STATE.angle.offset = STATE.angle.smoothed || 0; 
+                STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0; 
+            },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
+                    if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
-                    document.getElementById('diag-gps').innerText = `Signal GPS : FIX (${STATE.gps.lat.toFixed(4)})`;
                     
                     if(STATE.gpx.active && STATE.gps.lat) {
-                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon };
-                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);[cite: 1]
+                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
+                        STATE.gpx.points.push(pt);
+                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
                         STATE.gpx.prev = pt;
                     }
                 }, null, { enableHighAccuracy: true });
@@ -222,17 +215,36 @@
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || "Station", prix: r.fields[f], lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
+                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
+                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
-                    document.getElementById('diag-data').innerText = `Flux Stations : ${STATE.stations.length} trouvées`;
-                    UI.renderStations();
+                    UI.sortStations('prix');
+                    document.getElementById('stations-labels').style.display = 'flex';
                 });
             },
             toggleRecording: () => {
                 STATE.gpx.active = !STATE.gpx.active;
-                document.getElementById('btn-rec').innerText = STATE.gpx.active ? "STOP" : "REC";
-                document.getElementById('btn-rec').style.background = STATE.gpx.active ? "#f00" : "#222";
+                const btn = document.getElementById('btn-rec');
+                btn.innerText = STATE.gpx.active ? "STOP" : "REC";
+                btn.style.background = STATE.gpx.active ? "#f00" : "#222";
+                if (!STATE.gpx.active && STATE.gpx.points.length > 0) CORE.saveGPX();
+            },
+            saveGPX: () => {
+                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
+                STATE.gpx.points.forEach(p => { xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; });
+                xml += `</trkseg></trk></gpx>`;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
+                a.download = `Trace_${new Date().getTime()}.gpx`; a.click();
+            },
+            checkWeatherQueue: () => {
+                if (STATE.weatherInit || !STATE.gps.lat) return;
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
+                    STATE.weatherInit = true;
+                });
             },
             openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
         };
@@ -244,15 +256,18 @@
                 document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
                 document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('cfg-conso').value = CONFIG.consoMoy;
-                document.getElementById('ui-conso-moy').innerText = CONFIG.consoMoy;
             },
             update: () => {
                 document.getElementById('speed-val').innerText = STATE.gps.speed;
                 document.getElementById('speed-max').innerText = STATE.gps.max;
                 document.getElementById('angle-val').innerText = STATE.angle.current;
-                document.getElementById('angle-max').innerText = STATE.angle.max || 0;
+                document.getElementById('angle-max').innerText = STATE.angle.max;
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
+                document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
+                document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
+                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
+                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
+                document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
@@ -267,10 +282,18 @@
                     document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
+            sortStations: (criteria) => {
+                if (criteria === 'prix') { STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9)); }
+                else { STATE.stations.sort((a,b) => a.dist - b.dist); }
+                UI.renderStations();
+            },
             renderStations: () => {
-                document.getElementById('stations-list').innerHTML = STATE.stations.sort((a,b)=>a.dist-b.dist).slice(0,3).map(s => `
+                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
-                        <div class="st-header"><div><div class="st-name">${s.nom.substring(0,18)}</div></div><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div></div>
+                        <div class="st-header">
+                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
+                            <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div><div class="st-dist">${s.dist.toFixed(1)}km</div></div>
+                        </div>
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
@@ -281,13 +304,10 @@
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
-            saveSettings: () => { 
-                CONFIG.carburantCible = document.getElementById('cfg-fuel').value; 
-                CONFIG.consoMoy = parseFloat(document.getElementById('cfg-conso').value);
-                UI.syncConfig(); 
-            },
+            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
+            resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
-            resetSpeed: () => { STATE.gps.max = 0; }
+            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
         setInterval(UI.update, CONFIG.refreshRate);
     </script>
