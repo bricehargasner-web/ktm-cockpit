@@ -313,8 +313,7 @@
                 const diag = document.getElementById('diag-radar');
                 try {
                     // Utilisation des valeurs en dur de CONFIG
-                    //const url = `${CONFIG.apiRadars}?q=${STATE.gps.lat},${STATE.gps.lon}&distance=${CONFIG.radarRayonM}&size=100`;
-                    const url = `${CONFIG.apiRadars}?size=1`;
+                    const url = `${CONFIG.apiRadars}?q=${STATE.gps.lat},${STATE.gps.lon}&distance=${CONFIG.radarRayonM}&size=100`;
                     const res = await fetch(url);
                     if(!res.ok) throw new Error("Status " + res.status);
                     const data = await res.json();
