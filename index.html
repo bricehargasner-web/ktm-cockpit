@@ -332,15 +332,14 @@
                             if (d < closestDist) closestDist = d;
                         });
 
-                        // Logique de passage : si la distance augmente ou si on est trop près (passage)
-                        // On considère que le radar est derrière nous si on s'en éloigne
-                        if (STATE.lastRadarDist && closestDist > STATE.lastRadarDist + 10) {
+                        // Logique de passage : si la distance augmente de plus de 10m
+                        if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 10)) {
                              document.getElementById('radar-alert').style.display = 'none';
                              if(diag) diag.innerText = "Radar API : Passé";
                         } else if (closestDist <= radius) {
                             document.getElementById('radar-alert').style.display = 'block';
                             document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                            STATE.lastRadarDist = closestDist; // On mémorise la position
+                            STATE.lastRadarDist = closestDist; 
                         }
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
@@ -350,7 +349,7 @@
                 } catch (e) {
                     if(diag) diag.innerText = "Radar API : Relance...";
                 }
-            },
+            }, // FIN de checkRadars
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
