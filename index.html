@@ -266,7 +266,6 @@ const UI = {
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
             },
             update: () => {
-                // Mise à jour des valeurs texte
                 document.getElementById('speed-val').innerText = Math.round(STATE.gps.speed);
                 document.getElementById('speed-max').innerText = Math.round(STATE.gps.max);
                 document.getElementById('angle-val').innerText = Math.abs(Math.round(STATE.angle.current));
@@ -274,13 +273,9 @@ const UI = {
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
-                
-                // Diagnostics
                 document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
                 document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
                 document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
-
-                // Mise à jour des barres graphiques
                 UI.updateBars('speed', STATE.gps.speed);
                 UI.updateBars('angle', STATE.angle.current);
             },
@@ -288,17 +283,17 @@ const UI = {
                 if (type === 'speed') {
                     const p = (val / CONFIG.vitesseMaxGraph) * 100;
                     for(let i=1; i<=5; i++) {
-                        const bar = document.querySelector(`.b${i}`);
-                        if(bar) bar.classList.toggle('active', p >= (i*20));
+                        const b = document.querySelector(`.b${i}`);
+                        if(b) b.classList.toggle('active', p >= (i*20));
                     }
                 } else {
                     const absVal = Math.abs(val);
-                    const a1=document.querySelector('.a1'), a2=document.querySelector('.a2'), a3=document.querySelector('.a3'), a4=document.querySelector('.a4'), a5=document.querySelector('.a5');
+                    const a3 = document.querySelector('.a3');
                     if(a3) a3.classList.add('active');
-                    if(a2) a2.classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
-                    if(a1) a1.classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
-                    if(a4) a4.classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
-                    if(a5) a5.classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    const a2 = document.querySelector('.a2'); if(a2) a2.classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
+                    const a1 = document.querySelector('.a1'); if(a1) a1.classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    const a4 = document.querySelector('.a4'); if(a4) a4.classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
+                    const a5 = document.querySelector('.a5'); if(a5) a5.classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
             sortStations: (criteria) => {
@@ -307,7 +302,9 @@ const UI = {
                 UI.renderStations();
             },
             renderStations: () => {
-                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
+                const list = document.getElementById('stations-list');
+                if(!list) return;
+                list.innerHTML = STATE.stations.map(s => `
                     <div class="station-item">
                         <div class="st-header">
                             <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
@@ -316,7 +313,6 @@ const UI = {
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>`).join('');
             },
@@ -331,14 +327,12 @@ const UI = {
                     const res = await fetch(url);
                     const data = await res.json();
                     const count = data.elements ? data.elements.length : 0;
-
                     if (count > 0) {
                         let closestDist = radius;
                         data.elements.forEach(node => {
                             const d = CORE.calcDist(lat, lon, node.lat, node.lon) * 1000;
                             if (d < closestDist) closestDist = d;
                         });
-
                         if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 10)) {
                              document.getElementById('radar-alert').style.display = 'none';
                              if(diag) diag.innerText = "Radar API : Passé";
@@ -352,26 +346,21 @@ const UI = {
                         STATE.lastRadarDist = null;
                         if(diag) diag.innerText = `Radar API : OK (0)`;
                     }
-                } catch (e) {
-                    if(diag) diag.innerText = "Radar API : Relance...";
-                }
+                } catch (e) { if(diag) diag.innerText = "Radar API : Erreur"; }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
             resetSpeed: () => { 
-                STATE.gps.max = 0; 
-                STATE.gps.sum = 0; 
-                STATE.gps.count = 0; 
+                STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; 
                 document.getElementById('speed-max').innerText = 0;
                 document.getElementById('speed-moy').innerText = 0;
             },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
-       
-        //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
+               //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
         setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 5000);
     </script>
 </body>
