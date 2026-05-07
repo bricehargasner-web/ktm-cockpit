@@ -64,11 +64,17 @@
         .sort-btn { cursor: pointer; text-decoration: underline; }
         .sort-btn:hover { color: var(--ktm-orange); }
         html, body {
-    overscroll-behavior-y: contain; /* Bloque le pull-to-refresh */
-    position: fixed;               /* Empêche le rebond élastique */
-    overflow: hidden;              /* Verrouille le défilement inutile */
+    /* On garde le blocage du pull-to-refresh */
+    overscroll-behavior-y: contain; 
+    
+    /* On LIBÈRE le défilement pour ton écran scindé */
+    overflow-y: auto; 
+    overflow-x: hidden;
+    
+    /* On assure que la page prend toute la place sans rebond */
     width: 100%;
     height: 100%;
+    -webkit-overflow-scrolling: touch; /* Fluidité sur mobile */
 }
     </style>
 </head>
