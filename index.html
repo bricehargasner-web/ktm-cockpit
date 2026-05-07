@@ -250,13 +250,26 @@
                 a.download = `Trace_${new Date().getTime()}.gpx`; a.click();
             },
             checkWeatherQueue: () => {
-                if (STATE.weatherInit || !STATE.gps.lat) return;
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r => r.json()).then(d => {
-                    document.getElementById('weather-temp').innerText = Math.round(d.current_weather.temperature)+"°C";
-                    STATE.weatherInit = true;
-                });
-            },
+    if (STATE.weatherInit || !STATE.gps.lat) return;
+    
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+    .then(r => r.json()).then(d => {
+        const temp = Math.round(d.current_weather.temperature);
+        const code = d.current_weather.weathercode;
+        
+        // Traduction du code météo en icône
+        let icon = "☀️"; // Par défaut soleil
+        if (code >= 1 && code <= 3) icon = "🌤️";
+        if (code >= 45 && code <= 48) icon = "🌫️";
+        if (code >= 51 && code <= 67) icon = "🌧️";
+        if (code >= 71 && code <= 86) icon = "❄️";
+        if (code >= 95) icon = "⚡";
+
+        // Affichage sur le cockpit
+        document.getElementById('weather-temp').innerText = `${icon} ${temp}°C`;
+        STATE.weatherInit = true;
+    });
+},
             openDynamicWeather: () => { 
                 if(STATE.gps.lat && STATE.gps.lon) {
                     const windyUrl = `https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`;
