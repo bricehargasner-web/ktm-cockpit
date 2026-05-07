@@ -311,11 +311,15 @@ const UI = {
                     <div class="station-item">
                         <div class="st-header">
                             <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
-                            <div style="text-align:right"><div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div><div class="st-dist">${s.dist.toFixed(1)}km</div></div>
+                            <div style="text-align:right">
+                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
+                                <div class="st-dist">${s.dist.toFixed(1)}km</div>
+                            </div>
                         </div>
                         <div class="st-nav">
                             <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
                             <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
                         </div>
                     </div>`).join('');
             },
