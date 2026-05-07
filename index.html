@@ -169,7 +169,7 @@
                     const sensor = new AmbientLightSensor();
                     sensor.onreading = () => { 
                         STATE.lux = Math.round(sensor.illuminance); 
-                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJou);
+                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJour);
                     };
                     sensor.start();
                 }
