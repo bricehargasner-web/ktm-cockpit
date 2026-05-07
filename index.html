@@ -258,13 +258,16 @@
                 });
             },
             openDynamicWeather: () => { 
-                if(STATE.gps.lat) {
-                    window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); 
+                if(STATE.gps.lat && STATE.gps.lon) {
+                    // On utilise le mode 'recherche' avec les coordonnées LAT,LON
+                    // Cela force le site à identifier la localité et à centrer la carte
+                    const searchUrl = `https://www.meteoetradar.com/recherche?q=${STATE.gps.lat},${STATE.gps.lon}`;
+                    window.open(searchUrl, '_blank'); 
                 } else {
+                    // Si le GPS n'est pas encore prêt, on ouvre la page de base
                     window.open(CONFIG.urlMeteoBase, '_blank');
                 }
             }
-        };
 const UI = {
             syncConfig: () => {
                 document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
