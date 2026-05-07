@@ -309,23 +309,20 @@
                         </div>
                     </div>`).join('');
             },
-       checkRadars: async () => {
+      checkRadars: async () => {
                 if (!STATE.gps.lat) return;
                 const diag = document.getElementById('diag-radar');
                 try {
                     const lat = STATE.gps.lat;
                     const lon = STATE.gps.lon;
-                    const radius = CONFIG.radarRayonM || 5000;
+                    const radius = CONFIG.radarRayonM || 500;
                     
-                    // On utilise le serveur Kumi qui a fonctionné
                     const query = `[out:json][timeout:25];node["highway"="speed_camera"](around:${radius},${lat},${lon});out body;`;
                     const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
 
                     const res = await fetch(url);
                     const data = await res.json();
-                    
                     const count = data.elements ? data.elements.length : 0;
-                    if(diag) diag.innerText = `Radar API : OK (${count} détecté${count > 1 ? 's' : ''})`;
 
                     if (count > 0) {
                         let closestDist = radius;
@@ -334,15 +331,20 @@
                             if (d < closestDist) closestDist = d;
                         });
 
-                        // On affiche si le plus proche est dans le rayon
-                        if (closestDist <= radius) {
+                        // Logique de passage : si la distance augmente ou si on est trop près (passage)
+                        // On considère que le radar est derrière nous si on s'en éloigne
+                        if (STATE.lastRadarDist && closestDist > STATE.lastRadarDist + 10) {
+                             document.getElementById('radar-alert').style.display = 'none';
+                             if(diag) diag.innerText = "Radar API : Passé";
+                        } else if (closestDist <= radius) {
                             document.getElementById('radar-alert').style.display = 'block';
                             document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                        } else {
-                            document.getElementById('radar-alert').style.display = 'none';
+                            STATE.lastRadarDist = closestDist; // On mémorise la position
                         }
                     } else {
                         document.getElementById('radar-alert').style.display = 'none';
+                        STATE.lastRadarDist = null;
+                        if(diag) diag.innerText = `Radar API : OK (0)`;
                     }
                 } catch (e) {
                     if(diag) diag.innerText = "Radar API : Relance...";
@@ -356,7 +358,8 @@
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
-        setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
+        //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
+        setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 5000);
     </script>
 </body>
 </html>
