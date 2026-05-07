@@ -287,7 +287,8 @@ const UI = {
                         if(b) b.classList.toggle('active', p >= (i*20));
                     }
                 } else {
-                    const absVal = Math.abs(val);
+                }
+                   const absVal = Math.abs(val);
                     const a3 = document.querySelector('.a3');
                     if(a3) a3.classList.add('active');
                     const a2 = document.querySelector('.a2'); if(a2) a2.classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
