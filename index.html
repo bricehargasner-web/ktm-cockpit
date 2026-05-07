@@ -339,21 +339,7 @@ const UI = {
                     if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
                 }
             },
-            fetchRadarsAPI: async () => {
-                if (!STATE.gps.lat) return;
-                const diag = document.getElementById('diag-radar');
-                try {
-                    const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
-                    const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error("API Limit");
-                    const data = await res.json();
-                    STATE.radarsCache = data.elements || [];
-                    if(diag) diag.innerText = `Radar API : ${STATE.radarsCache.length} en cache (10km)`;
-                } catch (e) {
-                    if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
-                }
-            },
+            
             checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
