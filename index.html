@@ -355,7 +355,15 @@
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
-            resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
+           // resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
+            resetSpeed: () => { 
+                STATE.gps.max = 0; 
+                STATE.gps.sum = 0; 
+                STATE.gps.count = 0; 
+                // Mise à jour immédiate de l'affichage
+                document.getElementById('speed-max').innerText = 0;
+                document.getElementById('speed-moy').innerText = 0;
+            },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
