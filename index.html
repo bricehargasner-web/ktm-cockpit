@@ -169,11 +169,35 @@
         };
 
         const CORE = {
-            unlockAll: () => {
-                document.getElementById('start-overlay').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
-                setInterval(CORE.checkWeatherQueue, 10000);
+           startBootSequence: async () => {
+                const bar = document.getElementById('boot-bar');
+                const status = document.getElementById('boot-status');
+                const btn = document.getElementById('btn-unlock');
+                if(btn) btn.style.display = 'none';
+
+                // Liste des tests cliniques pour le look "ordinateur de bord"
+                const steps = [
+                    { p: 15, t: "Initialisation Kernel KTM..." },
+                    { p: 35, t: "Liaison API Gouvernement (Carburants)..." },
+                    { p: 55, t: "Scan Base Radars (Zone 10km)..." },
+                    { p: 75, t: "Recherche Satellites GPS..." },
+                    { p: 90, t: "Calibrage Gyroscopique..." },
+                    { p: 100, t: "Système Optimal - READY TO RACE" }
+                ];
+
+                for (let step of steps) {
+                    if(bar) bar.style.width = step.p + "%";
+                    if(status) status.innerText = step.t;
+                    await new Promise(r => setTimeout(r, 600)); // Vitesse de l'animation
+                }
+
+                // Une fois à 100%, on affiche le dashboard
+                setTimeout(() => {
+                    document.getElementById('start-overlay').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                    setInterval(CORE.checkWeatherQueue, 10000);
+                }, 400);
             },
             initLight: () => {
                 if ('AmbientLightSensor' in window) {
