@@ -257,7 +257,13 @@
                     STATE.weatherInit = true;
                 });
             },
-            openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
+            openDynamicWeather: () => { 
+                if(STATE.gps.lat) {
+                    window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); 
+                } else {
+                    window.open(CONFIG.urlMeteoBase, '_blank');
+                }
+            }
         };
 const UI = {
             syncConfig: () => {
