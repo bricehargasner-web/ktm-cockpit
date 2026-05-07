@@ -17,7 +17,7 @@
         urlMeteoBase: 'https://www.meteoetradar.com/carte-meteo', 
         refreshRate: 300,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
-        radarRayonM: 500,
+        radarRayonM: 300,
         apiRadars: 'https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines',
     };
 </script>
@@ -154,6 +154,7 @@
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
             lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
+            lastRadarDist: null, 
         };
 
         const CORE = {
