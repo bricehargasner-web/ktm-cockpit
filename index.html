@@ -63,20 +63,20 @@
         .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
         .sort-btn { cursor: pointer; text-decoration: underline; }
         .sort-btn:hover { color: var(--ktm-orange); }
-        html, body {
-    /* Bloque UNIQUEMENT le rafraîchissement natif de Chrome */
-    overscroll-behavior-y: none; 
-    
-    /* Autorise le défilement naturel */
+    html, body {
+    overscroll-behavior-y: none; /* Bloque le rafraîchissement mais autorise le scroll */
     overflow-y: auto; 
-    overflow-x: hidden;
-    
-    /* Indispensable pour que le scroll fonctionne sur toute la hauteur */
     height: auto;
     min-height: 100%;
-    
-    /* Supprime les rebonds élastiques qui gênent en écran scindé */
-    position: relative; 
+    margin: 0;
+    padding: 0;
+}
+
+#dashboard {
+    display: none; /* Sera passé en 'block' par le JS */
+    width: 100%;
+    min-height: 100vh; /* S'assure que le dashboard peut être plus grand que l'écran scindé */
+    padding-bottom: 50px; /* Marge de sécurité pour voir le dernier bouton tout en bas */
 }
     </style>
 </head>
