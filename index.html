@@ -275,11 +275,38 @@
                 });
             },
             toggleRecording: () => {
-                STATE.gpx.active = !STATE.gpx.active;
-                const btn = document.getElementById('btn-rec');
-                btn.innerText = STATE.gpx.active ? "STOP" : "REC";
-                btn.style.background = STATE.gpx.active ? "#f00" : "#222";
-                if (!STATE.gpx.active && STATE.gpx.points.length > 0) CORE.saveGPX();
+                // 1. Si on est en train d'enregistrer, on veut passer sur STOP
+                if (STATE.gpx.active) {
+                    STATE.gpx.active = false;
+                    const btn = document.getElementById('btn-rec');
+                    btn.innerText = "REC";
+                    btn.style.background = "#222";
+
+                    // 2. Vérification s'il y a des points enregistrés
+                    if (STATE.gpx.points.length > 0) {
+                        // Fenêtre de confirmation clinique
+                        const saveConfirm = confirm(`Fin de parcours. Enregistrer la trace (${STATE.gpx.points.length} points) ?`);
+                        
+                        if (saveConfirm) {
+                            CORE.saveGPX(); // On télécharge
+                        } else {
+                            console.log("Trace annulée par l'utilisateur");
+                        }
+                    }
+                    
+                    // 3. Reset de la mémoire dans tous les cas pour repartir à zéro
+                    STATE.gpx.points = [];
+                    STATE.gpx.distance = 0;
+                    STATE.gpx.prev = null;
+
+                } else {
+                    // 4. Si on était sur STOP, on lance l'enregistrement
+                    STATE.gpx.active = true;
+                    STATE.gpx.points = []; // On s'assure que c'est vide au départ
+                    const btn = document.getElementById('btn-rec');
+                    btn.innerText = "STOP";
+                    btn.style.background = "#f00";
+                }
             },
             saveGPX: () => {
                 let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
