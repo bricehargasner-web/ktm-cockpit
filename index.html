@@ -259,13 +259,12 @@
             },
             openDynamicWeather: () => { 
                 if(STATE.gps.lat && STATE.gps.lon) {
-                    // On utilise le mode 'recherche' avec les coordonnées LAT,LON
-                    // Cela force le site à identifier la localité et à centrer la carte
-                    const searchUrl = `https://www.meteoetradar.com/recherche?q=${STATE.gps.lat},${STATE.gps.lon}`;
-                    window.open(searchUrl, '_blank'); 
+                    // Redirection vers WINDY : Radar Pluie, centré sur tes coordonnées, Zoom niveau 9
+                    const windyUrl = `https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`;
+                    window.open(windyUrl, '_blank'); 
                 } else {
-                    // Si le GPS n'est pas encore prêt, on ouvre la page de base
-                    window.open(CONFIG.urlMeteoBase, '_blank');
+                    // Si le GPS n'est pas prêt, on ouvre la carte de France
+                    window.open('https://www.windy.com/-Weather-radar-radar?radar,46.5,2.0,5', '_blank');
                 }
             }
 const UI = {
