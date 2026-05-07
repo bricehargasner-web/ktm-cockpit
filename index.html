@@ -257,8 +257,7 @@
             },
             openDynamicWeather: () => { window.open(`${CONFIG.urlMeteoBase}?lat=${STATE.gps.lat}&lon=${STATE.gps.lon}`, '_blank'); }
         };
-
-        const UI = {
+const UI = {
             syncConfig: () => {
                 document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
                 document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
@@ -267,28 +266,39 @@
                 document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
             },
             update: () => {
-                document.getElementById('speed-val').innerText = STATE.gps.speed;
-                document.getElementById('speed-max').innerText = STATE.gps.max;
-                document.getElementById('angle-val').innerText = STATE.angle.current;
-                document.getElementById('angle-max').innerText = STATE.angle.max;
+                // Mise à jour des valeurs texte
+                document.getElementById('speed-val').innerText = Math.round(STATE.gps.speed);
+                document.getElementById('speed-max').innerText = Math.round(STATE.gps.max);
+                document.getElementById('angle-val').innerText = Math.abs(Math.round(STATE.angle.current));
+                document.getElementById('angle-max').innerText = Math.round(STATE.angle.max);
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
+                
+                // Diagnostics
                 document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
                 document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
                 document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
+
+                // Mise à jour des barres graphiques
+                UI.updateBars('speed', STATE.gps.speed);
+                UI.updateBars('angle', STATE.angle.current);
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
                     const p = (val / CONFIG.vitesseMaxGraph) * 100;
-                    for(let i=1; i<=5; i++) document.querySelector(`.b${i}`).classList.toggle('active', p >= (i*20));
+                    for(let i=1; i<=5; i++) {
+                        const bar = document.querySelector(`.b${i}`);
+                        if(bar) bar.classList.toggle('active', p >= (i*20));
+                    }
                 } else {
                     const absVal = Math.abs(val);
-                    document.querySelector('.a3').classList.add('active');
-                    document.querySelector('.a2').classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
-                    document.querySelector('.a1').classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
-                    document.querySelector('.a4').classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
-                    document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    const a1=document.querySelector('.a1'), a2=document.querySelector('.a2'), a3=document.querySelector('.a3'), a4=document.querySelector('.a4'), a5=document.querySelector('.a5');
+                    if(a3) a3.classList.add('active');
+                    if(a2) a2.classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
+                    if(a1) a1.classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    if(a4) a4.classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
+                    if(a5) a5.classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
                 }
             },
             sortStations: (criteria) => {
@@ -310,17 +320,14 @@
                         </div>
                     </div>`).join('');
             },
-      checkRadars: async () => {
+            checkRadars: async () => {
                 if (!STATE.gps.lat) return;
                 const diag = document.getElementById('diag-radar');
                 try {
-                    const lat = STATE.gps.lat;
-                    const lon = STATE.gps.lon;
+                    const lat = STATE.gps.lat, lon = STATE.gps.lon;
                     const radius = CONFIG.radarRayonM || 500;
-                    
                     const query = `[out:json][timeout:25];node["highway"="speed_camera"](around:${radius},${lat},${lon});out body;`;
                     const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
-
                     const res = await fetch(url);
                     const data = await res.json();
                     const count = data.elements ? data.elements.length : 0;
@@ -332,7 +339,6 @@
                             if (d < closestDist) closestDist = d;
                         });
 
-                        // Logique de passage : si la distance augmente de plus de 10m
                         if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 10)) {
                              document.getElementById('radar-alert').style.display = 'none';
                              if(diag) diag.innerText = "Radar API : Passé";
@@ -349,23 +355,22 @@
                 } catch (e) {
                     if(diag) diag.innerText = "Radar API : Relance...";
                 }
-            }, // FIN de checkRadars
+            },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
-           // resetSpeed: () => { STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; },
             resetSpeed: () => { 
                 STATE.gps.max = 0; 
                 STATE.gps.sum = 0; 
                 STATE.gps.count = 0; 
-                // Mise à jour immédiate de l'affichage
                 document.getElementById('speed-max').innerText = 0;
                 document.getElementById('speed-moy').innerText = 0;
             },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
+       
         //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
         setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 5000);
     </script>
