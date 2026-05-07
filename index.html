@@ -73,7 +73,7 @@
      <div id="radar-alert" style="display:none; position: fixed; bottom: 60px; left: 0; width: 100%; background: linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%); color: #fff; text-align: center; padding: 12px 0; font-family: 'Impact', sans-serif; font-size: 1.4em; border-top: 3px solid #fff; z-index: 9999; box-shadow: 0 -5px 15px rgba(0,0,0,0.5);">
     ⚠️ RADAR À <span id="radar-dist">0</span> M
      </div>
-    </div>
+   
     <div id="dashboard" style="display: none;">
         <!-- VITESSE -->
         <div class="panel accent-orange">
@@ -153,7 +153,7 @@
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
             angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
-            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: []
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
             lastRadarDist: null, 
         };
 
