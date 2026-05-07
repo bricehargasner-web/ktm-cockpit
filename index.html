@@ -335,18 +335,30 @@ const UI = {
                     if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
                 }
             },
+            fetchRadarsAPI: async () => {
+                if (!STATE.gps.lat) return;
+                const diag = document.getElementById('diag-radar');
+                try {
+                    const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
+                    const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("API Limit");
+                    const data = await res.json();
+                    STATE.radarsCache = data.elements || [];
+                    if(diag) diag.innerText = `Radar API : ${STATE.radarsCache.length} en cache (10km)`;
+                } catch (e) {
+                    if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
+                }
+            },
             checkRadars: () => {
-                // 1. Initialisation : lance le téléchargement des 10km
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
                     UI.fetchRadarsAPI(); 
-                    setInterval(UI.fetchRadarsAPI, 60000); // Mise à jour de la zone toutes les 60s
+                    setInterval(UI.fetchRadarsAPI, 60000); 
                 }
 
-                // S'il n'y a pas de radars en mémoire, on ne fait rien
                 if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
 
-                // 2. Calcul local ultra-rapide
                 const radius = CONFIG.radarRayonM || 500; 
                 let closestDist = 999999;
                 
@@ -358,7 +370,6 @@ const UI = {
                 const alertBox = document.getElementById('radar-alert');
                 
                 if (closestDist <= radius) {
-                    // Logique de passage (on s'éloigne de plus de 5m)
                     if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 5)) {
                         alertBox.style.display = 'none';
                         document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
@@ -371,13 +382,6 @@ const UI = {
                     alertBox.style.display = 'none';
                     STATE.lastRadarDist = null;
                 }
-            },
-    else {
-                        document.getElementById('radar-alert').style.display = 'none';
-                        STATE.lastRadarDist = null;
-                        if(diag) diag.innerText = `Radar API : OK (0)`;
-                    }
-                } catch (e) { if(diag) diag.innerText = "Radar API : Erreur"; }
             },
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
