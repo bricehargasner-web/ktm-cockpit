@@ -188,6 +188,19 @@
                 const bar = document.getElementById('boot-bar');
                 const status = document.getElementById('boot-status');
                 const btn = document.getElementById('btn-unlock');
+
+                // --- COMPATIBILITÉ IPHONE (iOS) ---
+                // On demande l'accès aux capteurs avant de cacher le bouton
+                if (typeof DeviceOrientationEvent !== 'undefined' && 
+                    typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        console.log("Permission iOS:", permission);
+                    } catch (error) {
+                        console.error("Erreur permission iOS:", error);
+                    }
+                }
+
                 if(btn) btn.style.display = 'none';
 
                 // Liste des tests cliniques pour le look "ordinateur de bord"
@@ -203,18 +216,25 @@
                 for (let step of steps) {
                     if(bar) bar.style.width = step.p + "%";
                     if(status) status.innerText = step.t;
-                    await new Promise(r => setTimeout(r, 600)); // Vitesse de l'animation
+                    await new Promise(r => setTimeout(r, 600)); 
                 }
 
                 // Une fois à 100%, on affiche le dashboard
                 setTimeout(() => {
                     document.getElementById('start-overlay').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
-                    UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
+                    
+                    UI.syncConfig(); 
+                    CORE.initGyro(); 
+                    CORE.initLight(); 
+                    CORE.initGPS();
+                    
                     setInterval(CORE.checkWeatherQueue, 10000);
                 }, 400);
             },
             initLight: () => {
+                // Sur iPhone, cette partie sera ignorée (pas de capteur Lux)
+                // Le mode nuit restera manuel ou basé sur l'heure.
                 if ('AmbientLightSensor' in window) {
                     const sensor = new AmbientLightSensor();
                     sensor.onreading = () => { 
