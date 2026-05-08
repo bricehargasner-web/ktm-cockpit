@@ -452,22 +452,18 @@ const UI = {
                         </div>
                     </div>`).join('');
             },
-            fetchRadarsAPI: async () => {
-                if (!STATE.gps.lat) return;
-                const diag = document.getElementById('diag-radar');
-                try {
-                    // Télécharge tous les radars dans un rayon de 10 km
+            try {
                     const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
                     const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error("API Limit");
+                    if (!res.ok) throw new Error();
                     const data = await res.json();
                     STATE.radarsCache = data.elements || [];
-                    if(diag) diag.innerText = `Radar API : ${STATE.radarsCache.length} en cache (10km)`;
+                    STATE.radarError = false; // Tout va bien
                 } catch (e) {
-                    if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
+                    STATE.radarError = true; // Erreur API
                 }
-            },
+                UI.updateSystemStatus();
             
             checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
