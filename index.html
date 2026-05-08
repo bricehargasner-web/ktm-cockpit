@@ -483,8 +483,11 @@ const UI = {
 
                 const alertBox = document.getElementById('radar-alert');
                 
+                // LOGIQUE CLINIQUE : On affiche si on est dans le rayon
                 if (closestDist <= radius) {
-                    if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 5)) {
+                    // On ne coupe l'alerte QUE si on est vraiment très près (20m) 
+                    // OU si la distance augmente significativement (signe qu'on s'éloigne pour de bon)
+                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
                         alertBox.style.display = 'none';
                         document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
                     } else {
