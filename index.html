@@ -1,41 +1,35 @@
 <!DOCTYPE html>
 <html lang="fr">
-<!-- 1. CONFIGURATION (LIGNES 1-25) -->
 <script>
     const CONFIG = {
-        version: "22.20-Full-Control",          
+        version: "22.40-Master-Safe",          
         carburantCible: 'SP98',          
         rayonRechercheKm: 10,            
         vitesseMaxGraph: 150,            
         angleMaxGraph: 60,               
         angleSeuilPalier: 15,            
         rejectionTangage: 85,            
-        axeInclinaison: 'beta',          
         angleSmoothing: 0.15,             
-        deltaMaxAngle: 8,               
         seuilLuxJour: 60,                
-        urlMeteoBase: 'https://www.windy.com/-Weather-radar-radar', 
         refreshRate: 500,                
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
-        radarRayonM: 400,
-        apiRadars: 'https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines',
+        radarRayonM: 500,
+        apiRadars: 'https://overpass-api.de/api/interpreter'
     };
 </script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KTM Dash V22.20 - Energy Concept</title>
+    <title>KTM Dash V22.40</title>
     <style>
         :root { --bg-color: #000; --panel-bg: #111; --sub-bg: #080808; --ktm-orange: #FF6600; --text-main: #fff; --text-dim: #888; --bar-off: #222; }
         body.day-mode { --bg-color: #fff; --panel-bg: #f2f2f2; --sub-bg: #e6e6e6; --text-main: #000; --text-dim: #444; --bar-off: #ddd; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow: auto; }
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #btn-start { background: var(--ktm-orange); color: #000; padding: 20px 40px; font-family: 'Impact', sans-serif; font-size: 1.5rem; border: none; border-radius: 5px; cursor: pointer; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 5px; transition: 0.3s; overflow-y: auto; overscroll-behavior-y: none; }
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .panel { background-color: var(--panel-bg); border-radius: 2px; padding: 8px 12px; position: relative; border-top: 2px solid #333; margin-bottom: 5px; min-height: 110px; }
         .accent-orange { border-top-color: var(--ktm-orange); }
-        .impact { font-family: 'Impact', sans-serif; letter-spacing: 1px; }
         .title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
         .main-display { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; height: 65px; position: relative; }
         .bargraph-svg { width: 75px; height: 50px; }
@@ -44,62 +38,24 @@
         .val-main { font-size: 4.2rem; line-height: 1; text-align: center; font-family: 'Impact', sans-serif; }
         .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; align-self: flex-end; padding-bottom: 10px; }
         .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
-        .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; cursor: pointer; }
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
         .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; position: relative; }
         #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; margin-top: 2px; }
-        .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
-        body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
-        .st-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
-        .st-name { font-weight: bold; font-size: 0.85rem; color: var(--text-main); text-transform: uppercase; }
-        .st-city { font-size: 0.65rem; color: var(--text-dim); }
-        .st-price { color: var(--ktm-orange); font-family: 'Impact'; font-size: 1.2rem; }
-        .st-dist { font-size: 0.7rem; font-weight: bold; }
-        .st-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
-        .btn-nav { font-size: 0.55rem; padding: 6px 0; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; text-align: center; }
-        #settings-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; padding: 20px; flex-direction: column; overflow-y: auto; }
-        .cfg-row { background:#111; padding:15px; border:1px solid var(--ktm-orange); margin-top:10px; }
-        select, input[type="range"] { width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; margin: 8px 0; }
-        .diag-line { font-family: monospace; font-size: 0.65rem; color: #0f0; margin-bottom: 3px; border-bottom: 1px solid #222; }
-        .sort-btn { cursor: pointer; text-decoration: underline; }
-        .sort-btn:hover { color: var(--ktm-orange); }
-    html, body {
-    overscroll-behavior-y: none; /* Bloque le rafraîchissement mais autorise le scroll */
-    overflow-y: auto; 
-    height: auto;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-#dashboard {
-    display: none; /* Sera passé en 'block' par le JS */
-    width: 100%;
-    min-height: 100vh; /* S'assure que le dashboard peut être plus grand que l'écran scindé */
-    padding-bottom: 50px; /* Marge de sécurité pour voir le dernier bouton tout en bas */
-}
+        #radar-alert { display:none; position: fixed; bottom: 10px; left: 10px; right: 10px; background: linear-gradient(90deg, #ff0000, #660000); color: #fff; text-align: center; padding: 15px; font-family: 'Impact'; font-size: 1.5em; border: 2px solid #fff; z-index: 9999; border-radius: 5px; }
+        #system-status { display:none; background:#ff6600; color:#000; font-family:'Impact'; font-size:0.65rem; text-align:center; padding:3px; margin-bottom:5px; border-radius:2px; letter-spacing:1px; border:1px solid #fff; }
     </style>
 </head>
 
 <body>
-    <div id="start-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; color:#ff6600; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:10000; font-family:monospace;">
-    <div style="font-size:2rem; font-weight:bold; font-style:italic; margin-bottom:20px;">READY TO RACE</div>
-    
-    <div style="width:250px; height:10px; border:1px solid #333; background:#111; position:relative; margin-bottom:15px;">
-        <div id="boot-bar" style="width:0%; height:100%; background:#ff6600; transition: width 0.2s;"></div>
+    <div id="start-overlay">
+        <div style="font-size:2rem; color:#ff6600; font-weight:bold; font-style:italic; margin-bottom:20px;">READY TO RACE</div>
+        <button id="btn-unlock" onclick="CORE.startBootSequence()" style="padding:15px 40px; background:transparent; border:2px solid #ff6600; color:#ff6600; font-weight:bold; cursor:pointer;">START SYSTEM</button>
     </div>
-    
-    <div id="boot-status" style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px; height:20px;">Initialisation...</div>
-    
-    <button id="btn-unlock" onclick="CORE.startBootSequence()" style="margin-top:30px; padding:15px 40px; background:transparent; border:2px solid #ff6600; color:#ff6600; font-weight:bold; cursor:pointer; display:block;">START SYSTEM</button>
-</div>
-        <!-- ALERTE RADAR -->
-     <div id="radar-alert" style="display:none; position: fixed; bottom: 60px; left: 0; width: 100%; background: linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%); color: #fff; text-align: center; padding: 12px 0; font-family: 'Impact', sans-serif; font-size: 1.4em; border-top: 3px solid #fff; z-index: 9999; box-shadow: 0 -5px 15px rgba(0,0,0,0.5);">
-    ⚠️ RADAR À <span id="radar-dist">0</span> M
-     </div>
-   
-    <div id="dashboard" style="display: none;">
-        <!-- VITESSE -->
+
+    <div id="radar-alert">⚠️ RADAR À <span id="radar-dist">0</span> M</div>
+
+    <div id="dashboard" style="display:none;">
         <div class="panel accent-orange">
             <div class="title">Vitesse GPS</div>
             <div class="main-display">
@@ -107,12 +63,11 @@
                     <rect class="bar b1" x="0" y="40" width="15" height="20" /><rect class="bar b2" x="20" y="30" width="15" height="30" /><rect class="bar b3" x="40" y="20" width="15" height="40" /><rect class="bar b4" x="60" y="10" width="15" height="50" /><rect class="bar b5" x="80" y="0" width="15" height="60" />
                 </svg>
                 <div style="display:flex; justify-content: flex-end; width: 100%;"><span id="speed-val" class="val-main">0</span><span class="unit">KM/H</span></div>
-                <button class="btn-action" onclick="UI.resetSpeed()">RESET</button>
+                <button class="btn-action" onclick="STATE.gps.max=0; UI.update();">RESET</button>
             </div>
-            <div class="val-sub"><span>MOY: <strong id="speed-moy">0</strong></span><span>MAX: <strong id="speed-max">0</strong></span></div>
+            <div class="val-sub"><span>MAX: <strong id="speed-max">0</strong></span></div>
         </div>
 
-        <!-- ANGLE -->
         <div class="panel">
             <div class="title">Inclinaison</div>
             <div class="main-display">
@@ -122,170 +77,77 @@
                 <div style="display:flex; justify-content: flex-end; width: 100%;"><span id="angle-val" class="val-main">0</span><span class="unit">°</span></div>
                 <button class="btn-action" onclick="CORE.calibrateGyro()">CALIB</button>
             </div>
-            <div class="val-sub"><span>MOY: <strong id="angle-moy">0</strong></span><span>MAX: <strong id="angle-max">0</strong></span></div>
+            <div class="val-sub"><span>MAX: <strong id="angle-max">0</strong></span></div>
         </div>
 
-        <!-- OUTILS -->
-        <div id="system-status" style="display:none; background:#ff6600; color:#000; font-family:'Impact',sans-serif; font-size:0.65rem; text-align:center; padding:3px; margin-bottom:5px; border-radius:2px; letter-spacing:1px; border:1px solid #fff;">
-            ⚠️ ALERTE SYSTEME : <span id="status-msg">CHECK API</span>
-        </div>
+        <div id="system-status">⚠️ ALERTE SYSTEME : <span id="status-msg">CHECK API</span></div>
 
         <div class="panel tool-grid">
-            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
+            <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title">Météo</div><div id="weather-temp">--°C</div></div>
             <div class="tool-item" style="text-align:center">
-                <div class="title" style="font-size:0.5rem">Trace GPX</div>
-                <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
+                <div class="title">Trace GPX</div>
+                <div id="gpx-dist" style="font-weight:bold; color:#ff6600;">0.0 KM</div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
             </div>
-            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; align-items:center; justify-content:center;"><span style="font-size:1.6rem;">🔧</span></div>
+            <div class="tool-item" onclick="alert('Settings non-implémentés')" style="cursor:pointer; text-align:center;">🔧</div>
         </div>
 
-        <!-- STATIONS -->
         <div class="panel">
-            <div class="title" style="display:flex; justify-content:space-between;">
-                <span>STATIONS [<span id="ui-info-fuel">--</span>]</span>
-                <span>RAYON: <span id="ui-info-radius">--</span>KM</span>
-            </div>
-            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid var(--ktm-orange); color:var(--ktm-orange); background:transparent; padding:8px;" class="impact">SCANNER CARBURANT</button>
-            
-            <div id="stations-labels" style="display:none; justify-content:space-between; font-size:0.55rem; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
-                <span class="sort-btn" onclick="UI.sortStations('dist')">Tri par Distance</span>
-                <span class="sort-btn" onclick="UI.sortStations('prix')">Tri par Prix</span>
-            </div>
+            <div class="title">STATIONS [<span id="ui-info-fuel">SP98</span>]</div>
+            <button onclick="CORE.fetchStations()" style="width:100%; margin: 8px 0; border: 1px solid #ff6600; color:#ff6600; background:transparent; padding:8px;">SCANNER CARBURANT</button>
             <div id="stations-list"></div>
-        </div>
-    </div>
-
-    <!-- REGLAGES + DIAGNOSTIC -->
-    <div id="settings-modal">
-        <button onclick="UI.closeSettings()" style="width:100%; padding:15px; background:var(--ktm-orange); color:#000; border:none; font-weight:bold;">RETOUR</button>
-        <div class="cfg-row">
-            <label class="title">Carburant</label>
-            <select id="cfg-fuel" onchange="UI.saveSettings()">
-                <option value="SP98">SP98</option><option value="SP95">SP95</option><option value="E10">E10</option><option value="Gazole">Gazole</option><option value="E85">E85</option>
-            </select>
-            <label class="title">Rayon: <span id="radius-val">--</span> km</label>
-            <input type="range" id="input-radius" min="5" max="50" step="5" oninput="UI.updateRadius(this.value)">
-            <button onclick="UI.manualToggleTheme()" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; font-weight:bold; margin-top:10px;">JOUR/NUIT MANUEL</button>
-        </div>
-        <div style="background:#000; padding:15px; border:1px solid #333; margin-top:10px;">
-            <div class="title" style="color:var(--ktm-orange);">Diagnostic V22.20</div>
-            <div id="diag-radar" class="diag-line" style="color:#ff6600; font-weight:bold;">Radar API : --</div>
-            <div id="diag-meteo" class="diag-line">Météo : --</div>
-            <div id="diag-gps" class="diag-line">GPS : --</div>
-            <div id="diag-light" class="diag-line">Lux : --</div>
         </div>
     </div>
 
     <script>
         const STATE = {
-            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            radarError: false, fuelError: false, // Suivi des pannes API
-            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
-            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
-            lastRadarDist: null,
-            radarsCache: [],  // AJOUT : Stocke les radars autour de toi
-            radarsInit: false // AJOUT : Vérifie si le téléchargement a commencé
+            gps: { lat: null, lon: null, speed: 0, max: 0 },
+            radarError: false, fuelError: false,
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0 },
+            gpx: { active: false, points: [], distance: 0, denivPlus: 0, prev: null },
+            radarsCache: [], lastRadarDist: null, radarsInit: false
         };
 
         const CORE = {
-           startBootSequence: async () => {
-                const bar = document.getElementById('boot-bar');
-                const status = document.getElementById('boot-status');
-                const btn = document.getElementById('btn-unlock');
-
-                // --- COMPATIBILITÉ IPHONE (iOS) ---
-                // On demande l'accès aux capteurs avant de cacher le bouton
-                if (typeof DeviceOrientationEvent !== 'undefined' && 
-                    typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    try {
-                        const permission = await DeviceOrientationEvent.requestPermission();
-                        console.log("Permission iOS:", permission);
-                    } catch (error) {
-                        console.error("Erreur permission iOS:", error);
-                    }
+            startBootSequence: async () => {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try { await DeviceOrientationEvent.requestPermission(); } catch (e) {}
                 }
-
-                if(btn) btn.style.display = 'none';
-
-                // Liste des tests cliniques pour le look "ordinateur de bord"
-                const steps = [
-                    { p: 15, t: "Initialisation Kernel KTM..." },
-                    { p: 35, t: "Liaison API Gouvernement (Carburants)..." },
-                    { p: 55, t: "Scan Base Radars (Zone 10km)..." },
-                    { p: 75, t: "Recherche Satellites GPS..." },
-                    { p: 90, t: "Calibrage Gyroscopique..." },
-                    { p: 100, t: "Système Optimal - READY TO RACE" }
-                ];
-
-                for (let step of steps) {
-                    if(bar) bar.style.width = step.p + "%";
-                    if(status) status.innerText = step.t;
-                    await new Promise(r => setTimeout(r, 600)); 
-                }
-
-                // Une fois à 100%, on affiche le dashboard
-                setTimeout(() => {
-                    document.getElementById('start-overlay').style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'block';
-                    
-                    UI.syncConfig(); 
-                    CORE.initGyro(); 
-                    CORE.initLight(); 
-                    CORE.initGPS();
-                    
-                    setInterval(CORE.checkWeatherQueue, 10000);
-                }, 400);
-            },
-            initLight: () => {
-                // Sur iPhone, cette partie sera ignorée (pas de capteur Lux)
-                // Le mode nuit restera manuel ou basé sur l'heure.
-                if ('AmbientLightSensor' in window) {
-                    const sensor = new AmbientLightSensor();
-                    sensor.onreading = () => { 
-                        STATE.lux = Math.round(sensor.illuminance); 
-                        UI.setTheme(STATE.lux > CONFIG.seuilLuxJour);
-                    };
-                    sensor.start();
-                }
+                document.getElementById('start-overlay').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                CORE.initGyro(); CORE.initGPS(); UI.updateSystemStatus();
+                setInterval(UI.checkRadars, 2000);
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let rawBeta = e.beta; 
-                    let rawGamma = Math.abs(e.gamma); 
-
-                    if (rawBeta !== null) {
-                        if (rawGamma > CONFIG.rejectionTangage) {
-                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
-                        }
-                        STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
-                        let valPure = STATE.angle.smoothed - STATE.angle.offset;
-                        STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
-                        
-                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
-                        if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
-                        UI.updateBars('angle', valPure);
+                    let raw = e.beta;
+                    if (raw !== null) {
+                        STATE.angle.smoothed = (CONFIG.angleSmoothing * raw) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || raw));
+                        let val = STATE.angle.smoothed - STATE.angle.offset;
+                        STATE.angle.current = Math.abs(val) < 2 ? 0 : Math.min(Math.round(Math.abs(val)), 85);
+                        if (STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
+                        UI.update();
+                        UI.updateBars('angle', val);
                     }
                 });
             },
-            calibrateGyro: () => { 
-                STATE.angle.offset = STATE.angle.smoothed || 0; 
-                STATE.angle.max = 0; STATE.angle.sum = 0; STATE.angle.count = 0; 
-            },
+            calibrateGyro: () => { STATE.angle.offset = STATE.angle.smoothed || 0; STATE.angle.max = 0; },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
+                    const ele = pos.coords.altitude || 0;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
-                    if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
-                    if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
-                    UI.updateBars('speed', STATE.gps.speed);
-                    UI.updateSystemStatus();
-                    if(STATE.gpx.active && STATE.gps.lat) {
-                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
-                        STATE.gpx.points.push(pt);
-                        if(STATE.gpx.prev) STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, pt.lat, pt.lon);
-                        STATE.gpx.prev = pt;
+                    if (STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
+                    if (STATE.gpx.active) {
+                        const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele, time: new Date().toISOString() };
+                        if (STATE.gpx.prev) {
+                            STATE.gpx.distance += CORE.calcDist(STATE.gpx.prev.lat, STATE.gpx.prev.lon, STATE.gps.lat, STATE.gps.lon);
+                            let diff = ele - STATE.gpx.prev.ele; if (diff > 2) STATE.gpx.denivPlus += diff;
+                        }
+                        STATE.gpx.points.push(pt); STATE.gpx.prev = pt;
                     }
+                    UI.update(); UI.updateSystemStatus();
+                    if(!STATE.weatherInit) CORE.checkWeatherQueue();
                 }, null, { enableHighAccuracy: true });
             },
             calcDist: (l1, n1, l2, n2) => {
@@ -294,276 +156,112 @@
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             },
             fetchStations: () => {
-                if(!STATE.gps.lat) return alert("Signal GPS requis");
-                
-                fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
-                .then(r => {
-                    if (!r.ok) throw new Error();
-                    return r.json();
-                })
+                if(!STATE.gps.lat) return;
+                fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},10000`)
+                .then(r => { if(!r.ok) throw new Error(); return r.json(); })
                 .then(data => {
-                    const f = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
-                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
-                        dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
-                    }));
-                    
-                    STATE.fuelError = false; // RESET de l'erreur si le chargement réussit
-                    UI.updateSystemStatus(); // MAJ de la barre d'alerte
-                    
-                    UI.sortStations('prix');
-                    document.getElementById('stations-labels').style.display = 'flex';
-                })
-                .catch(e => {
-                    STATE.fuelError = true;  // DECLENCHEMENT de l'erreur
-                    UI.updateSystemStatus(); // MAJ de la barre d'alerte
-                    console.error("Erreur API Stations");
+                        nom: r.fields.nom, prix: r.fields.sp98_prix, dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
+                    })).sort((a,b) => a.dist - b.dist);
+                    STATE.fuelError = false; UI.updateSystemStatus(); UI.renderStations();
+                }).catch(() => { STATE.fuelError = true; UI.updateSystemStatus(); });
+            },
+            fetchRadarsAPI: async () => {
+                if (!STATE.gps.lat) return;
+                try {
+                    const q = `[out:json];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out;`;
+                    const r = await fetch(`${CONFIG.apiRadars}?data=${encodeURIComponent(q)}`);
+                    if(!r.ok) throw new Error();
+                    const d = await r.json(); STATE.radarsCache = d.elements || []; STATE.radarError = false;
+                } catch(e) { STATE.radarError = true; }
+                UI.updateSystemStatus();
+            },
+            checkWeatherQueue: () => {
+                if(!STATE.gps.lat) return;
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    const c = d.current_weather.weathercode;
+                    let icon = "☀️"; if(c >= 1 && c <= 3) icon = "🌤️"; if(c >= 51) icon = "🌧️";
+                    document.getElementById('weather-temp').innerText = `${icon} ${Math.round(d.current_weather.temperature)}°C`;
+                    STATE.weatherInit = true;
                 });
             },
+            openDynamicWeather: () => { if(STATE.gps.lat) window.open(`https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`, '_blank'); },
             toggleRecording: () => {
-                // 1. Si on est en train d'enregistrer, on veut passer sur STOP
                 if (STATE.gpx.active) {
-                    STATE.gpx.active = false;
-                    const btn = document.getElementById('btn-rec');
-                    btn.innerText = "REC";
-                    btn.style.background = "#222";
-
-                    // 2. Vérification s'il y a des points enregistrés
-                    if (STATE.gpx.points.length > 0) {
-                        // Fenêtre de confirmation clinique
-                        const saveConfirm = confirm(`Fin de parcours. Enregistrer la trace (${STATE.gpx.points.length} points) ?`);
-                        
-                        if (saveConfirm) {
-                            CORE.saveGPX(); // On télécharge
-                        } else {
-                            console.log("Trace annulée par l'utilisateur");
-                        }
-                    }
-                    
-                    // 3. Reset de la mémoire dans tous les cas pour repartir à zéro
-                    STATE.gpx.points = [];
-                    STATE.gpx.distance = 0;
-                    STATE.gpx.prev = null;
-
+                    STATE.gpx.active = false; document.getElementById('btn-rec').innerText = "REC"; document.getElementById('btn-rec').style.background = "#222";
+                    if (confirm("Sauvegarder trace ?")) CORE.saveGPX();
+                    STATE.gpx.points = []; STATE.gpx.distance = 0; STATE.gpx.prev = null;
                 } else {
-                    // 4. Si on était sur STOP, on lance l'enregistrement
-                    STATE.gpx.active = true;
-                    STATE.gpx.points = []; // On s'assure que c'est vide au départ
-                    const btn = document.getElementById('btn-rec');
-                    btn.innerText = "STOP";
-                    btn.style.background = "#f00";
+                    STATE.gpx.active = true; document.getElementById('btn-rec').innerText = "STOP"; document.getElementById('btn-rec').style.background = "#f00";
                 }
             },
             saveGPX: () => {
-                if (STATE.gpx.points.length === 0) return; // Sécurité anti-fichier vide
-
-                let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
-                STATE.gpx.points.forEach(p => { 
-                    xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; 
-                });
+                let xml = `<?xml version="1.0"?><gpx creator="KTM_Dash"><trk><trkseg>`;
+                STATE.gpx.points.forEach(p => { xml += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`; });
                 xml += `</trkseg></trk></gpx>`;
-                
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
-                a.download = `Trace_${new Date().getTime()}.gpx`; 
-                a.click();
-            },
-            checkWeatherQueue: () => {
-                if (STATE.weatherInit || !STATE.gps.lat) return;
-                
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r => r.json()).then(d => {
-                    const temp = Math.round(d.current_weather.temperature);
-                    const code = d.current_weather.weathercode;
-                    
-                    // Traduction clinique du code météo en symbole visuel
-                    let icon = "☀️"; // Beau temps
-                    if (code >= 1 && code <= 3) icon = "🌤️"; // Éclaircies
-                    if (code >= 45 && code <= 48) icon = "🌫️"; // Brouillard
-                    if (code >= 51 && code <= 67) icon = "🌧️"; // Pluie
-                    if (code >= 71 && code <= 86) icon = "❄️"; // Neige
-                    if (code >= 95) icon = "⚡"; // Orage
-
-                    // Mise à jour de l'affichage sur ton cockpit
-                    const weatherElem = document.getElementById('weather-temp');
-                    if(weatherElem) {
-                        weatherElem.innerText = `${icon} ${temp}°C`;
-                        STATE.weatherInit = true;
-                    }
-                }).catch(e => console.log("Erreur Météo"));
-            },
-            openDynamicWeather: () => { 
-                if(STATE.gps.lat && STATE.gps.lon) {
-                    const windyUrl = `https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`;
-                    window.open(windyUrl, '_blank'); 
-                } else {
-                    window.open('https://www.windy.com/-Weather-radar-radar?radar,46.5,2.0,5', '_blank');
-                }
-            } // <-- La virgule était manquante ici
+                const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
+                a.download = `Trip_${new Date().getTime()}.gpx`; a.click();
+            }
         };
-const UI = {
-            syncConfig: () => {
-                document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
-                document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
-                document.getElementById('radius-val').innerText = CONFIG.rayonRechercheKm;
-                document.getElementById('ui-info-fuel').innerText = CONFIG.carburantCible;
-                document.getElementById('ui-info-radius').innerText = CONFIG.rayonRechercheKm;
-            },
+
+        const UI = {
             update: () => {
-                document.getElementById('speed-val').innerText = Math.round(STATE.gps.speed);
-                document.getElementById('speed-max').innerText = Math.round(STATE.gps.max);
-                document.getElementById('angle-val').innerText = Math.abs(Math.round(STATE.angle.current));
-                document.getElementById('angle-max').innerText = Math.round(STATE.angle.max);
+                document.getElementById('speed-val').innerText = STATE.gps.speed;
+                document.getElementById('speed-max').innerText = STATE.gps.max;
+                document.getElementById('angle-val').innerText = STATE.angle.current;
+                document.getElementById('angle-max').innerText = STATE.angle.max;
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
-                document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
-                document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
-                document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
-                document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
-                document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
                 UI.updateBars('speed', STATE.gps.speed);
-                UI.updateBars('angle', STATE.angle.current);
             },
             updateBars: (type, val) => {
                 if (type === 'speed') {
                     const p = (val / CONFIG.vitesseMaxGraph) * 100;
                     for(let i=1; i<=5; i++) {
-                        const b = document.querySelector(`.b${i}`);
-                        if(b) b.classList.toggle('active', p >= (i*20));
+                        const b = document.querySelector(`.b${i}`); if(b) b.classList.toggle('active', p >= (i*20));
                     }
-                } 
-                else {
+                } else {
                     const absVal = Math.abs(val);
-                    const a3 = document.querySelector('.a3');
-                    if(a3) a3.classList.add('active');
-                    const a2 = document.querySelector('.a2'); if(a2) a2.classList.toggle('active', val > 3 && absVal > CONFIG.angleSeuilPalier);
-                    const a1 = document.querySelector('.a1'); if(a1) a1.classList.toggle('active', val > 3 && absVal > (CONFIG.angleSeuilPalier * 2));
-                    const a4 = document.querySelector('.a4'); if(a4) a4.classList.toggle('active', val < -3 && absVal > CONFIG.angleSeuilPalier);
-                    const a5 = document.querySelector('.a5'); if(a5) a5.classList.toggle('active', val < -3 && absVal > (CONFIG.angleSeuilPalier * 2));
+                    document.querySelector('.a3').classList.add('active');
+                    document.querySelector('.a2').classList.toggle('active', val > 3 && absVal > 15);
+                    document.querySelector('.a1').classList.toggle('active', val > 3 && absVal > 30);
+                    document.querySelector('.a4').classList.toggle('active', val < -3 && absVal > 15);
+                    document.querySelector('.a5').classList.toggle('active', val < -3 && absVal > 30);
                 }
             },
-            sortStations: (criteria) => {
-                if (criteria === 'prix') { STATE.stations.sort((a,b) => (a.prix || 9) - (b.prix || 9)); }
-                else { STATE.stations.sort((a,b) => a.dist - b.dist); }
-                UI.renderStations();
+            checkRadars: () => {
+                if (!STATE.radarsInit && STATE.gps.lat) { STATE.radarsInit = true; CORE.fetchRadarsAPI(); setInterval(CORE.fetchRadarsAPI, 120000); }
+                if (!STATE.radarsCache.length) return;
+                let minDist = 999999;
+                STATE.radarsCache.forEach(r => {
+                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.lat, r.lon) * 1000; if (d < minDist) minDist = d;
+                });
+                const alertBox = document.getElementById('radar-alert');
+                if (minDist < CONFIG.radarRayonM) {
+                    alertBox.style.display = 'block'; document.getElementById('radar-dist').innerText = Math.round(minDist);
+                } else alertBox.style.display = 'none';
+            },
+            updateSystemStatus: () => {
+                const box = document.getElementById('system-status'); const msg = document.getElementById('status-msg');
+                let errs = [];
+                if (!STATE.gps.lat) errs.push("SIGNAL GPS PERDU");
+                if (STATE.radarError) errs.push("API RADAR HS");
+                if (STATE.fuelError) errs.push("API STATIONS HS");
+                if (errs.length > 0) {
+                    box.style.display = 'block'; box.style.background = errs.includes("SIGNAL GPS PERDU") ? "#ff0000" : "#ff6600";
+                    msg.innerText = errs.join(" | ");
+                } else box.style.display = 'none';
             },
             renderStations: () => {
-                const list = document.getElementById('stations-list');
-                if(!list) return;
-                list.innerHTML = STATE.stations.map(s => `
-                    <div class="station-item">
-                        <div class="st-header">
-                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
-                            <div style="text-align:right">
-                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
-                                <div class="st-dist">${s.dist.toFixed(1)}km</div>
-                            </div>
-                        </div>
-                        <div class="st-nav">
-                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
-                        </div>
+                document.getElementById('stations-list').innerHTML = STATE.stations.map(s => `
+                    <div style="background:#0a0a0a; border-left:3px solid #ff6600; padding:10px; margin-bottom:5px;">
+                        <div style="display:flex; justify-content:space-between;"><b>${s.nom}</b><span style="color:#ff6600">${s.prix ? s.prix.toFixed(3) : '--'}€</span></div>
+                        <div style="font-size:0.6rem; color:#888">${s.dist.toFixed(1)}km</div>
                     </div>`).join('');
-            },
-            try {
-                    const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
-                    const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error();
-                    const data = await res.json();
-                    STATE.radarsCache = data.elements || [];
-                    STATE.radarError = false; // Tout va bien
-                } catch (e) {
-                    STATE.radarError = true; // Erreur API
-                }
-                UI.updateSystemStatus();
-            
-            checkRadars: () => {
-                if (!STATE.radarsInit && STATE.gps.lat) {
-                    STATE.radarsInit = true;
-                    UI.fetchRadarsAPI(); 
-                    setInterval(UI.fetchRadarsAPI, 60000); 
-                }
-
-                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
-
-                const radius = CONFIG.radarRayonM || 500; 
-                let closestDist = 999999;
-                
-                STATE.radarsCache.forEach(node => {
-                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
-                    if (d < closestDist) closestDist = d;
-                });
-
-                const alertBox = document.getElementById('radar-alert');
-                
-                // LOGIQUE CLINIQUE : On affiche si on est dans le rayon
-                if (closestDist <= radius) {
-                    // On ne coupe l'alerte QUE si on est vraiment très près (20m) 
-                    // OU si la distance augmente significativement (signe qu'on s'éloigne pour de bon)
-                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
-                        alertBox.style.display = 'none';
-                        document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
-                    } else {
-                        alertBox.style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                        STATE.lastRadarDist = closestDist; 
-                    }
-                } else {
-                    alertBox.style.display = 'none';
-                    STATE.lastRadarDist = null;
-                }
-            },
-            updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
-            openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
-            closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
-            saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
-            resetSpeed: () => { 
-                STATE.gps.max = 0; STATE.gps.sum = 0; STATE.gps.count = 0; 
-                document.getElementById('speed-max').innerText = 0;
-                document.getElementById('speed-moy').innerText = 0;
-            },
-            manualToggleTheme: () => document.body.classList.toggle('day-mode'),
-            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay),
-            
-            // LOGIQUE MASTER WARNING (CLINIQUE)
-            updateSystemStatus: () => {
-                const statusBox = document.getElementById('system-status');
-                const msg = document.getElementById('status-msg');
-                let errors = [];
-                
-                if (!STATE.gps.lat) errors.push("SIGNAL GPS PERDU");
-                if (STATE.radarError) errors.push("API RADAR HS");
-                if (STATE.fuelError) errors.push("API STATIONS HS");
-
-                if (errors.length > 0) {
-                    statusBox.style.display = 'block';
-                    // Rouge si GPS perdu (critique), Orange sinon
-                    statusBox.style.background = errors.includes("SIGNAL GPS PERDU") ? "#ff0000" : "#ff6600";
-                    msg.innerText = errors.join(" | ");
-                } else {
-                    statusBox.style.display = 'none';
-                }
             }
-        }; // Fin de l'objet UI
-               //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
-        setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 500);
-        document.getElementById('btn-unlock').style.display = 'block';
-        // Bloque l'événement de "tirage" vers le bas au niveau tactile
-window.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 1) return;
-    this.lastY = e.touches[0].pageY;
-}, { passive: false });
+        };
 
-window.addEventListener('touchmove', (e) => {
-    const y = e.touches[0].pageY;
-    // Si on tire vers le bas alors qu'on est déjà en haut de page
-    if (y > this.lastY && window.scrollY === 0) {
-        e.preventDefault(); // On bloque l'action
-    }
-    this.lastY = y;
-}, { passive: false });
+        setInterval(UI.update, 500);
     </script>
 </body>
 </html>
