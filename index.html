@@ -233,8 +233,6 @@
                 }, 400);
             },
             initLight: () => {
-                // Sur iPhone, cette partie sera ignorée (pas de capteur Lux)
-                // Le mode nuit restera manuel ou basé sur l'heure.
                 if ('AmbientLightSensor' in window) {
                     const sensor = new AmbientLightSensor();
                     sensor.onreading = () => { 
@@ -243,7 +241,7 @@
                     };
                     sensor.start();
                 }
-            },
+            }, // <-- Vérifie bien cette virgule
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
                     let rawBeta = e.beta; 
@@ -251,13 +249,18 @@
 
                     if (rawBeta !== null) {
                         if (rawGamma > CONFIG.rejectionTangage) {
-                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
+                            STATE.angle.current = 0; 
+                            UI.updateBars('angle', 0); 
+                            return;
                         }
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         
-                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
+                        if (STATE.angle.current > 0) { 
+                            STATE.angle.sum += STATE.angle.current; 
+                            STATE.angle.count++; 
+                        }
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
                     }
