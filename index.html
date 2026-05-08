@@ -295,16 +295,30 @@
             },
             fetchStations: () => {
                 if(!STATE.gps.lat) return alert("Signal GPS requis");
+                
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
-                .then(r => r.json()).then(data => {
+                .then(r => {
+                    if (!r.ok) throw new Error();
+                    return r.json();
+                })
+                .then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
                         nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
                         lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
+                    
+                    STATE.fuelError = false; // RESET de l'erreur si le chargement réussit
+                    UI.updateSystemStatus(); // MAJ de la barre d'alerte
+                    
                     UI.sortStations('prix');
                     document.getElementById('stations-labels').style.display = 'flex';
+                })
+                .catch(e => {
+                    STATE.fuelError = true;  // DECLENCHEMENT de l'erreur
+                    UI.updateSystemStatus(); // MAJ de la barre d'alerte
+                    console.error("Erreur API Stations");
                 });
             },
             toggleRecording: () => {
