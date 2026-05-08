@@ -180,6 +180,7 @@
     <script>
         const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+            radarError: false, fuelError: false, // Suivi des pannes API
             angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
             lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
             lastRadarDist: null,
