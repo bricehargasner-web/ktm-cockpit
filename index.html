@@ -515,8 +515,28 @@ const UI = {
                 document.getElementById('speed-moy').innerText = 0;
             },
             manualToggleTheme: () => document.body.classList.toggle('day-mode'),
-            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
-        };
+            setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay),
+            
+            // LOGIQUE MASTER WARNING (CLINIQUE)
+            updateSystemStatus: () => {
+                const statusBox = document.getElementById('system-status');
+                const msg = document.getElementById('status-msg');
+                let errors = [];
+                
+                if (!STATE.gps.lat) errors.push("SIGNAL GPS PERDU");
+                if (STATE.radarError) errors.push("API RADAR HS");
+                if (STATE.fuelError) errors.push("API STATIONS HS");
+
+                if (errors.length > 0) {
+                    statusBox.style.display = 'block';
+                    // Rouge si GPS perdu (critique), Orange sinon
+                    statusBox.style.background = errors.includes("SIGNAL GPS PERDU") ? "#ff0000" : "#ff6600";
+                    msg.innerText = errors.join(" | ");
+                } else {
+                    statusBox.style.display = 'none';
+                }
+            }
+        }; // Fin de l'objet UI
                //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
         setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 500);
         document.getElementById('btn-unlock').style.display = 'block';
