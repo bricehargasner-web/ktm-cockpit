@@ -464,6 +464,7 @@ const UI = {
                 }
             },
             
+            // --- DÉBUT DU BLOC À REMPLACER ---
             checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
@@ -484,7 +485,9 @@ const UI = {
                 const alertBox = document.getElementById('radar-alert');
                 
                 if (closestDist <= radius) {
-                    if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 5)) {
+                    // CONDITION MODIFIÉE : On ne coupe que si on est "dessus" (20m) 
+                    // ou si on s'éloigne vraiment (50m de différence)
+                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
                         alertBox.style.display = 'none';
                         document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
                     } else {
@@ -497,6 +500,7 @@ const UI = {
                     STATE.lastRadarDist = null;
                 }
             },
+// --- FIN DU BLOC À REMPLACER ---
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
