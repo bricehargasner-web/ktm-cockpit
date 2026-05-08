@@ -279,7 +279,7 @@
                     if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
                     if(STATE.gps.speed > STATE.gps.max) STATE.gps.max = STATE.gps.speed;
                     UI.updateBars('speed', STATE.gps.speed);
-                    
+                    UI.updateSystemStatus();
                     if(STATE.gpx.active && STATE.gps.lat) {
                         const pt = { lat: STATE.gps.lat, lon: STATE.gps.lon, ele: pos.coords.altitude || 0, time: new Date().toISOString() };
                         STATE.gpx.points.push(pt);
