@@ -188,19 +188,6 @@
                 const bar = document.getElementById('boot-bar');
                 const status = document.getElementById('boot-status');
                 const btn = document.getElementById('btn-unlock');
-
-                // --- COMPATIBILITÉ IPHONE (iOS) ---
-                // On demande l'accès aux capteurs avant de cacher le bouton
-                if (typeof DeviceOrientationEvent !== 'undefined' && 
-                    typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    try {
-                        const permission = await DeviceOrientationEvent.requestPermission();
-                        console.log("Permission iOS:", permission);
-                    } catch (error) {
-                        console.error("Erreur permission iOS:", error);
-                    }
-                }
-
                 if(btn) btn.style.display = 'none';
 
                 // Liste des tests cliniques pour le look "ordinateur de bord"
@@ -216,19 +203,14 @@
                 for (let step of steps) {
                     if(bar) bar.style.width = step.p + "%";
                     if(status) status.innerText = step.t;
-                    await new Promise(r => setTimeout(r, 600)); 
+                    await new Promise(r => setTimeout(r, 600)); // Vitesse de l'animation
                 }
 
                 // Une fois à 100%, on affiche le dashboard
                 setTimeout(() => {
                     document.getElementById('start-overlay').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
-                    
-                    UI.syncConfig(); 
-                    CORE.initGyro(); 
-                    CORE.initLight(); 
-                    CORE.initGPS();
-                    
+                    UI.syncConfig(); CORE.initGyro(); CORE.initLight(); CORE.initGPS();
                     setInterval(CORE.checkWeatherQueue, 10000);
                 }, 400);
             },
@@ -241,7 +223,7 @@
                     };
                     sensor.start();
                 }
-            }, // <-- Vérifie bien cette virgule
+            },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
                     let rawBeta = e.beta; 
@@ -249,18 +231,13 @@
 
                     if (rawBeta !== null) {
                         if (rawGamma > CONFIG.rejectionTangage) {
-                            STATE.angle.current = 0; 
-                            UI.updateBars('angle', 0); 
-                            return;
+                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
                         }
                         STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         
-                        if (STATE.angle.current > 0) { 
-                            STATE.angle.sum += STATE.angle.current; 
-                            STATE.angle.count++; 
-                        }
+                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
                         UI.updateBars('angle', valPure);
                     }
@@ -467,7 +444,6 @@ const UI = {
                 }
             },
             
-            // --- DÉBUT DU BLOC À REMPLACER ---
             checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
@@ -488,9 +464,7 @@ const UI = {
                 const alertBox = document.getElementById('radar-alert');
                 
                 if (closestDist <= radius) {
-                    // CONDITION MODIFIÉE : On ne coupe que si on est "dessus" (20m) 
-                    // ou si on s'éloigne vraiment (50m de différence)
-                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
+                    if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 5)) {
                         alertBox.style.display = 'none';
                         document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
                     } else {
@@ -503,7 +477,6 @@ const UI = {
                     STATE.lastRadarDist = null;
                 }
             },
-// --- FIN DU BLOC À REMPLACER ---
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
@@ -518,7 +491,21 @@ const UI = {
         };
                //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
         setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 500);
-        
+        document.getElementById('btn-unlock').style.display = 'block';
+        // Bloque l'événement de "tirage" vers le bas au niveau tactile
+window.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) return;
+    this.lastY = e.touches[0].pageY;
+}, { passive: false });
+
+window.addEventListener('touchmove', (e) => {
+    const y = e.touches[0].pageY;
+    // Si on tire vers le bas alors qu'on est déjà en haut de page
+    if (y > this.lastY && window.scrollY === 0) {
+        e.preventDefault(); // On bloque l'action
+    }
+    this.lastY = y;
+}, { passive: false });
     </script>
 </body>
 </html>
