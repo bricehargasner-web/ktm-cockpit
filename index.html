@@ -474,21 +474,19 @@ const UI = {
                     </div>`).join('');
             },
             fetchRadarsAPI: async () => {
-                if (!STATE.gps.lat) return;
-                const diag = document.getElementById('diag-radar');
-                try {
-                    // Télécharge tous les radars dans un rayon de 10 km
-                    const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
-                    const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error("API Limit");
-                    const data = await res.json();
-                    STATE.radarsCache = data.elements || [];
-                    if(diag) diag.innerText = `Radar API : ${STATE.radarsCache.length} en cache (10km)`;
-                } catch (e) {
-                    if(diag && (!STATE.radarsCache || STATE.radarsCache.length === 0)) diag.innerText = "Radar API : Erreur/Attente";
-                }
-            },
+    if (!STATE.gps.lat) return;
+    try {
+        const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
+        const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        STATE.radarsCache = data.elements || [];
+        UI.setRadarStatus(true); // LED PASSE AU VERT
+    } catch (e) {
+        UI.setRadarStatus(false); // LED PASSE AU ROUGE
+    }
+},
             
             checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
