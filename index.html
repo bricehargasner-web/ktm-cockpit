@@ -399,6 +399,17 @@
             } // <-- La virgule était manquante ici
         };
 const UI = {
+    setRadarStatus: (isOk) => {
+        const led = document.getElementById('led-radar');
+        if (!led) return;
+        if (isOk) {
+            led.style.background = "#0f0"; // Vert quand ça capte
+            led.style.boxShadow = "none";
+        } else {
+            led.style.background = "#f00"; // Rouge flash quand l'API est HS
+            led.style.boxShadow = "0 0 8px #f00";
+        }
+    },
             syncConfig: () => {
                 document.getElementById('cfg-fuel').value = CONFIG.carburantCible;
                 document.getElementById('input-radius').value = CONFIG.rayonRechercheKm;
