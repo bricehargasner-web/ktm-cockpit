@@ -128,7 +128,10 @@
         <!-- OUTILS -->
         <div class="panel tool-grid">
             <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer"><div class="title" style="font-size:0.5rem">Météo</div><div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div></div>
-            <div class="tool-item" style="text-align:center">
+            <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div id="led-radar" style="width: 8px; height: 8px; background: #222; border-radius: 50%; margin-bottom: 5px; border: 1px solid #444;"></div>
+    <span style="font-size: 1.2rem;">🔧</span>
+</div>
                 <div class="title" style="font-size:0.5rem">Trace GPX</div>
                 <div id="gpx-dist" style="font-size:0.9rem; font-weight:bold; color:var(--ktm-orange);">0.0 KM</div>
                 <button id="btn-rec" onclick="CORE.toggleRecording()">REC</button>
