@@ -78,6 +78,13 @@
     min-height: 100vh; /* S'assure que le dashboard peut être plus grand que l'écran scindé */
     padding-bottom: 50px; /* Marge de sécurité pour voir le dernier bouton tout en bas */
 }
+        .wind-arrow {
+        display: inline-block;
+        transition: transform 0.5s ease;
+        color: var(--ktm-orange);
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
     </style>
 </head>
 
@@ -127,10 +134,17 @@
 
         <!-- OUTILS -->
 <div class="panel tool-grid">
-    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
-        <div class="title" style="font-size:0.5rem">Météo</div>
-        <div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div>
+    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer; min-width: 100px;">
+    <div class="title" style="font-size:0.5rem">Météo & Vent</div>
+    <div style="display: flex; justify-content: space-around; align-items: center; padding: 2px;">
+        <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div id="wind-icon" class="wind-arrow">↑</div>
+            <div id="weather-wind" style="font-size:0.6rem;">-- km/h</div>
+        </div>
     </div>
+    <div id="alt-val" style="font-size:0.6rem; color:var(--text-dim); text-align:center; margin-top:2px; border-top: 1px solid #222;">⛰️ -- m</div>
+</div>
 
     <div class="tool-item" style="text-align:center; min-width: 120px;">
         <div class="title" style="font-size:0.5rem">Navigation GPX</div>
@@ -400,29 +414,47 @@
                 console.log(`Trace sauvegardée : ${fileName}`);
             }, 
             checkWeatherQueue: () => {
-                if (STATE.weatherInit || !STATE.gps.lat) return;
-                
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-                .then(r => r.json()).then(d => {
-                    const temp = Math.round(d.current_weather.temperature);
-                    const code = d.current_weather.weathercode;
-                    
-                    // Traduction clinique du code météo en symbole visuel
-                    let icon = "☀️"; // Beau temps
-                    if (code >= 1 && code <= 3) icon = "🌤️"; // Éclaircies
-                    if (code >= 45 && code <= 48) icon = "🌫️"; // Brouillard
-                    if (code >= 51 && code <= 67) icon = "🌧️"; // Pluie
-                    if (code >= 71 && code <= 86) icon = "❄️"; // Neige
-                    if (code >= 95) icon = "⚡"; // Orage
+    // Si on n'a pas encore de position GPS, on ne fait rien
+    if (!STATE.gps.lat) return;
+    
+    // Requête à l'API Open-Meteo (celle que tu as testée avec succès)
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+    .then(r => r.json()).then(d => {
+        const cw = d.current_weather;
+        const code = cw.weathercode;
+        const dir = cw.winddirection; // C'est ici qu'on récupère les degrés du vent (ex: 301)
+        
+        // 1. Détermination de l'icône (Correction du bug "Flocon")
+        let icon = "☀️"; // Par défaut
+        if (code >= 1 && code <= 3) icon = "🌤️";
+        if (code >= 45 && code <= 48) icon = "🌫️";
+        if (code >= 51 && code <= 67) icon = "🌧️";
+        if (code >= 71 && code <= 77) icon = "❄️";
+        if (code >= 80 && code <= 82) icon = "🌦️"; // Ton code 80 s'affichera ici (Averses)
+        if (code >= 95) icon = "⚡";
 
-                    // Mise à jour de l'affichage sur ton cockpit
-                    const weatherElem = document.getElementById('weather-temp');
-                    if(weatherElem) {
-                        weatherElem.innerText = `${icon} ${temp}°C`;
-                        STATE.weatherInit = true;
-                    }
-                }).catch(e => console.log("Erreur Météo"));
-            },
+        // 2. Mise à jour de l'affichage (Température, Vent, Altitude)
+        const tE = document.getElementById('weather-temp');
+        const wE = document.getElementById('weather-wind');
+        const iE = document.getElementById('wind-icon');
+        const aE = document.getElementById('alt-val');
+
+        if (tE) tE.innerText = `${icon} ${Math.round(cw.temperature)}°C`;
+        if (wE) wE.innerText = `${Math.round(cw.windspeed)} km/h`;
+        if (aE) aE.innerText = `⛰️ ${Math.round(d.elevation || 0)} m`;
+        
+        // 3. Rotation de la flèche de vent (Magie visuelle)
+        // La flèche pointe dans la direction D'OÙ vient le vent
+        if (iE) iE.style.transform = `rotate(${dir}deg)`;
+
+        // 4. Gestion automatique du mode Jour/Nuit
+        UI.setTheme(cw.is_day === 1);
+        
+        STATE.weatherInit = true;
+    }).catch(e => {
+        console.error("Diagnostic : Erreur de flux météo", e);
+    });
+},
             openDynamicWeather: () => { 
                 if(STATE.gps.lat && STATE.gps.lon) {
                     const windyUrl = `https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`;
