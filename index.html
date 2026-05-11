@@ -520,24 +520,28 @@ const UI = {
                 UI.renderStations();
             },
             renderStations: () => {
-                const list = document.getElementById('stations-list');
-                if(!list) return;
-                list.innerHTML = STATE.stations.map(s => `
-                    <div class="station-item">
-                        <div class="st-header">
-                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
-                            <div style="text-align:right">
-                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
-                                <div class="st-dist">${s.dist.toFixed(1)}km</div>
-                            </div>
-                        </div>
-                        <div class="st-nav">
-                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
-                        </div>
-                    </div>`).join('');
-            },
+    const list = document.getElementById('stations-list');
+    if(!list) return;
+    list.innerHTML = STATE.stations.map(s => `
+        <div class="station-item">
+            <div class="st-header">
+                <div style="max-width: 65%;">
+                    <div class="st-name">${s.nom}</div>
+                    <div style="font-size: 0.65rem; color: #aaa; margin: 2px 0;">${s.adresse || ''}</div>
+                    <div class="st-city">${s.ville}</div>
+                </div>
+                <div style="text-align:right">
+                    <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
+                    <div class="st-dist">${s.dist.toFixed(1)}km</div>
+                </div>
+            </div>
+            <div class="st-nav">
+                <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
+            </div>
+        </div>`).join('');
+},
             fetchRadarsAPI: async () => {
     if (!STATE.gps.lat) return;
     try {
