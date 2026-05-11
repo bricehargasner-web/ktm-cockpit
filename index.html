@@ -1,104 +1,225 @@
-<!-- Dans la section CONFIGURATION (Lignes 1-20) -->
-<style>
-    :root {
-        --primary-color: #00ff88;
-        --alert-color: #ff4d4d;
-    }
-    /* Ajout d'un style pour le slider de volume */
-    .volume-controls {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 15px;
-        background: #21262d;
-        padding: 10px;
-        border-radius: 8px;
-    }
-</style>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Energy Concept - SmartBite</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ==========================================================
+           1. INTERFACE DE CONFIGURATION (Lignes 1-20)
+           ========================================================== */
+        :root {
+            --neon-green: #00ff88;
+            --alert-red: #ff4d4d;
+            --dark-bg: #0b0f19;
+            --card-bg: #161b22;
+            --text-main: #e6edf3;
+            --default-threshold: 0.3; /* Seuil du "Toc" par défaut */
+            --default-volume: 0.8;
+            --default-freq: 880;
+        }
 
-<!-- Dans le corps du HTML (Section Contrôles) -->
-<div class="card">
-    <div id="status" class="status-badge">PRÊT / SILENCIEUX</div>
-    
-    <div class="controls">
-        <span>Sensibilité (Toc) : <b id="seuilVal">0.3</b></span>
-        <input type="range" id="sensitivity" min="0.1" max="2" step="0.1" value="0.3">
+        /* 2. SEGMENTATION : STYLE UI */
+        body {
+            margin: 0; font-family: 'Segoe UI', sans-serif;
+            background-color: var(--dark-bg); color: var(--text-main);
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        .header { background: var(--card-bg); padding: 15px; text-align: center; border-bottom: 2px solid var(--neon-green); }
+        .container { padding: 10px; flex: 1; overflow-y: auto; }
+        
+        .card { 
+            background: var(--card-bg); border-radius: 12px; padding: 15px; 
+            margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .status-badge {
+            width: 100%; padding: 15px; border-radius: 8px; text-align: center;
+            font-weight: bold; font-size: 1.4rem; background: #21262d;
+            margin-bottom: 10px; transition: 0.2s; border: 1px solid #30363d;
+        }
+
+        .alert-active { background: var(--alert-red); color: white; animation: shake 0.2s infinite; }
+        @keyframes shake { 0% {transform: translateX(0)} 25% {transform: translateX(5px)} 75% {transform: translateX(-5px)} 100% {transform: translateX(0)} }
+
+        .control-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+        input[type=range] { width: 60%; accent-color: var(--neon-green); }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        button {
+            background: var(--neon-green); border: none; padding: 12px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; color: #000;
+        }
+
+        .module { display: none; margin-top: 15px; }
+        iframe { width: 100%; height: 350px; border: none; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2 style="margin:0; color: var(--neon-green)">SMARTBITE v1.0</h2>
+    <small>Détecteur de Touche Haute Précision</small>
+</div>
+
+<div class="container">
+    <!-- MODULE PRINCIPAL : DÉTECTEUR -->
+    <div class="card">
+        <div id="status" class="status-badge">APPUYEZ POUR ACTIVER</div>
+        
+        <div class="control-row">
+            <span>Sensibilité : <b id="valSens">0.3</b></span>
+            <input type="range" id="sensSlider" min="0.1" max="2.0" step="0.1" value="0.3">
+        </div>
+
+        <div class="control-row">
+            <span>Volume Bip : <b id="valVol">80</b>%</span>
+            <input type="range" id="volSlider" min="0" max="100" step="5" value="80">
+        </div>
+
+        <div class="control-row">
+            <span>Tonalité : <b id="valFreq">880</b>Hz</span>
+            <input type="range" id="freqSlider" min="400" max="2000" step="100" value="880">
+        </div>
+
+        <canvas id="vibeChart" style="width:100%; height:120px; margin-top:10px;"></canvas>
     </div>
 
-    <div class="volume-controls">
-        <div class="controls">
-            <span>Volume Bip : <b id="volVal">80</b>%</span>
-            <input type="range" id="volume" min="0" max="100" step="5" value="80">
-        </div>
-        <div class="controls">
-            <span>Fréquence : <b id="freqVal">880</b>Hz</span>
-            <input type="range" id="freq" min="440" max="2000" step="100" value="880">
+    <!-- MODULES EXTERNES -->
+    <div class="btn-grid">
+        <button onclick="toggleMod('meteo')">☁️ MÉTÉO WINDY</button>
+        <button onclick="toggleMod('tutos')">📚 TUTOS & RÈGLES</button>
+    </div>
+
+    <div id="meteo" class="module card">
+        <iframe src="https://www.windy.com/?43.604,2.243,9"></iframe>
+    </div>
+
+    <div id="tutos" class="module card">
+        <div class="btn-grid">
+            <button style="background:#58a6ff" onclick="window.open('https://www.generationpeche.fr/', '_blank')">Réglementation</button>
+            <button style="background:#58a6ff" onclick="window.open('https://www.peche-poissons.com/noeuds-de-peche', '_blank')">Noeuds & Montages</button>
         </div>
     </div>
-    
-    <canvas id="vibeChart" height="150"></canvas>
+
+    <!-- DIAGNOSTIC -->
+    <div class="card" style="font-size: 0.75rem; color: #8b949e; border: 1px dashed #30363d;">
+        <b>Audit système :</b> <span id="diag">Capteurs en attente d'initialisation.</span>
+    </div>
 </div>
 
 <script>
 /* ==========================================================
-   LOGIQUE AUDIO ET FILTRAGE AMÉLIORÉE
+   3. SEGMENTATION FONCTIONNELLE : LOGIQUE DE TRAITEMENT
    ========================================================== */
 
-let audioCtx = null;
-let volumeLevel = 0.8;
-let frequency = 880;
 let threshold = 0.3;
+let volume = 0.8;
+let frequency = 880;
 let isAlerting = false;
+let audioCtx = null;
+let lastAcc = { x: 0, y: 0, z: 0 };
 
-// Initialisation au premier clic (sécurité navigateur)
-document.body.onclick = () => {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// Initialisation Graphique (30 points de données)
+const ctx = document.getElementById('vibeChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: Array(30).fill(''),
+        datasets: [{
+            borderColor: '#00ff88',
+            borderWidth: 2,
+            data: Array(30).fill(0),
+            fill: false,
+            pointRadius: 0,
+            tension: 0.3
+        }]
+    },
+    options: {
+        scales: { y: { min: 0, max: 2, display: false }, x: { display: false } },
+        animation: false,
+        plugins: { legend: { display: false } }
     }
-    // ... reste du code d'init capteurs ...
-};
-
-// Update des variables via sliders
-document.getElementById('volume').addEventListener('input', (e) => {
-    volumeLevel = e.target.value / 100;
-    document.getElementById('volVal').innerText = e.target.value;
-});
-document.getElementById('freq').addEventListener('input', (e) => {
-    frequency = e.target.value;
-    document.getElementById('freqVal').innerText = e.target.value;
 });
 
-function triggerAlert() {
-    if (isAlerting) return;
+// 4. GESTION DYNAMIQUE DES FLUX
+function initApp() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    isAlerting = true;
-    statusBadge.innerText = "!!! TOC !!!";
-    statusBadge.classList.add('alert-active');
+    document.getElementById('status').innerText = "SURVEILLANCE ACTIVE";
+    
+    if (window.DeviceMotionEvent) {
+        window.addEventListener('devicemotion', (event) => {
+            if (isAlerting) return; // Anti-Larsen
 
-    // GÉNÉRATION DU BIP PUISSANT
-    if (audioCtx) {
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+            const acc = event.acceleration;
+            if (!acc || acc.x === null) return;
 
-        oscillator.type = 'square'; // Type 'square' pour un son plus percutant/agressif
-        oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-        
-        gainNode.gain.setValueAtTime(volumeLevel, audioCtx.currentTime);
-        // Fade out rapide pour éviter le "clac" audio
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            // Filtre de différence (Jerk) pour isoler le "Toc"
+            const delta = Math.abs(acc.x - lastAcc.x) + Math.abs(acc.y - lastAcc.y) + Math.abs(acc.z - lastAcc.z);
+            lastAcc = { x: acc.x, y: acc.y, z: acc.z };
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+            // Mise à jour flux graphique
+            chart.data.datasets[0].data.push(delta);
+            chart.data.datasets[0].data.shift();
+            chart.update();
 
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.3);
+            if (delta > threshold) triggerBip();
+            
+            document.getElementById('diag').innerText = "Capteurs : OK | Flux : " + delta.toFixed(2);
+        });
     }
+}
 
-    // Verrou de sécurité pour éviter les rebonds
+function triggerBip() {
+    isAlerting = true;
+    const badge = document.getElementById('status');
+    badge.innerText = "!!! TOC !!!";
+    badge.classList.add('alert-active');
+
+    // Génération audio pure (Onde carrée pour puissance max)
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.4);
+
+    // Verrouillage de sécurité
     setTimeout(() => {
         isAlerting = false;
-        statusBadge.innerText = "LIGNE TENDUE...";
-        statusBadge.classList.remove('alert-active');
-    }, 800); 
+        badge.innerText = "SURVEILLANCE ACTIVE";
+        badge.classList.remove('alert-active');
+    }, 1000);
 }
+
+// Interface de contrôle
+document.getElementById('sensSlider').oninput = function() { 
+    threshold = this.value; document.getElementById('valSens').innerText = this.value; 
+};
+document.getElementById('volSlider').oninput = function() { 
+    volume = this.value / 100; document.getElementById('valVol').innerText = this.value; 
+};
+document.getElementById('freqSlider').oninput = function() { 
+    frequency = this.value; document.getElementById('valFreq').innerText = this.value; 
+};
+
+function toggleMod(id) {
+    const m = document.getElementById(id);
+    m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+}
+
+// Activation au clic (Contrainte Navigateur)
+document.body.onclick = function() { initApp(); };
 </script>
+</body>
+</html>
