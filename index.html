@@ -64,46 +64,19 @@
         .sort-btn { cursor: pointer; text-decoration: underline; }
         .sort-btn:hover { color: var(--ktm-orange); }
     html, body {
-  background-color: var(--bg-color); 
-    color: var(--text-main); 
-    padding: 2px; /* Réduit pour gagner de la place */
-    transition: 0.3s; 
-    overflow-x: hidden; 
+    overscroll-behavior-y: none; /* Bloque le rafraîchissement mais autorise le scroll */
     overflow-y: auto; 
+    height: auto;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
-/* Forcez les éléments de vitesse et d'angle à s'empiler */
-.main-display { 
-    display: flex; 
-    flex-direction: column; /* Arc au-dessus du chiffre */
-    align-items: center; 
-    height: auto; 
-    padding: 10px 0;
-}
-
-/* Réduisez la taille de la police pour éviter les débordements */
-.val-main { 
-    font-size: 3rem; /* Réduit de 4.2rem */
-    line-height: 1; 
-    font-family: 'Impact', sans-serif; 
-}
-
-/* Passez la grille d'outils en une seule colonne */
-.tool-grid { 
-    display: flex;
-    flex-direction: column;
-    gap: 8px; 
-}
-
-.tool-item {
+#dashboard {
+    display: none; /* Sera passé en 'block' par le JS */
     width: 100%;
-    height: 60px;
-}
-
-/* Ajustez les stations pour la largeur réduite */
-.st-nav { 
-    grid-template-columns: 1fr; /* Un bouton par ligne */
-    gap: 4px; 
+    min-height: 100vh; /* S'assure que le dashboard peut être plus grand que l'écran scindé */
+    padding-bottom: 50px; /* Marge de sécurité pour voir le dernier bouton tout en bas */
 }
     </style>
 </head>
@@ -265,8 +238,7 @@
                 // Une fois à 100%, on affiche le dashboard
                 setTimeout(() => {
                     document.getElementById('start-overlay').style.display = 'none';
-                 document.getElementById('dashboard').style.display = 'flex';
-                 document.getElementById('dashboard').style.flexDirection = 'column';   
+                    document.getElementById('dashboard').style.display = 'block';
                     
                     UI.syncConfig(); 
                     CORE.initGyro(); 
@@ -362,15 +334,10 @@
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
-                   STATE.stations = data.records.map(r => ({
-            // On cherche le nom dans plusieurs champs possibles selon l'API
-            nom: r.fields.nom || r.fields.name || r.fields.brand || "Station",
-            ville: r.fields.ville || r.fields.city || "--",
-            adresse: r.fields.adresse || r.fields.address || "", 
-            prix: r.fields[f], 
-            lat: r.geometry.coordinates[1], 
-            lon: r.geometry.coordinates[0],
-            dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
+                    STATE.stations = data.records.map(r => ({
+                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
+                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
+                        dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
                     UI.sortStations('prix');
                     document.getElementById('stations-labels').style.display = 'flex';
@@ -549,28 +516,24 @@ const UI = {
                 UI.renderStations();
             },
             renderStations: () => {
-    const list = document.getElementById('stations-list');
-    if(!list) return;
-    list.innerHTML = STATE.stations.map(s => `
-        <div class="station-item">
-            <div class="st-header">
-                <div style="max-width: 65%;">
-                    <div class="st-name">${s.nom}</div>
-                    <div style="font-size: 0.65rem; color: #aaa; margin: 2px 0;">${s.adresse || ''}</div>
-                    <div class="st-city">${s.ville}</div>
-                </div>
-                <div style="text-align:right">
-                    <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
-                    <div class="st-dist">${s.dist.toFixed(1)}km</div>
-                </div>
-            </div>
-            <div class="st-nav">
-                <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
-                <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
-                <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
-            </div>
-        </div>`).join('');
-},
+                const list = document.getElementById('stations-list');
+                if(!list) return;
+                list.innerHTML = STATE.stations.map(s => `
+                    <div class="station-item">
+                        <div class="st-header">
+                            <div><div class="st-name">${s.nom}</div><div class="st-city">${s.ville}</div></div>
+                            <div style="text-align:right">
+                                <div class="st-price">${s.prix ? s.prix.toFixed(3)+'€' : 'N.C'}</div>
+                                <div class="st-dist">${s.dist.toFixed(1)}km</div>
+                            </div>
+                        </div>
+                        <div class="st-nav">
+                            <button class="btn-nav" onclick="window.location.href='waze://?ll=${s.lat},${s.lon}&navigate=yes'">WAZE</button>
+                            <button class="btn-nav" onclick="window.location.href='google.navigation:q=${s.lat},${s.lon}'">MAPS</button>
+                            <button class="btn-nav" onclick="window.location.href='intent:geo:${s.lat},${s.lon}#Intent;package=net.osmand.plus;end;'">OSM+</button>
+                        </div>
+                    </div>`).join('');
+            },
             fetchRadarsAPI: async () => {
     if (!STATE.gps.lat) return;
     try {
