@@ -147,9 +147,15 @@
         <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size: 0.5rem; width: 100%; border: 1px solid var(--ktm-orange); background:transparent; color:var(--ktm-orange);">REC</button>
     </div>
 
-    <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <div id="led-radar" style="width: 8px; height: 8px; background: #222; border-radius: 50%; margin-bottom: 5px; border: 1px solid #444;"></div>
-        <span style="font-size: 1.2rem;">🔧</span>
+    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer; height: auto; padding: 10px;">
+    <div class="title" style="font-size:0.5rem">Météo & Environnement</div>
+    <div style="display: flex; justify-content: space-around; align-items: center; gap: 5px;">
+        <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
+        <div id="weather-wind" style="font-size:0.7rem; color:var(--ktm-orange);">-- km/h</div>
+        <div id="weather-dir" style="font-size:0.9rem;">--</div>
+    </div>
+    <div id="alt-val" style="font-size:0.65rem; color:var(--text-dim); border-top: 1px solid #222; margin-top: 4px; padding-top: 2px;">
+        ⛰️ ALT: -- m
     </div>
 </div>
 
@@ -406,7 +412,11 @@
                 .then(r => r.json()).then(d => {
                     const temp = Math.round(d.current_weather.temperature);
                     const code = d.current_weather.weathercode;
-                    
+                    const temp = Math.round(d.current_weather.temperature);
+                    const code = d.current_weather.weathercode;
+                    const wind = Math.round(d.current_weather.windspeed);
+                    const dir = d.current_weather.winddirection;
+                    const alt = Math.round(d.elevation);
                     // Traduction clinique du code météo en symbole visuel
                     let icon = "☀️"; // Beau temps
                     if (code >= 1 && code <= 3) icon = "🌤️"; // Éclaircies
