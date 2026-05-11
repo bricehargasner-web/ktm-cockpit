@@ -46,7 +46,7 @@
         .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
         .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
-        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height:auto;min-height: 65px; display: flex; flex-direction: column; justify-content: center; position: relative;overflow: hidden; }
+        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height: 55px; display: flex; flex-direction: column; justify-content: center; position: relative; }
         #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; margin-top: 2px; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
@@ -78,13 +78,6 @@
     min-height: 100vh; /* S'assure que le dashboard peut être plus grand que l'écran scindé */
     padding-bottom: 50px; /* Marge de sécurité pour voir le dernier bouton tout en bas */
 }
-        .wind-arrow {
-        display: inline-block;
-        transition: transform 0.5s ease;
-        color: var(--ktm-orange);
-        font-weight: bold;
-        font-size: 1.2rem;
-    }
     </style>
 </head>
 
@@ -134,17 +127,10 @@
 
         <!-- OUTILS -->
 <div class="panel tool-grid">
-    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer; min-width: 100px;">
-    <div class="title" style="font-size:0.5rem">Météo & Vent</div>
-    <div style="display: flex; justify-content: space-around; align-items: center; padding: 2px;">
-        <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div id="wind-icon" class="wind-arrow">↑</div>
-            <div id="weather-wind" style="font-size:0.6rem;">-- km/h</div>
-        </div>
+    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
+        <div class="title" style="font-size:0.5rem">Météo</div>
+        <div id="weather-temp" style="font-size:1rem; font-weight:bold;">--°C</div>
     </div>
-    <div id="alt-val" style="font-size:0.6rem; color:var(--text-dim); text-align:center; margin-top:2px; border-top: 1px solid #222;">⛰️ -- m</div>
-</div>
 
     <div class="tool-item" style="text-align:center; min-width: 120px;">
         <div class="title" style="font-size:0.5rem">Navigation GPX</div>
@@ -414,47 +400,29 @@
                 console.log(`Trace sauvegardée : ${fileName}`);
             }, 
             checkWeatherQueue: () => {
-    // Si on n'a pas encore de position GPS, on ne fait rien
-    if (!STATE.gps.lat) return;
-    
-    // Requête à l'API Open-Meteo (celle que tu as testée avec succès)
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
-    .then(r => r.json()).then(d => {
-        const cw = d.current_weather;
-        const code = cw.weathercode;
-        const dir = cw.winddirection; // C'est ici qu'on récupère les degrés du vent (ex: 301)
-        
-        // 1. Détermination de l'icône (Correction du bug "Flocon")
-        let icon = "☀️"; // Par défaut
-        if (code >= 1 && code <= 3) icon = "🌤️";
-        if (code >= 45 && code <= 48) icon = "🌫️";
-        if (code >= 51 && code <= 67) icon = "🌧️";
-        if (code >= 71 && code <= 77) icon = "❄️";
-        if (code >= 80 && code <= 82) icon = "🌦️"; // Ton code 80 s'affichera ici (Averses)
-        if (code >= 95) icon = "⚡";
+                if (STATE.weatherInit || !STATE.gps.lat) return;
+                
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${STATE.gps.lat}&longitude=${STATE.gps.lon}&current_weather=true`)
+                .then(r => r.json()).then(d => {
+                    const temp = Math.round(d.current_weather.temperature);
+                    const code = d.current_weather.weathercode;
+                    
+                    // Traduction clinique du code météo en symbole visuel
+                    let icon = "☀️"; // Beau temps
+                    if (code >= 1 && code <= 3) icon = "🌤️"; // Éclaircies
+                    if (code >= 45 && code <= 48) icon = "🌫️"; // Brouillard
+                    if (code >= 51 && code <= 67) icon = "🌧️"; // Pluie
+                    if (code >= 71 && code <= 86) icon = "❄️"; // Neige
+                    if (code >= 95) icon = "⚡"; // Orage
 
-        // 2. Mise à jour de l'affichage (Température, Vent, Altitude)
-        const tE = document.getElementById('weather-temp');
-        const wE = document.getElementById('weather-wind');
-        const iE = document.getElementById('wind-icon');
-        const aE = document.getElementById('alt-val');
-
-        if (tE) tE.innerText = `${icon} ${Math.round(cw.temperature)}°C`;
-        if (wE) wE.innerText = `${Math.round(cw.windspeed)} km/h`;
-        if (aE) aE.innerText = `⛰️ ${Math.round(d.elevation || 0)} m`;
-        
-        // 3. Rotation de la flèche de vent (Magie visuelle)
-        // La flèche pointe dans la direction D'OÙ vient le vent
-        if (iE) iE.style.transform = `rotate(${dir}deg)`;
-
-        // 4. Gestion automatique du mode Jour/Nuit
-        UI.setTheme(cw.is_day === 1);
-        
-        STATE.weatherInit = true;
-    }).catch(e => {
-        console.error("Diagnostic : Erreur de flux météo", e);
-    });
-},
+                    // Mise à jour de l'affichage sur ton cockpit
+                    const weatherElem = document.getElementById('weather-temp');
+                    if(weatherElem) {
+                        weatherElem.innerText = `${icon} ${temp}°C`;
+                        STATE.weatherInit = true;
+                    }
+                }).catch(e => console.log("Erreur Météo"));
+            },
             openDynamicWeather: () => { 
                 if(STATE.gps.lat && STATE.gps.lon) {
                     const windyUrl = `https://www.windy.com/-Weather-radar-radar?radar,${STATE.gps.lat},${STATE.gps.lon},9`;
@@ -581,59 +549,42 @@ const UI = {
     }
 },
             
- checkRadars: () => {
-    // 1. Initialisation
-    if (!STATE.radarsInit && STATE.gps.lat) {
-        STATE.radarsInit = true;
-        UI.fetchRadarsAPI(); 
-        setInterval(UI.fetchRadarsAPI, 60000); 
-    }
+            checkRadars: () => {
+                if (!STATE.radarsInit && STATE.gps.lat) {
+                    STATE.radarsInit = true;
+                    UI.fetchRadarsAPI(); 
+                    setInterval(UI.fetchRadarsAPI, 60000); 
+                }
 
-    if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
 
-    const radius = CONFIG.radarRayonM || 400; 
-    let closestDist = Infinity;
-    
-    // 2. Boucle corrective sur le Cache
-    STATE.radarsCache.forEach(node => {
-        // On vérifie les différents formats possibles de l'API
-        const rLat = node.lat || (node.fields ? node.fields.lat : null);
-        const rLon = node.lon || (node.fields ? node.fields.lon : null);
-        
-        if (rLat && rLon) {
-            const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, rLat, rLon) * 1000;
-            if (d < closestDist) closestDist = d;
-        }
-    });
+                const radius = CONFIG.radarRayonM || 500; 
+                let closestDist = 999999;
+                
+                STATE.radarsCache.forEach(node => {
+                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
+                    if (d < closestDist) closestDist = d;
+                });
 
-    // 3. Mise à jour de l'interface
-    const distEl = document.getElementById('radar-dist');
-    const alertBox = document.getElementById('radar-alert');
-    const ledEl = document.getElementById('led-radar');
-
-    if (closestDist !== Infinity) {
-        // Affichage de la distance (km ou m)
-        if (distEl) {
-            distEl.innerText = closestDist > 1000 ? 
-                (closestDist / 1000).toFixed(1) + "km" : 
-                Math.round(closestDist) + "m";
-        }
-
-        // Gestion de l'alerte
-        if (closestDist <= radius) {
-            if (ledEl) ledEl.style.background = '#ff0000'; // Alerte Rouge
-            if (closestDist > 20) {
-                alertBox.style.display = 'block';
-                document.getElementById('radar-dist-alert').innerText = Math.round(closestDist);
-            } else {
-                alertBox.style.display = 'none'; // Passé
-            }
-        } else {
-            if (ledEl) ledEl.style.background = '#00ff00'; // Veille Verte
-            alertBox.style.display = 'none';
-        }
-    }
-}, v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
+                const alertBox = document.getElementById('radar-alert');
+                
+                if (closestDist <= radius) {
+                    // CONDITION MODIFIÉE : On ne coupe que si on est "dessus" (20m) 
+                    // ou si on s'éloigne vraiment (50m de différence)
+                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
+                        alertBox.style.display = 'none';
+                        document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
+                    } else {
+                        alertBox.style.display = 'block';
+                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
+                        STATE.lastRadarDist = closestDist; 
+                    }
+                } else {
+                    alertBox.style.display = 'none';
+                    STATE.lastRadarDist = null;
+                }
+            },
+            updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
