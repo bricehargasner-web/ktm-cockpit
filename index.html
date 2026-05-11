@@ -581,42 +581,59 @@ const UI = {
     }
 },
             
-            checkRadars: () => {
-                if (!STATE.radarsInit && STATE.gps.lat) {
-                    STATE.radarsInit = true;
-                    UI.fetchRadarsAPI(); 
-                    setInterval(UI.fetchRadarsAPI, 60000); 
-                }
+ checkRadars: () => {
+    // 1. Initialisation
+    if (!STATE.radarsInit && STATE.gps.lat) {
+        STATE.radarsInit = true;
+        UI.fetchRadarsAPI(); 
+        setInterval(UI.fetchRadarsAPI, 60000); 
+    }
 
-                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+    if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
 
-                const radius = CONFIG.radarRayonM || 500; 
-                let closestDist = 999999;
-                
-                STATE.radarsCache.forEach(node => {
-                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
-                    if (d < closestDist) closestDist = d;
-                });
+    const radius = CONFIG.radarRayonM || 400; 
+    let closestDist = Infinity;
+    
+    // 2. Boucle corrective sur le Cache
+    STATE.radarsCache.forEach(node => {
+        // On vérifie les différents formats possibles de l'API
+        const rLat = node.lat || (node.fields ? node.fields.lat : null);
+        const rLon = node.lon || (node.fields ? node.fields.lon : null);
+        
+        if (rLat && rLon) {
+            const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, rLat, rLon) * 1000;
+            if (d < closestDist) closestDist = d;
+        }
+    });
 
-                const alertBox = document.getElementById('radar-alert');
-                
-                if (closestDist <= radius) {
-                    // CONDITION MODIFIÉE : On ne coupe que si on est "dessus" (20m) 
-                    // ou si on s'éloigne vraiment (50m de différence)
-                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
-                        alertBox.style.display = 'none';
-                        document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
-                    } else {
-                        alertBox.style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                        STATE.lastRadarDist = closestDist; 
-                    }
-                } else {
-                    alertBox.style.display = 'none';
-                    STATE.lastRadarDist = null;
-                }
-            },
-            updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
+    // 3. Mise à jour de l'interface
+    const distEl = document.getElementById('radar-dist');
+    const alertBox = document.getElementById('radar-alert');
+    const ledEl = document.getElementById('led-radar');
+
+    if (closestDist !== Infinity) {
+        // Affichage de la distance (km ou m)
+        if (distEl) {
+            distEl.innerText = closestDist > 1000 ? 
+                (closestDist / 1000).toFixed(1) + "km" : 
+                Math.round(closestDist) + "m";
+        }
+
+        // Gestion de l'alerte
+        if (closestDist <= radius) {
+            if (ledEl) ledEl.style.background = '#ff0000'; // Alerte Rouge
+            if (closestDist > 20) {
+                alertBox.style.display = 'block';
+                document.getElementById('radar-dist-alert').innerText = Math.round(closestDist);
+            } else {
+                alertBox.style.display = 'none'; // Passé
+            }
+        } else {
+            if (ledEl) ledEl.style.background = '#00ff00'; // Veille Verte
+            alertBox.style.display = 'none';
+        }
+    }
+}, v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
             saveSettings: () => { CONFIG.carburantCible = document.getElementById('cfg-fuel').value; UI.syncConfig(); },
