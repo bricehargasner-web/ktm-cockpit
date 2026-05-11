@@ -334,14 +334,15 @@
                 fetch(`${CONFIG.apiStations}&geofilter.distance=${STATE.gps.lat},${STATE.gps.lon},${CONFIG.rayonRechercheKm * 1000}`)
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
-                    STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || "Station",
-                        ville: r.fields.ville || "--",
-                        adresse: r.fields.adresse || "", // On récupère l'adresse ici
-                        prix: r.fields[f], 
-                        lat: r.geometry.coordinates[1], 
-                        lon: r.geometry.coordinates[0],
-                        dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
+                   STATE.stations = data.records.map(r => ({
+            // On cherche le nom dans plusieurs champs possibles selon l'API
+            nom: r.fields.nom || r.fields.name || r.fields.brand || "Station",
+            ville: r.fields.ville || r.fields.city || "--",
+            adresse: r.fields.adresse || r.fields.address || "", 
+            prix: r.fields[f], 
+            lat: r.geometry.coordinates[1], 
+            lon: r.geometry.coordinates[0],
+            dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
                     UI.sortStations('prix');
                     document.getElementById('stations-labels').style.display = 'flex';
