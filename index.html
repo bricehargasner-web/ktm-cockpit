@@ -7,157 +7,173 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* ==========================================================
-           1. CONFIGURATION (Lignes 1-20)
+           1. CONFIGURATION (Design Fixe & Couleurs)
            ========================================================== */
         :root {
             --neon: #00ff88;
             --bg: #0d1117;
             --card: #161b22;
             --text: #c9d1d9;
-            --danger: #f85149;
+            --danger: #ff4d4d;
+            --header-h: 70px;
         }
 
         body { 
-            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; 
-            background: var(--bg); color: var(--text); overflow: hidden;
+            margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; 
+            background: var(--bg); color: var(--text);
         }
 
-        /* 2. SEGMENTATION : INTERFACE */
-        .app-shell { display: flex; flex-direction: column; height: 100vh; }
-        
-        .header { 
-            padding: 10px 15px; background: var(--card); border-bottom: 1px solid #30363d;
-            display: flex; justify-content: space-between; align-items: center;
+        /* BARRE DE CONTROLE FIXE EN HAUT */
+        .fixed-header { 
+            position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+            background: rgba(22, 27, 34, 0.95); backdrop-filter: blur(10px);
+            border-bottom: 1px solid #30363d; z-index: 1000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 15px; box-sizing: border-box;
         }
 
-        .main-display { flex: 1; padding: 10px; overflow-y: auto; position: relative; }
+        .content { margin-top: calc(var(--header-h) + 10px); padding: 10px; }
+
+        /* DESIGN TABLEAU / GRAPHIQUE "JEUNE" */
+        .chart-container {
+            background: radial-gradient(circle at center, #1c2128 0%, #0d1117 100%);
+            border-radius: 15px; padding: 15px; border: 1px solid #30363d;
+            position: relative; box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.05);
+            margin-bottom: 15px;
+        }
 
         .status-hero {
-            background: #21262d; border-radius: 12px; padding: 20px; text-align: center;
-            border: 2px solid #30363d; margin-bottom: 15px; transition: 0.3s;
+            border-radius: 12px; padding: 15px; text-align: center;
+            font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+            background: #21262d; border: 2px solid #30363d; margin-bottom: 15px;
         }
-        .status-hero.active { border-color: var(--neon); box-shadow: 0 0 15px rgba(0,255,136,0.2); }
-        .status-hero.hit { background: var(--danger); color: white; border-color: white; }
+        .active-scan { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+        .hit { background: var(--danger) !important; color: white !important; animation: pulse 0.3s infinite; }
 
-        /* Panneau de paramètres coulissant */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        /* BOUTONS STYLE CLINIQUE */
+        .btn { 
+            border: none; border-radius: 8px; padding: 10px 15px; font-weight: bold; 
+            cursor: pointer; text-transform: uppercase; font-size: 0.8rem;
+        }
+        .btn-start { background: var(--neon); color: #000; }
+        .btn-stop { background: var(--danger); color: #fff; }
+        .btn-gear { background: #30363d; color: #fff; border: 1px solid #484f58; }
+
+        /* PANNEAU PARAMETRES */
         #settingsPanel {
             position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
             border-radius: 20px 20px 0 0; transform: translateY(100%);
-            transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); padding: 20px; z-index: 100;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+            transition: 0.3s ease-out; padding: 25px; z-index: 1100;
+            border-top: 2px solid var(--neon);
         }
         #settingsPanel.open { transform: translateY(0); }
 
-        .btn { 
-            border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; 
-            cursor: pointer; transition: 0.2s;
-        }
-        .btn-neon { background: var(--neon); color: black; }
-        .btn-outline { background: transparent; border: 1px solid #30363d; color: var(--text); }
-        .btn-stop { background: var(--danger); color: white; }
-
-        .control-group { margin-bottom: 15px; }
+        .control-group { margin-bottom: 20px; }
         input[type=range] { width: 100%; accent-color: var(--neon); }
-        
-        #windy-widget { width: 100%; height: 250px; border-radius: 12px; border: 1px solid #30363d; margin-top: 10px; }
+
+        iframe { width: 100%; height: 300px; border-radius: 15px; border: 1px solid #30363d; }
     </style>
 </head>
 <body>
 
-<div class="app-shell">
-    <div class="header">
-        <b style="color: var(--neon)">SMARTBITE PRO</b>
-        <button class="btn btn-outline" onclick="toggleSettings()">⚙️ RÉGLAGES</button>
+<div class="fixed-header">
+    <div style="line-height: 1">
+        <span style="color: var(--neon); font-weight: 900; font-size: 1.2rem;">SMARTBITE</span><br>
+        <small style="font-size: 0.6rem; opacity: 0.6">ENERGY CONCEPT PRO</small>
     </div>
-
-    <div class="main-display">
-        <div id="hero" class="status-hero">SYSTÈME EN PAUSE</div>
-        
-        <canvas id="liveChart" style="height: 180px; width: 100%;"></canvas>
-
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button id="startBtn" class="btn btn-neon" style="flex:2" onclick="startSystem()">DÉMARRER SCAN</button>
-            <button id="stopBtn" class="btn btn-stop" style="flex:1; display:none" onclick="stopSystem()">STOP</button>
-        </div>
-
-        <div id="windy-container">
-            <!-- Widget Windy intégré correctement -->
-            <iframe id="windy-widget" 
-                src="https://www.windy.com/multicast?43.604,2.243,9,m:eX3afWj" 
-                frameborder="0"></iframe>
-        </div>
+    <div style="display: flex; gap: 8px;">
+        <button id="startBtn" class="btn btn-start" onclick="startSystem()">Start</button>
+        <button id="stopBtn" class="btn btn-stop" style="display:none" onclick="stopSystem()">Stop</button>
+        <button class="btn btn-gear" onclick="toggleSettings()">⚙️</button>
     </div>
 </div>
 
-<!-- PANNEAU PARAMÈTRES -->
+<div class="content">
+    <div id="hero" class="status-hero">SYSTÈME EN PAUSE</div>
+    
+    <div class="chart-container">
+        <canvas id="liveChart" style="height: 200px;"></canvas>
+    </div>
+
+    <div id="windy-container">
+        <iframe src="https://www.windy.com/multicast?43.604,2.243,9" frameborder="0"></iframe>
+    </div>
+</div>
+
+<!-- RÉGLAGES COULISSANTS -->
 <div id="settingsPanel">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-        <h3>Configuration</h3>
-        <button class="btn btn-outline" onclick="toggleSettings()">Fermer</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+        <h2 style="margin:0; color: var(--neon)">RÉGLAGES</h2>
+        <button class="btn btn-gear" onclick="toggleSettings()">Valider</button>
     </div>
 
     <div class="control-group">
-        <label>Sensibilité du "Toc" : <b id="lblSens">0.3</b></label>
-        <input type="range" id="rngSens" min="0.1" max="1.5" step="0.1" value="0.3">
+        <label>SENSIBILITÉ DU TOC : <b id="lblSens" style="color:var(--neon)">0.3</b></label>
+        <input type="range" id="rngSens" min="0.1" max="1.2" step="0.05" value="0.3">
     </div>
 
     <div class="control-group">
-        <label>Volume : <b id="lblVol">70</b>%</label>
+        <label>VOLUME DU BIP : <b id="lblVol" style="color:var(--neon)">70</b>%</label>
         <input type="range" id="rngVol" min="0" max="100" step="5" value="70">
     </div>
 
     <div class="control-group">
-        <label>Vue temporelle (Zoom) : <b id="lblZoom">30</b> points</label>
-        <input type="range" id="rngZoom" min="10" max="100" step="5" value="30">
+        <label>VITESSE SONAR (ZOOM) : <b id="lblZoom" style="color:var(--neon)">40</b></label>
+        <input type="range" id="rngZoom" min="20" max="150" step="10" value="40">
     </div>
 </div>
 
 <script>
 /* ==========================================================
-   3. LOGIQUE FONCTIONNELLE
+   2. LOGIQUE TECHNIQUE (SEGMENTATION FONCTIONNELLE)
    ========================================================== */
-let audioCtx = null;
-let isRunning = false;
-let isAlerting = false;
-let threshold = 0.3;
-let volume = 0.7;
+let audioCtx = null, isRunning = false, isAlerting = false;
+let threshold = 0.3, volume = 0.7, zoom = 40;
 let lastAcc = { x: 0, y: 0, z: 0 };
-let zoom = 30;
 
-// Initialisation Graphique
+// Design du Chart (Mode Sonar)
 const ctx = document.getElementById('liveChart').getContext('2d');
+const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+gradient.addColorStop(0, 'rgba(0, 255, 136, 0.4)');
+gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+
 const chart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: Array(100).fill(''),
+        labels: Array(zoom).fill(''),
         datasets: [{
             borderColor: '#00ff88',
-            borderWidth: 2,
-            data: Array(100).fill(0),
-            fill: { target: 'origin', above: 'rgba(0, 255, 136, 0.05)' },
+            borderWidth: 3,
+            data: Array(zoom).fill(0),
+            fill: true,
+            backgroundColor: gradient,
             pointRadius: 0,
             tension: 0.4
         }]
     },
     options: {
         responsive: true, maintainAspectRatio: false,
-        scales: { y: { min: 0, max: 2, display: true, grid: { color: '#21262d' } }, x: { display: false } },
+        scales: { 
+            y: { min: 0, max: 1.5, grid: { color: '#1c2128' }, ticks: { display: false } },
+            x: { grid: { display: false } }
+        },
         plugins: { legend: { display: false } },
         animation: false
     }
 });
 
-function toggleSettings() {
-    document.getElementById('settingsPanel').classList.toggle('open');
-}
+function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
 
 function startSystem() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     isRunning = true;
     document.getElementById('startBtn').style.display = 'none';
     document.getElementById('stopBtn').style.display = 'block';
-    document.getElementById('hero').innerText = "SCAN EN COURS...";
-    document.getElementById('hero').classList.add('active');
+    const hero = document.getElementById('hero');
+    hero.innerText = "SCAN ACTIF";
+    hero.classList.add('active-scan');
     
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission().then(res => { if(res === 'granted') listen(); });
@@ -168,8 +184,9 @@ function stopSystem() {
     isRunning = false;
     document.getElementById('startBtn').style.display = 'block';
     document.getElementById('stopBtn').style.display = 'none';
-    document.getElementById('hero').innerText = "SYSTÈME EN PAUSE";
-    document.getElementById('hero').classList.remove('active');
+    const hero = document.getElementById('hero');
+    hero.innerText = "SYSTÈME EN PAUSE";
+    hero.classList.remove('active-scan');
 }
 
 function listen() {
@@ -181,11 +198,8 @@ function listen() {
         const delta = Math.abs(acc.x - lastAcc.x) + Math.abs(acc.y - lastAcc.y) + Math.abs(acc.z - lastAcc.z);
         lastAcc = { x: acc.x, y: acc.y, z: acc.z };
 
-        // Mise à jour graphique avec gestion du zoom
         chart.data.datasets[0].data.push(delta);
-        if (chart.data.datasets[0].data.length > zoom) {
-            chart.data.datasets[0].data.shift();
-        }
+        if (chart.data.datasets[0].data.length > zoom) chart.data.datasets[0].data.shift();
         chart.update();
 
         if (delta > threshold) triggerBip();
@@ -195,32 +209,31 @@ function listen() {
 function triggerBip() {
     isAlerting = true;
     const hero = document.getElementById('hero');
-    hero.innerText = "!!! TOC !!!";
     hero.classList.add('hit');
+    hero.innerText = "!!! TOC !!!";
 
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'square';
-    osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
     gain.gain.setValueAtTime(volume, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
     osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.2);
 
     setTimeout(() => {
         isAlerting = false;
-        hero.innerText = "SCAN EN COURS...";
         hero.classList.remove('hit');
-    }, 1000);
+        hero.innerText = "SCAN ACTIF";
+    }, 800);
 }
 
-// Sliders
+// Update UI Sliders
 document.getElementById('rngSens').oninput = function() { threshold = this.value; document.getElementById('lblSens').innerText = this.value; };
 document.getElementById('rngVol').oninput = function() { volume = this.value/100; document.getElementById('lblVol').innerText = this.value; };
 document.getElementById('rngZoom').oninput = function() { 
     zoom = parseInt(this.value); 
     document.getElementById('lblZoom').innerText = this.value;
-    // On réinitialise la taille du tableau pour le zoom
     chart.data.datasets[0].data = Array(zoom).fill(0);
 };
 </script>
