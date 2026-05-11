@@ -430,7 +430,34 @@
                 } else {
                     window.open('https://www.windy.com/-Weather-radar-radar?radar,46.5,2.0,5', '_blank');
                 }
-            } // <-- La virgule était manquante ici
+            },
+            loadExternalGPX: (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    STATE.currentGPXContent = e.target.result;
+                    STATE.currentGPXName = file.name;
+                    
+                    document.getElementById('gpx-info').innerText = file.name.toUpperCase();
+                    const btn = document.getElementById('btn-launch-nav');
+                    btn.style.color = "var(--ktm-orange)";
+                    btn.style.borderColor = "var(--ktm-orange)";
+                    btn.disabled = false;
+                };
+                reader.readAsText(file);
+            },
+
+            launchNav: () => {
+                if (!STATE.currentGPXContent) return;
+                const blob = new Blob([STATE.currentGPXContent], {type: 'application/gpx+xml'});
+                const fileURL = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = fileURL;
+                a.download = STATE.currentGPXName;
+                a.click();
+            }
         };
 const UI = {
     setRadarStatus: (isOk) => {
