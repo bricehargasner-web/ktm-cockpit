@@ -1,202 +1,104 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartBite - Détecteur de Touche</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* ==========================================================
-           2. INTERFACE DE CONFIGURATION (Lignes 1-20 environ)
-           ========================================================== */
-        :root {
-            --primary-color: #00ff88; /* Vert néon "Pêche" */
-            --bg-color: #0b0f19;
-            --surface-color: #161b22;
-            --text-color: #e6edf3;
-            --alert-color: #ff4d4d;
-            --sensitivity-default: 2.5;
-        }
+<!-- Dans la section CONFIGURATION (Lignes 1-20) -->
+<style>
+    :root {
+        --primary-color: #00ff88;
+        --alert-color: #ff4d4d;
+    }
+    /* Ajout d'un style pour le slider de volume */
+    .volume-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 15px;
+        background: #21262d;
+        padding: 10px;
+        border-radius: 8px;
+    }
+</style>
 
-        body {
-            margin: 0; font-family: 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
-            overflow-x: hidden;
-        }
+<!-- Dans le corps du HTML (Section Contrôles) -->
+<div class="card">
+    <div id="status" class="status-badge">PRÊT / SILENCIEUX</div>
+    
+    <div class="controls">
+        <span>Sensibilité (Toc) : <b id="seuilVal">0.3</b></span>
+        <input type="range" id="sensitivity" min="0.1" max="2" step="0.1" value="0.3">
+    </div>
 
-        /* Segmentation Fonctionnelle : Style UI */
-        .header { background: var(--surface-color); padding: 15px; text-align: center; border-bottom: 2px solid var(--primary-color); }
-        .container { padding: 10px; max-width: 600px; margin: auto; }
-        
-        .card { 
-            background: var(--surface-color); border-radius: 12px; 
-            padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        .status-badge {
-            display: block; width: 100%; padding: 10px; border-radius: 8px;
-            text-align: center; font-weight: bold; font-size: 1.2rem;
-            background: #21262d; margin-bottom: 10px; transition: 0.3s;
-        }
-
-        .alert-active { background: var(--alert-color); color: white; animation: blink 0.5s infinite; }
-        
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button {
-            background: var(--primary-color); border: none; padding: 12px;
-            border-radius: 8px; font-weight: bold; cursor: pointer; color: #000;
-        }
-
-        iframe { width: 100%; height: 300px; border: none; border-radius: 12px; margin-top: 10px; }
-
-        .controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
-        input[type=range] { width: 60%; }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <h1 style="margin:0; font-size: 1.5rem;">Energy Concept - SmartBite</h1>
-</div>
-
-<div class="container">
-    <!-- Section 1 : Détecteur en Temps Réel -->
-    <div class="card">
-        <div id="status" class="status-badge">PRÊT POUR LA TOUCHE</div>
+    <div class="volume-controls">
         <div class="controls">
-            <span>Seuil : <b id="seuilVal">2.5</b>G</span>
-            <input type="range" id="sensitivity" min="1" max="10" step="0.5" value="2.5">
+            <span>Volume Bip : <b id="volVal">80</b>%</span>
+            <input type="range" id="volume" min="0" max="100" step="5" value="80">
         </div>
-        <canvas id="vibeChart" height="150"></canvas>
-    </div>
-
-    <!-- Section 2 : Navigation Utile -->
-    <div class="btn-group">
-        <button onclick="showSection('meteo')">☀️ Météo Windy</button>
-        <button onclick="showSection('tutos')">🪢 Noeuds & Règles</button>
-    </div>
-
-    <!-- Section 3 : Modules Dynamiques -->
-    <div id="meteo" class="card" style="display:none;">
-        <h3>Météo Windy (Temps Réel)</h3>
-        <iframe src="https://www.windy.com/?43.763,1.991,10"></iframe>
-    </div>
-
-    <div id="tutos" class="card" style="display:none;">
-        <h3>Techniques & Réglementation</h3>
-        <div class="btn-group">
-            <button style="background:#58a6ff" onclick="window.open('https://www.generationpeche.fr/', '_blank')">Règles de Pêche</button>
-            <button style="background:#58a6ff" onclick="window.open('https://www.peche-poissons.com/noeuds-de-peche', '_blank')">Tutos Noeuds</button>
+        <div class="controls">
+            <span>Fréquence : <b id="freqVal">880</b>Hz</span>
+            <input type="range" id="freq" min="440" max="2000" step="100" value="880">
         </div>
     </div>
-
-    <!-- Section Anomalies -->
-    <div id="anomalies" class="card" style="border: 1px solid #30363d; font-size: 0.8rem; color: #8b949e;">
-        <strong>Diagnostic :</strong> <span id="diagMsg">En attente des capteurs...</span>
-    </div>
+    
+    <canvas id="vibeChart" height="150"></canvas>
 </div>
 
 <script>
 /* ==========================================================
-   3. SEGMENTATION FONCTIONNELLE : LOGIQUE JS
+   LOGIQUE AUDIO ET FILTRAGE AMÉLIORÉE
    ========================================================== */
 
-let threshold = 2.5;
-const statusBadge = document.getElementById('status');
-const diagMsg = document.getElementById('diagMsg');
-const seuilVal = document.getElementById('seuilVal');
+let audioCtx = null;
+let volumeLevel = 0.8;
+let frequency = 880;
+let threshold = 0.3;
+let isAlerting = false;
 
-// Initialisation du Graphique
-const ctx = document.getElementById('vibeChart').getContext('2d');
-const chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: Array(30).fill(''),
-        datasets: [{
-            label: 'Vibrations (Force G)',
-            borderColor: '#00ff88',
-            data: Array(30).fill(0),
-            fill: false,
-            tension: 0.4
-        }]
-    },
-    options: { 
-        scales: { y: { min: 0, max: 10 } },
-        animation: false,
-        plugins: { legend: { display: false } }
-    }
-});
-
-// Gestion du curseur de sensibilité
-document.getElementById('sensitivity').addEventListener('input', (e) => {
-    threshold = e.target.value;
-    seuilVal.innerText = threshold;
-});
-
-// Switch de sections
-function showSection(id) {
-    const sections = ['meteo', 'tutos'];
-    sections.forEach(s => document.getElementById(s).style.display = s === id ? 'block' : 'none');
-}
-
-// 4. GESTION DYNAMIQUE DES FLUX (Accéléromètre)
-function initSensor() {
-    if (window.DeviceMotionEvent) {
-        window.addEventListener('devicemotion', (event) => {
-            const acc = event.acceleration;
-            if (!acc.x) return;
-
-            // Calcul de l'intensité du choc
-            const gForce = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-            
-            // Mise à jour graphique
-            chart.data.datasets[0].data.push(gForce);
-            chart.data.datasets[0].data.shift();
-            chart.update();
-
-            // Logique de détection
-            if (gForce > threshold) {
-                triggerAlert();
-            } else {
-                resetAlert();
-            }
-            diagMsg.innerText = "Capteurs actifs - Signal OK";
-        });
-    } else {
-        diagMsg.innerText = "Erreur : Accéléromètre non supporté sur ce navigateur.";
-    }
-}
-
-let alertTimeout;
-function triggerAlert() {
-    statusBadge.innerText = "!!! TOUCHE DETECTÉE !!!";
-    statusBadge.classList.add('alert-active');
-    // Vibration du téléphone
-    if (navigator.vibrate) navigator.vibrate(200);
-}
-
-function resetAlert() {
-    if (statusBadge.classList.contains('alert-active')) {
-        setTimeout(() => {
-            statusBadge.innerText = "LIGNE TENDUE...";
-            statusBadge.classList.remove('alert-active');
-        }, 2000);
-    }
-}
-
-// Demande d'autorisation (Nécessaire sur iOS)
+// Initialisation au premier clic (sécurité navigateur)
 document.body.onclick = () => {
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission().then(response => {
-            if (response == 'granted') initSensor();
-        });
-    } else {
-        initSensor();
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    // ... reste du code d'init capteurs ...
 };
 
+// Update des variables via sliders
+document.getElementById('volume').addEventListener('input', (e) => {
+    volumeLevel = e.target.value / 100;
+    document.getElementById('volVal').innerText = e.target.value;
+});
+document.getElementById('freq').addEventListener('input', (e) => {
+    frequency = e.target.value;
+    document.getElementById('freqVal').innerText = e.target.value;
+});
+
+function triggerAlert() {
+    if (isAlerting) return;
+    
+    isAlerting = true;
+    statusBadge.innerText = "!!! TOC !!!";
+    statusBadge.classList.add('alert-active');
+
+    // GÉNÉRATION DU BIP PUISSANT
+    if (audioCtx) {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = 'square'; // Type 'square' pour un son plus percutant/agressif
+        oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(volumeLevel, audioCtx.currentTime);
+        // Fade out rapide pour éviter le "clac" audio
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+
+    // Verrou de sécurité pour éviter les rebonds
+    setTimeout(() => {
+        isAlerting = false;
+        statusBadge.innerText = "LIGNE TENDUE...";
+        statusBadge.classList.remove('alert-active');
+    }, 800); 
+}
 </script>
-</body>
-</html>
