@@ -266,19 +266,34 @@
             },
             initGyro: () => {
                 window.addEventListener('deviceorientation', (e) => {
-                    let rawBeta = e.beta; 
-                    let rawGamma = Math.abs(e.gamma); 
+                    // Fusion mathématique Roulis (beta) + Tangage (gamma)
+                    let x = e.beta;  
+                    let y = e.gamma; 
+                    
+                    if (x !== null && y !== null) {
+                        const toRad = Math.PI / 180;
+                        
+                        // Calcul d'angle compensé par trigonométrie sphérique
+                        // Formule : arctan2(sin(beta), sqrt(cos^2(beta) + sin^2(gamma)))
+                        let combinedAngle = Math.atan2(
+                            Math.sin(x * toRad), 
+                            Math.sqrt(Math.pow(Math.cos(x * toRad), 2) + Math.pow(Math.sin(y * toRad), 2))
+                        ) * (180 / Math.PI);
 
-                    if (rawBeta !== null) {
-                        if (rawGamma > CONFIG.rejectionTangage) {
-                            STATE.angle.current = 0; UI.updateBars('angle', 0); return;
-                        }
-                        STATE.angle.smoothed = (CONFIG.angleSmoothing * rawBeta) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || rawBeta));
+                        // Lissage dynamique (Filtre passe-bas)
+                        STATE.angle.smoothed = (CONFIG.angleSmoothing * combinedAngle) + ((1 - CONFIG.angleSmoothing) * (STATE.angle.smoothed || combinedAngle));
+                        
                         let valPure = STATE.angle.smoothed - STATE.angle.offset;
+                        
+                        // Filtrage des bruits de capteur (vibrations moteur)
                         STATE.angle.current = Math.abs(valPure) < 2 ? 0 : Math.min(Math.round(Math.abs(valPure)), 85);
                         
-                        if (STATE.angle.current > 0) { STATE.angle.sum += STATE.angle.current; STATE.angle.count++; }
+                        if (STATE.angle.current > 0) { 
+                            STATE.angle.sum += STATE.angle.current; 
+                            STATE.angle.count++; 
+                        }
                         if(STATE.angle.current > STATE.angle.max) STATE.angle.max = STATE.angle.current;
+                        
                         UI.updateBars('angle', valPure);
                     }
                 });
