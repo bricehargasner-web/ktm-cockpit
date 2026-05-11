@@ -411,8 +411,10 @@
                     let icon = "☀️"; // Beau temps
                     if (code >= 1 && code <= 3) icon = "🌤️"; // Éclaircies
                     if (code >= 45 && code <= 48) icon = "🌫️"; // Brouillard
-                    if (code >= 51 && code <= 67) icon = "🌧️"; // Pluie
-                    if (code >= 71 && code <= 86) icon = "❄️"; // Neige
+                    if (code >= 51 && code <= 67) icon = "🌧️"; // Pluie (Bruine/Pluie continue)
+                    if (code >= 71 && code <= 77) icon = "❄️"; // Neige (Uniquement les codes neige)
+                    if (code >= 80 && code <= 82) icon = "🌦️"; // Averses de pluie 
+                    if (code >= 85 && code <= 86) icon = "🌨️"; // Averses de neige
                     if (code >= 95) icon = "⚡"; // Orage
 
                     // Mise à jour de l'affichage sur ton cockpit
