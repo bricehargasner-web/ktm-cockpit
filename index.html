@@ -371,8 +371,8 @@
                     btn.style.background = "#f00";
                 }
             },
-            saveGPX: () => {
-                if (STATE.gpx.points.length === 0) return; // Sécurité anti-fichier vide
+           saveGPX: () => {
+                if (STATE.gpx.points.length === 0) return;
 
                 let xml = `<?xml version="1.1"?><gpx creator="KTM_Dash"><trk><trkseg>`;
                 STATE.gpx.points.forEach(p => { 
@@ -380,11 +380,19 @@
                 });
                 xml += `</trkseg></trk></gpx>`;
                 
+                // Formatage du nom : REC_2026-05-11_10h30.gpx
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const timeStr = now.getHours() + "h" + now.getMinutes();
+                const fileName = `REC_${dateStr}_${timeStr}.gpx`;
+
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
-                a.download = `Trace_${new Date().getTime()}.gpx`; 
+                a.download = fileName; 
                 a.click();
-            },
+                
+                console.log(`Trace sauvegardée : ${fileName}`);
+            }, 
             checkWeatherQueue: () => {
                 if (STATE.weatherInit || !STATE.gps.lat) return;
                 
