@@ -45,8 +45,8 @@
         .unit { font-size: 1rem; color: var(--ktm-orange); margin-left: 5px; font-weight: bold; align-self: flex-end; padding-bottom: 10px; }
         .val-sub { display: flex; justify-content: space-between; font-size: 0.7rem; background: var(--sub-bg); padding: 4px 8px; border: 1px solid #222; }
         .btn-action { position: absolute; top: -5px; right: 0; height: 24px; min-width: 50px; border: 0.5px solid var(--ktm-orange); color: var(--ktm-orange); background: rgba(0,0,0,0.3); font-size: 0.55rem; text-transform: uppercase; z-index: 10; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .tool-grid { display: grid; grid-template-columns: 1.2fr 1fr 0.5fr; gap: 8px; align-items: center; }
-        .tool-item { background: var(--sub-bg); padding: 5px; border-radius: 2px; border: 1px solid #222; height:auto;min-height: 65px; display: flex; flex-direction: column; justify-content: center; position: relative;overflow: hidden; }
+        .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; align-items: stretch;margin-top: 5px;}
+        .tool-item { background: var(--sub-bg); padding: 5px 2px; border-radius: 2px; border: 1px solid #222; height: 75px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative; overflow: hidden;}
         #btn-rec { font-size: 0.5rem; height: 18px; width: 100%; border: 0.5px solid var(--ktm-orange); background: #222; color: #fff; cursor: pointer; margin-top: 2px; }
         .station-item { background: #0a0a0a; border-left: 3px solid var(--ktm-orange); padding: 10px; margin-bottom: 8px; }
         body.day-mode .station-item { background: #fff; border: 1px solid #ddd; border-left: 3px solid var(--ktm-orange); }
@@ -134,15 +134,17 @@
 
         <!-- OUTILS -->
 <div class="panel tool-grid">
-    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer; min-width: 100px;">
+    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer">
     <div class="title" style="font-size:0.5rem">Météo & Vent</div>
-    <div style="display: flex; justify-content: space-around; align-items: center; padding: 2px;">
-        <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div id="wind-icon" class="wind-arrow">↑</div>
-            <div id="weather-wind" style="font-size:0.6rem;">-- km/h</div>
+    <div style="text-align:center; flex-grow:1; display:flex; flex-direction:column; justify-content:center;">
+        <div id="weather-temp" style="font-size:1rem; font-weight:bold; line-height:1.1;">--°C</div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:3px;">
+            <div id="wind-icon" class="wind-arrow" style="font-size:0.9rem;">↑</div>
+            <div id="weather-wind" style="font-size:0.55rem;">-- km/h</div>
         </div>
     </div>
+    <div id="alt-val" style="font-size:0.55rem; color:var(--text-dim); border-top:1px solid #222; width:100%; text-align:center;">⛰️ -- m</div>
+</div>
     <div id="alt-val" style="font-size:0.6rem; color:var(--text-dim); text-align:center; margin-top:2px; border-top: 1px solid #222;">⛰️ -- m</div>
 </div>
 
@@ -161,9 +163,11 @@
         <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size: 0.5rem; width: 100%; border: 1px solid var(--ktm-orange); background:transparent; color:var(--ktm-orange);">REC</button>
     </div>
 
-    <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <div id="led-radar" style="width: 8px; height: 8px; background: #222; border-radius: 50%; margin-bottom: 5px; border: 1px solid #444;"></div>
-        <span style="font-size: 1.2rem;">🔧</span>
+ <div class="tool-item" onclick="UI.openSettings()" style="cursor:pointer">
+    <div class="title" style="font-size:0.5rem">Paramètres</div>
+    <div style="flex-grow:1; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🔧</div>
+    <div id="led-radar-container" style="width:100%; border-top:1px solid #222; display:flex; justify-content:center; padding-top:2px;">
+        <div id="led-radar" style="width: 6px; height: 6px; background: #222; border-radius: 50%; border: 1px solid #444;"></div>
     </div>
 </div>
 
