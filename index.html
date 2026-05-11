@@ -147,16 +147,17 @@
         <button id="btn-rec" onclick="CORE.toggleRecording()" style="font-size: 0.5rem; width: 100%; border: 1px solid var(--ktm-orange); background:transparent; color:var(--ktm-orange);">REC</button>
     </div>
 
-    <div class="tool-item" onclick="CORE.openDynamicWeather()" style="cursor:pointer; height: auto; padding: 10px;">
-    <div class="title" style="font-size:0.5rem">Météo & Environnement</div>
-    <div style="display: flex; justify-content: space-around; align-items: center; gap: 5px;">
-        <div id="weather-temp" style="font-size:1.1rem; font-weight:bold;">--°C</div>
-        <div id="weather-wind" style="font-size:0.7rem; color:var(--ktm-orange);">-- km/h</div>
-        <div id="weather-dir" style="font-size:0.9rem;">--</div>
+<div class="tool-item" onclick="UI.openDynamicWeather()" style="cursor:pointer;">
+    <div class="title" style="font-size:0.5rem">Météo & Vent</div>
+    <div style="display: flex; justify-content: space-around; align-items: center; padding: 2px;">
+        <div id="weather-temp" style="font-size:1.2rem; font-weight:bold;">--°C</div>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div id="wind-icon" style="font-size:1.2rem; color:var(--ktm-orange); transition: transform 0.5s;">↑</div>
+            <div id="weather-wind" style="font-size:0.7rem;">-- km/h</div>
+        </div>
     </div>
-    <div id="alt-val" style="font-size:0.65rem; color:var(--text-dim); border-top: 1px solid #222; margin-top: 4px; padding-top: 2px;">
-        ⛰️ ALT: -- m
-    </div>
+    <div id="alt-val" style="font-size:0.6rem; color:var(--text-dim); text-align:center; margin-top:2px;">⛰️ -- m</div>
+</div>    
 </div>
 
 <!-- STATIONS -->
