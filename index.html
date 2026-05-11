@@ -335,8 +335,12 @@
                 .then(r => r.json()).then(data => {
                     const f = CONFIG.carburantCible.toLowerCase() + '_prix';
                     STATE.stations = data.records.map(r => ({
-                        nom: r.fields.nom || "Station", ville: r.fields.ville || "--", prix: r.fields[f], 
-                        lat: r.geometry.coordinates[1], lon: r.geometry.coordinates[0],
+                        nom: r.fields.nom || "Station",
+                        ville: r.fields.ville || "--",
+                        adresse: r.fields.adresse || "", // On récupère l'adresse ici
+                        prix: r.fields[f], 
+                        lat: r.geometry.coordinates[1], 
+                        lon: r.geometry.coordinates[0],
                         dist: CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.geometry.coordinates[1], r.geometry.coordinates[0])
                     }));
                     UI.sortStations('prix');
