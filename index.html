@@ -64,6 +64,57 @@
         .sort-btn { cursor: pointer; text-decoration: underline; }
         .sort-btn:hover { color: var(--ktm-orange); }
     html, body {
+        /* Ajustements cliniques pour l'affichage scindé (Etape 2 finale) */
+
+/* 1. On réduit les marges internes pour gagner de la place */
+.tool-item {
+    padding: 4px 3px !important;
+}
+
+/* 2. On force les titres à être très compacts */
+.tool-item .title {
+    font-size: 0.52rem !important;
+    white-space: nowrap;
+    text-align: center;
+    margin-bottom: 2px;
+}
+
+/* 3. On ajuste la taille des valeurs pour le bloc Météo */
+#weather-temp { 
+    font-size: 0.9rem !important; 
+}
+#weather-wind { 
+    font-size: 0.52rem !important; 
+}
+.wind-arrow {
+    font-size: 1rem !important;
+}
+
+/* 4. On ajuste le bloc GPX pour éviter le débordement */
+#gpx-info {
+    font-size: 0.48rem !important;
+    height: 11px !important;
+    margin: 2px 0 !important;
+}
+#gpx-dist {
+    font-size: 0.75rem !important;
+}
+#btn-rec {
+    font-size: 0.48rem !important;
+    height: 16px !important;
+    padding: 0 !important;
+    margin-top: auto !important; /* Le cale bien au fond */
+}
+
+/* 5. Centrage du bloc Réglages */
+.tool-item:last-child {
+    align-items: center;
+    justify-content: center;
+}
+#led-radar {
+    margin-bottom: 6px !important;
+}
+        
     overscroll-behavior-y: none; /* Bloque le rafraîchissement mais autorise le scroll */
     overflow-y: auto; 
     height: auto;
