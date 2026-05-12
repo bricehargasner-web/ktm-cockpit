@@ -518,6 +518,8 @@ const UI = {
                 document.getElementById('gpx-dist').innerText = `${STATE.gpx.distance.toFixed(1)} KM`;
                 document.getElementById('speed-moy').innerText = STATE.gps.count > 0 ? Math.round(STATE.gps.sum / STATE.gps.count) : 0;
                 document.getElementById('angle-moy').innerText = STATE.angle.count > 0 ? Math.round(STATE.angle.sum / STATE.angle.count) : 0;
+                const radarStatusText = STATE.radarsCache.length > 0 ? `${STATE.radarsCache.length} en zone` : "0 détecté";
+                document.getElementById('diag-radar').innerText = `Radar API : ${radarStatusText}`;
                 document.getElementById('diag-meteo').innerText = `Météo : ${STATE.weatherInit ? 'OK' : '--'}`;
                 document.getElementById('diag-gps').innerText = `GPS : ${STATE.gps.lat ? 'FIX' : '--'}`;
                 document.getElementById('diag-light').innerText = `Lux : ${STATE.lux}`;
@@ -582,40 +584,43 @@ const UI = {
 },
             
             checkRadars: () => {
-                if (!STATE.radarsInit && STATE.gps.lat) {
-                    STATE.radarsInit = true;
-                    UI.fetchRadarsAPI(); 
-                    setInterval(UI.fetchRadarsAPI, 60000); 
-                }
+    if (!STATE.radarsInit && STATE.gps.lat) {
+        STATE.radarsInit = true;
+        UI.fetchRadarsAPI(); 
+        setInterval(UI.fetchRadarsAPI, 60000); 
+    }
 
-                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+    if (!STATE.radarsCache || STATE.radarsCache.length === 0) {
+        UI.setRadarStatus(false); // Si 0 radars trouvés, on met en rouge/orange pour alerter
+        return;
+    }
 
-                const radius = CONFIG.radarRayonM || 500; 
-                let closestDist = 999999;
-                
-                STATE.radarsCache.forEach(node => {
-                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
-                    if (d < closestDist) closestDist = d;
-                });
+    const radius = CONFIG.radarRayonM || 400; 
+    let closestDist = 999999;
+    
+    STATE.radarsCache.forEach(node => {
+        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
+        if (d < closestDist) closestDist = d;
+    });
 
-                const alertBox = document.getElementById('radar-alert');
-                
-                if (closestDist <= radius) {
-                    // CONDITION MODIFIÉE : On ne coupe que si on est "dessus" (20m) 
-                    // ou si on s'éloigne vraiment (50m de différence)
-                    if (closestDist < 20 || (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 50))) {
-                        alertBox.style.display = 'none';
-                        document.getElementById('diag-radar').innerText = "Radar : PASSÉ";
-                    } else {
-                        alertBox.style.display = 'block';
-                        document.getElementById('radar-dist').innerText = Math.round(closestDist);
-                        STATE.lastRadarDist = closestDist; 
-                    }
-                } else {
-                    alertBox.style.display = 'none';
-                    STATE.lastRadarDist = null;
-                }
-            },
+    const alertBox = document.getElementById('radar-alert');
+    
+    // Logique d'affichage de l'alerte
+    if (closestDist <= radius) {
+        // Si on s'éloigne du radar (distance augmente de plus de 30m par rapport au dernier relevé)
+        // on considère qu'il est "derrière"
+        if (STATE.lastRadarDist && closestDist > (STATE.lastRadarDist + 30)) {
+            alertBox.style.display = 'none';
+        } else {
+            alertBox.style.display = 'block';
+            document.getElementById('radar-dist').innerText = Math.round(closestDist);
+        }
+        STATE.lastRadarDist = closestDist; 
+    } else {
+        alertBox.style.display = 'none';
+        STATE.lastRadarDist = null;
+    }
+}
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
