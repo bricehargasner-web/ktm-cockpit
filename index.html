@@ -803,14 +803,38 @@ showWazeAlert: (type, dist) => {
             setTheme: (isDay) => document.body.classList.toggle('day-mode', isDay)
         };
                //setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 10000);
-        setInterval(UI.update, CONFIG.refreshRate); setInterval(UI.checkRadars, 500);
-        document.getElementById('btn-unlock').style.display = 'block';
-        // Bloque l'événement de "tirage" vers le bas au niveau tactile
-window.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 1) return;
-    this.lastY = e.touches[0].pageY;
-}, { passive: false });
+    // --- BOUCLES DE TRAITEMENT (PIED DE PAGE) ---
 
+        // 1. Mise à jour de l'affichage (Vitesse, Angles, Diag)
+        setInterval(UI.update, CONFIG.refreshRate); 
+        
+        // 2. Scan des radars fixes (OSM)
+        setInterval(UI.checkRadars, 500);
+
+        // 3. SYNCHRO WAZE : On pompe les infos et on check les dangers
+        setInterval(() => { 
+            if (typeof WAZE !== 'undefined') {
+                WAZE.fetchAlerts(); 
+                WAZE.checkDanger(); 
+            }
+        }, 5000); // Analyse toutes les 5 secondes
+
+        // Activation du bouton de démarrage
+        document.getElementById('btn-unlock').style.display = 'block';
+
+        // Bloque l'événement de "tirage" vers le bas (Pull-to-refresh)
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            this.lastY = e.touches[0].pageY;
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            const y = e.touches[0].pageY;
+            if (y > this.lastY && window.scrollY === 0) {
+                e.preventDefault(); 
+            }
+            this.lastY = y;
+        }, { passive: false });  
 window.addEventListener('touchmove', (e) => {
     const y = e.touches[0].pageY;
     // Si on tire vers le bas alors qu'on est déjà en haut de page
