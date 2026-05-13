@@ -19,6 +19,9 @@
         apiStations: 'https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2',
         radarRayonM: 500,
         apiRadars: 'https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines',
+        bipFrequence: 880,  // Fréquence en Hz (aigu)
+        bipVolume: 0.6,     // Volume de 0 à 1
+        bipDuree: 0.3       // Durée du bip en secondes  
     };
 </script>
 
@@ -107,11 +110,18 @@
     <div style="width:250px; height:10px; border:1px solid #333; background:#111; position:relative; margin-bottom:15px;">
         <div id="boot-bar" style="width:0%; height:100%; background:#ff6600; transition: width 0.2s;"></div>
     </div>
+        <button id="btn-unlock" onclick="CORE.startBootSequence()" style="margin-top:30px; padding:15px 40px; background:transparent; border:2px solid #ff6600; color:#ff6600; font-weight:bold; cursor:pointer; display:block;">START SYSTEM</button>
+</div>
+
+<button id="soundBtn" class="audio-ctrl btn-off" onclick="toggleAudio()" style="width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; background: #e74c3c; color: white;">
+    🔇 BIP RADAR : OFF
+</button>
     
     <div id="boot-status" style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px; height:20px;">Initialisation...</div>
     
     <button id="btn-unlock" onclick="CORE.startBootSequence()" style="margin-top:30px; padding:15px 40px; background:transparent; border:2px solid #ff6600; color:#ff6600; font-weight:bold; cursor:pointer; display:block;">START SYSTEM</button>
 </div>
+    
         <!-- ALERTE RADAR -->
      <div id="radar-alert" style="display:none; position: fixed; bottom: 60px; left: 0; width: 100%; background: linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%); color: #fff; text-align: center; padding: 12px 0; font-family: 'Impact', sans-serif; font-size: 1.4em; border-top: 3px solid #fff; z-index: 9999; box-shadow: 0 -5px 15px rgba(0,0,0,0.5);">
     ⚠️ RADAR À <span id="radar-dist">0</span> M
