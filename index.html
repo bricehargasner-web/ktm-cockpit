@@ -272,6 +272,48 @@
                 osc.stop(this.ctx.currentTime + 0.3);
             }
         };
+        // --- MODULE WAZE : ACCIDENTS & POLICE ---
+        const WAZE = {
+            alerts: [],
+            lastFetch: 0,
+            fetchAlerts: async () => {
+                // On rafraîchit toutes les 2 minutes pour rester "clinique"
+                if (Date.now() - WAZE.lastFetch < 120000 || !STATE.gps.lat) return;
+                
+                const offset = 0.15; // Zone d'environ 15km autour de toi
+                const lat = STATE.gps.lat;
+                const lon = STATE.gps.lon;
+                
+                // Flux LiveMap Waze (TGeoRSS)
+                const url = `https://www.waze.com/rtserver/web/TGeoRSS?bottom=${lat-offset}&left=${lon-offset}&right=${lon+offset}&top=${lat+offset}`;
+
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    WAZE.alerts = data.alerts || [];
+                    WAZE.lastFetch = Date.now();
+                    console.log("Waze Sync: " + WAZE.alerts.length + " incidents");
+                } catch (e) {
+                    console.log("Waze : Flux restreint ou pas de réseau");
+                }
+            },
+            checkDanger: () => {
+                if (!WAZE.alerts.length) return;
+
+                WAZE.alerts.forEach(alert => {
+                    // Calcul distance entre moto et incident
+                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, alert.location.y, alert.location.x) * 1000;
+                    
+                    if (d < 3000) { // Alerte à 3km pour avoir le temps d'anticiper
+                        if (alert.type === 'POLICE' || alert.type === 'ACCIDENT') {
+                            UI.showWazeAlert(alert.type, Math.round(d));
+                        }
+                    }
+                });
+            }
+        };
+
+        const CORE = {
 
         const CORE = {
            startBootSequence: async () => {
@@ -706,6 +748,31 @@ const UI = {
         STATE.lastRadarDist = null;
     }
 },    
+    // --- AJOUTER CE BLOC DANS L'OBJET UI ---
+showWazeAlert: (type, dist) => {
+    const alertBox = document.getElementById('radar-alert');
+    const distSpan = document.getElementById('radar-dist');
+    
+    alertBox.style.display = 'block';
+    
+    // Code couleur spécifique : Bleu pour Police / Orange pour Accident
+    if (type === 'POLICE') {
+        alertBox.style.background = "linear-gradient(90deg, #0055ff 0%, #001133 50%, #0055ff 100%)";
+        distSpan.innerHTML = `⚠️ CONTRÔLE POLICE À ${dist}m`;
+    } else {
+        alertBox.style.background = "linear-gradient(90deg, #ff8800 0%, #442200 50%, #ff8800 100%)";
+        distSpan.innerHTML = `⚠️ ACCIDENT À ${dist}m`;
+    }
+
+    // DOUBLE BIP pour Waze (différent du bip simple des radars fixes)
+    // On met un délai de 5s pour ne pas que ça bipe en boucle
+    if (Date.now() - STATE.lastBipTime > 5000) {
+        AUDIO.play();
+        setTimeout(() => AUDIO.play(), 200); 
+        STATE.lastBipTime = Date.now();
+    }
+},
+// ---------------------------------------
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
