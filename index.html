@@ -644,11 +644,11 @@ const UI = {
     }   
 },
             
-            checkRadars: () => {
+        checkRadars: () => {
     if (!STATE.radarsInit && STATE.gps.lat) {
         STATE.radarsInit = true;
         UI.fetchRadarsAPI(); 
-        setInterval(UI.fetchRadarsAPI, 120000); // Ping toutes les 2 minutes
+        setInterval(UI.fetchRadarsAPI, 120000);
     }
 
     if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
@@ -667,32 +667,37 @@ const UI = {
 
     const alertBox = document.getElementById('radar-alert');
     const distSpan = document.getElementById('radar-dist');
+    // ON MÉMORISE SI L'ALERTE ÉTAIT ÉTEINTE (pour le bip instantané)
+    const wasHidden = (alertBox.style.display === 'none');
     
     if (closestRadar && minDeviceInfo.dist <= radius) {
-        // FILTRE VECTORIEL : On ne sonne que si on se rapproche
         const isApproaching = !STATE.lastRadarDist || minDeviceInfo.dist < (STATE.lastRadarDist - 2);
         
         if (isApproaching) {
             alertBox.style.display = 'block';
             distSpan.innerText = Math.round(minDeviceInfo.dist);
             
-            // LOGIQUE VITESSE (Couleur Dynamique)
-            const speedLimit = parseInt(closestRadar.tags.maxspeed) || 80; // 80 par défaut si inconnu
+            const speedLimit = parseInt(closestRadar.tags.maxspeed) || 80;
             const currentSpeed = STATE.gps.speed;
 
             if (currentSpeed > speedLimit) {
-                // ROUGE CLIGNOTANT : Excès de vitesse
                 alertBox.style.background = "linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%)";
                 alertBox.style.opacity = (Date.now() % 400 < 200) ? "1" : "0.6";
                 distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:yellow;">(LIMIT ${speedLimit})</span>`;
+                
+                // --- GESTION DU SON ---
+                // Son immédiat si on vient d'entrer en zone (wasHidden) 
+                // OU rappel toutes les 1.5 secondes
+                if (wasHidden || (Date.now() - STATE.lastBipTime > 1500)) {
+                    AUDIO.play();
+                    STATE.lastBipTime = Date.now();
+                }
             } else {
-                // VERT FIXE : Vitesse OK
                 alertBox.style.background = "linear-gradient(90deg, #006400 0%, #00FF00 50%, #006400 100%)";
                 alertBox.style.opacity = "1";
                 distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:white;">OK</span>`;
             }
         } else {
-            // On s'éloigne ou radar passé : on cache l'alerte
             alertBox.style.display = 'none';
         }
         STATE.lastRadarDist = minDeviceInfo.dist; 
@@ -700,7 +705,7 @@ const UI = {
         alertBox.style.display = 'none';
         STATE.lastRadarDist = null;
     }
-},
+},    
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
