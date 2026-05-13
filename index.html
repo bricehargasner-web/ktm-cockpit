@@ -319,6 +319,14 @@
                     setInterval(CORE.checkWeatherQueue, 10000);
                 }, 400);
             },
+            addLog: (type, status) => {
+        const now = new Date();
+        const timeStr = `${now.getHours()}h${now.getMinutes().toString().padStart(2, '0')}`;
+        const logEntry = `${timeStr}:${status}`;
+        if (!STATE.logs) STATE.logs = { radar: [], fuel: [] };
+        STATE.logs[type].unshift(logEntry);
+        if (STATE.logs[type].length > 2) STATE.logs[type].pop();
+    },
             initLight: () => {
                 // Sur iPhone, cette partie sera ignorée (pas de capteur Lux)
                 // Le mode nuit restera manuel ou basé sur l'heure.
