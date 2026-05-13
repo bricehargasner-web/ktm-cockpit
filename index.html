@@ -255,14 +255,19 @@
     </div>
 
     <script>
-        const STATE = {
-            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
-            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
-            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
-            lastRadarDist: null,
-            radarsCache: [],  // AJOUT : Stocke les radars autour de toi
-            radarsInit: false // AJOUT : Vérifie si le téléchargement a commencé
-        };
+     const STATE = {
+    gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+    angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
+    lux: 0, 
+    weatherInit: false, 
+    gpx: { active: false, points: [], distance: 0, prev: null }, 
+    stations: [],
+    lastRadarDist: null,
+    radarsCache: [],  
+    radarsInit: false,
+    // TU AJOUTES CETTE LIGNE ICI :
+    logs: { radar: [], fuel: [] } 
+};  
 
         const CORE = {
            startBootSequence: async () => {
