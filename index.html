@@ -649,66 +649,84 @@ const UI = {
         } else {
             UI.setRadarStatus(false); // Rouge : plus rien en mémoire
         }
-    }
 },        
             
-checkRadars: () => {
-    if (!STATE.radarsInit && STATE.gps.lat) {
-        STATE.radarsInit = true;
-        UI.fetchRadarsAPI(); 
-        setInterval(UI.fetchRadarsAPI, 120000); // Ping toutes les 2 minutes
-    }
-
-    if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
-
-    const radius = CONFIG.radarRayonM; 
-    let closestRadar = null;
-    let minDeviceInfo = { dist: 999999 };
-    
-    STATE.radarsCache.forEach(node => {
-        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
-        if (d < minDeviceInfo.dist) {
-            minDeviceInfo.dist = d;
-            closestRadar = node;
-        }
-    });
-
-    const alertBox = document.getElementById('radar-alert');
-    const distSpan = document.getElementById('radar-dist');
-    
-    if (closestRadar && minDeviceInfo.dist <= radius) {
-        // FILTRE VECTORIEL : On ne sonne que si on se rapproche
-        const isApproaching = !STATE.lastRadarDist || minDeviceInfo.dist < (STATE.lastRadarDist - 2);
-        
-        if (isApproaching) {
-            alertBox.style.display = 'block';
-            distSpan.innerText = Math.round(minDeviceInfo.dist);
-            
-            // LOGIQUE VITESSE (Couleur Dynamique)
-            const speedLimit = parseInt(closestRadar.tags.maxspeed) || 80; // 80 par défaut si inconnu
-            const currentSpeed = STATE.gps.speed;
-
-            if (currentSpeed > speedLimit) {
-                // ROUGE CLIGNOTANT : Excès de vitesse
-                alertBox.style.background = "linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%)";
-                alertBox.style.opacity = (Date.now() % 400 < 200) ? "1" : "0.6";
-                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:yellow;">(LIMIT ${speedLimit})</span>`;
-            } else {
-                // VERT FIXE : Vitesse OK
-                alertBox.style.background = "linear-gradient(90deg, #006400 0%, #00FF00 50%, #006400 100%)";
-                alertBox.style.opacity = "1";
-                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:white;">OK</span>`;
+fetchRadarsAPI: async () => {
+            if (!STATE.gps.lat) return;
+            try {
+                const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:12000,${STATE.gps.lat},${STATE.gps.lon});out tags center;`;
+                const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+                
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Réseau instable");
+                
+                const data = await res.json();
+                STATE.radarsCache = data.elements || [];
+                
+                CORE.addLog('radar', 'OK'); // Enregistre le succès dans le mouchard
+                UI.setRadarStatus(true); 
+            } catch (e) {
+                CORE.addLog('radar', 'KO'); // Enregistre l'échec dans le mouchard
+                console.log("Erreur API, passage en mode cache.");
+                if (STATE.radarsCache.length > 0) {
+                    document.getElementById('led-radar').style.background = "#FFA500"; 
+                    document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
+                } else {
+                    UI.setRadarStatus(false);
+                }
             }
-        } else {
-            // On s'éloigne ou radar passé : on cache l'alerte
-            alertBox.style.display = 'none';
-        }
-        STATE.lastRadarDist = minDeviceInfo.dist; 
-    } else {
-        alertBox.style.display = 'none';
-        STATE.lastRadarDist = null;
-    }
-}
+        }, // <--- UNE SEULE FERMETURE ICI
+            
+        checkRadars: () => {
+            if (!STATE.radarsInit && STATE.gps.lat) {
+                STATE.radarsInit = true;
+                UI.fetchRadarsAPI(); 
+                setInterval(UI.fetchRadarsAPI, 120000); 
+            }
+
+            if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+
+            const radius = CONFIG.radarRayonM; 
+            let closestRadar = null;
+            let minDeviceInfo = { dist: 999999 };
+            
+            STATE.radarsCache.forEach(node => {
+                const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
+                if (d < minDeviceInfo.dist) {
+                    minDeviceInfo.dist = d;
+                    closestRadar = node;
+                }
+            });
+
+            const alertBox = document.getElementById('radar-alert');
+            const distSpan = document.getElementById('radar-dist');
+            
+            if (closestRadar && minDeviceInfo.dist <= radius) {
+                const isApproaching = !STATE.lastRadarDist || minDeviceInfo.dist < (STATE.lastRadarDist - 2);
+                
+                if (isApproaching) {
+                    alertBox.style.display = 'block';
+                    const speedLimit = parseInt(closestRadar.tags.maxspeed) || 80;
+                    const currentSpeed = STATE.gps.speed;
+
+                    if (currentSpeed > speedLimit) {
+                        alertBox.style.background = "linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%)";
+                        alertBox.style.opacity = (Date.now() % 400 < 200) ? "1" : "0.6";
+                        distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:yellow;">(LIMIT ${speedLimit})</span>`;
+                    } else {
+                        alertBox.style.background = "linear-gradient(90deg, #006400 0%, #00FF00 50%, #006400 100%)";
+                        alertBox.style.opacity = "1";
+                        distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:white;">OK</span>`;
+                    }
+                } else {
+                    alertBox.style.display = 'none';
+                }
+                STATE.lastRadarDist = minDeviceInfo.dist; 
+            } else {
+                alertBox.style.display = 'none';
+                STATE.lastRadarDist = null;
+            }
+        }, // <--- FIN DE CHECKRADARS
             updateRadius: v => { CONFIG.rayonRechercheKm = v; UI.syncConfig(); },
             openSettings: () => document.getElementById('settings-modal').style.display = 'flex',
             closeSettings: () => document.getElementById('settings-modal').style.display = 'none',
