@@ -622,16 +622,27 @@ const UI = {
             fetchRadarsAPI: async () => {
     if (!STATE.gps.lat) return;
     try {
-        const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:10000,${STATE.gps.lat},${STATE.gps.lon});out body;`;
+        // On demande spécifiquement le tag "maxspeed" en plus des coordonnées
+        const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:12000,${STATE.gps.lat},${STATE.gps.lon});out tags center;`;
         const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+        
         const res = await fetch(url);
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error("Réseau instable");
+        
         const data = await res.json();
         STATE.radarsCache = data.elements || [];
-        UI.setRadarStatus(true); // LED PASSE AU VERT
+        
+        // LED : Toujours Vert si on a fini la requête avec succès
+        UI.setRadarStatus(true); 
     } catch (e) {
-        UI.setRadarStatus(false); // LED PASSE AU ROUGE
-    }
+        console.log("Erreur API, passage en mode cache.");
+        // Si on a encore des radars en mémoire, on passe en Orange (on simule par un style)
+        if (STATE.radarsCache.length > 0) {
+            document.getElementById('led-radar').style.background = "#FFA500"; // Orange
+            document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
+        } else {
+            UI.setRadarStatus(false); // Rouge : plus rien en mémoire
+        }
 },
             
             checkRadars: () => {
