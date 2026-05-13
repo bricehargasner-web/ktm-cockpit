@@ -232,7 +232,57 @@
             radarsCache: [],  // AJOUT : Stocke les radars autour de toi
             radarsInit: false // AJOUT : Vérifie si le téléchargement a commencé
         };
+const STATE = {
+            gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0 },
+            angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
+            lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
+            lastRadarDist: null,
+            radarsCache: [],
+            radarsInit: false
+        };
 
+        // --- MODULE AUDIO POUR SENA ---
+        const AUDIO = {
+            ctx: null,
+            enabled: false,
+            toggle: function() {
+                // Initialise le moteur audio (indispensable au premier clic)
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                this.enabled = !this.enabled;
+                const btn = document.getElementById('soundBtn');
+                
+                if (this.enabled) {
+                    btn.innerText = "🔈 BIP RADAR : ON";
+                    btn.style.backgroundColor = "#2ecc71"; // Vert
+                    this.play(); // Test immédiat pour confirmer la liaison Bluetooth
+                } else {
+                    btn.innerText = "🔇 BIP RADAR : OFF";
+                    btn.style.backgroundColor = "#e74c3c"; // Rouge
+                }
+            },
+            play: function() {
+                if (!this.enabled || !this.ctx) return;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime); // Fréquence 880Hz (claire)
+                
+                gain.gain.setValueAtTime(0.6, this.ctx.currentTime); // Volume à 60%
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        };
+
+        const CORE = {
+            // ... le reste de ton code CORE
         const CORE = {
            startBootSequence: async () => {
                 const bar = document.getElementById('boot-bar');
