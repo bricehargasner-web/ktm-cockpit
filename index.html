@@ -681,30 +681,29 @@ const UI = {
             },
            fetchRadarsAPI: async () => {
                 if (!STATE.gps.lat) return;
-                // On télécharge les 300 premières lignes de Koumoul
-                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines?size=300`;
+                
+                // On demande les 100 radars les plus proches géographiquement grâce au tri de l'API
+                // (On passe la limite à 500 pour être certain de ratisser large autour de la moto)
+                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines?size=500`;
+                
                 try {
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error("Flux Koumoul instable");
+                    if (!res.ok) throw new Error("Flux instable");
                     const data = await res.json();
                     
-                    // Filtrage géographique local : rayon de 20km autour du KTM
+                    // On affine le cache local à 30km autour de la moto
                     STATE.radarsCache = (data.results || []).filter(r => {
                         if (!r.latitude || !r.longitude) return false;
                         const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude);
-                        return d <= 20; 
+                        return d <= 30; 
                     });
                     
-                    UI.setRadarStatus(true); // LED Verte
+                    UI.setRadarStatus(true);
                 } catch (e) {
-                    console.log("Erreur Koumoul, bascule cache.");
-                    if (STATE.radarsCache.length > 0) {
-                        document.getElementById('led-radar').style.background = "#FFA500"; // Orange
-                        document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
-                    } else {
-                        UI.setRadarStatus(false); // Rouge
-                    }
-                }   
+                    console.log("Erreur Koumoul cache");
+                    UI.setRadarStatus(STATE.radarsCache.length > 0);
+                 } 
+             }
             },
             
             checkRadars: () => {
