@@ -679,36 +679,16 @@ const UI = {
                         </div>
                     </div>`).join('');
             },
-         fetchRadarsAPI: async () => {
-                if (!STATE.gps.lat) return;
-                // Version avec l'ID d'origine pour forcer l'accès complet
-                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/99r0c7xulvo8bi-3b0t99zf7/lines?size=3500&select=latitude,longitude,vma,sens`;
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error("Flux instable");
-                    const data = await res.json();
-                    
-                    // Tri local à 30km autour de la bécane
-                    STATE.radarsCache = (data.results || []).filter(r => {
-                        if (!r.latitude || !r.longitude) return false;
-                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude);
-                        return d <= 30; 
-                    });
-                    UI.setRadarStatus(true); // LED Verte
-                } catch (e) {
-                    console.log("Erreur Koumoul, bascule cache local.");
-                    UI.setRadarStatus(STATE.radarsCache.length > 0);
-                }   
-            },
-            
-            checkRadars: () => {
+         checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
                     UI.fetchRadarsAPI(); 
                     setInterval(UI.fetchRadarsAPI, 120000); 
                 }
 
-                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+                // --- SÉCURITÉ ABSOLUE FIX GPS ---
+                // Si la puce GPS n'a pas encore renvoyé de position réelle, on force le cache à 0
+                if (!STATE.gps.lat || !STATE.radarsCache || STATE.radarsCache.length === 0) return;
 
                 const radius = CONFIG.radarRayonM; 
                 let closestRadar = null;
@@ -770,6 +750,7 @@ const UI = {
                     STATE.lastRadarDist = null;
                 }
             },
+    
 
             showWazeAlert: (type, dist) => {
     // --- AJOUTER CE BLOC DANS L'OBJET UI ---
