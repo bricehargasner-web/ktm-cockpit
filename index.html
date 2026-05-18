@@ -274,42 +274,33 @@
                 osc.stop(this.ctx.currentTime + 0.3);
             }
         };
-        // --- MODULE WAZE : ACCIDENTS & POLICE ---
+    
+        // --- MODULE WAZE : INJECTION PROXY ANTI-404 ---
         const WAZE = {
             alerts: [],
-            lastFetch: 0,
             fetchAlerts: async () => {
-                // On rafraîchit toutes les 2 minutes pour rester "clinique"
-                if (Date.now() - WAZE.lastFetch < 120000 || !STATE.gps.lat) return;
-                
-                const offset = 0.15; // Zone d'environ 15km autour de toi
-                const lat = STATE.gps.lat;
-                const lon = STATE.gps.lon;
-                
-                // Flux LiveMap Waze (TGeoRSS)
-                const url = `https://www.waze.com/rtserver/web/TGeoRSS?bottom=${lat-offset}&left=${lon-offset}&right=${lon+offset}&top=${lat+offset}`;
-
+                const lat = STATE.gps.lat || 43.604; 
+                const lon = STATE.gps.lon || 1.444;
+                if (Date.now() - STATE.lastFetchWaze < 60000) return;
+                const offset = 0.15;
+                const wazeUrl = `https://www.waze.com/rtserver/web/TGeoRSS?bottom=${lat-offset}&left=${lon-offset}&right=${lon+offset}&top=${lat+offset}`;
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(wazeUrl)}`;
                 try {
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    WAZE.alerts = data.alerts || [];
-                    WAZE.lastFetch = Date.now();
-                    console.log("Waze Sync: " + WAZE.alerts.length + " incidents");
-                } catch (e) {
-                    console.log("Waze : Flux restreint ou pas de réseau");
-                }
+                    const res = await fetch(proxyUrl);
+                    const wrapper = await res.json();
+                    if (wrapper.contents) {
+                        const data = JSON.parse(wrapper.contents);
+                        WAZE.alerts = data.alerts || [];
+                        STATE.lastFetchWaze = Date.now();
+                    }
+                } catch (e) { console.log("Waze Proxy Error"); if (STATE.lastFetchWaze === 0) STATE.lastFetchWaze = 1; }
             },
             checkDanger: () => {
-                if (!WAZE.alerts.length) return;
-
+                if (!WAZE.alerts.length || !STATE.gps.lat) return;
                 WAZE.alerts.forEach(alert => {
-                    // Calcul distance entre moto et incident
                     const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, alert.location.y, alert.location.x) * 1000;
-                    
-                    if (d < 3000) { // Alerte à 3km pour avoir le temps d'anticiper
-                        if (alert.type === 'POLICE' || alert.type === 'ACCIDENT') {
-                            UI.showWazeAlert(alert.type, Math.round(d));
-                        }
+                    if (d < 3000 && (alert.type === 'POLICE' || alert.type === 'ACCIDENT')) {
+                        UI.showWazeAlert(alert.type, Math.round(d));
                     }
                 });
             }
@@ -415,6 +406,10 @@
             },
             initGPS: () => {
                 navigator.geolocation.watchPosition(pos => {
+                    // Calcul du Cap (Heading) en temps réel si la moto bouge
+                    if (STATE.gps.lat && STATE.gps.lon && pos.coords.speed > 1) {
+                        STATE.gps.heading = CORE.calcHeading(STATE.gps.lat, STATE.gps.lon, pos.coords.latitude, pos.coords.longitude);
+                    }
                     STATE.gps.lat = pos.coords.latitude; STATE.gps.lon = pos.coords.longitude;
                     STATE.gps.speed = Math.round((pos.coords.speed || 0) * 3.6);
                     if (STATE.gps.speed > 2) { STATE.gps.sum += STATE.gps.speed; STATE.gps.count++; }
@@ -428,6 +423,14 @@
                         STATE.gpx.prev = pt;
                     }
                 }, null, { enableHighAccuracy: true });
+            },
+            calcHeading: (lat1, lon1, lat2, lon2) => {
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const rLat1 = lat1 * Math.PI / 180;
+                const rLat2 = lat2 * Math.PI / 180;
+                const y = Math.sin(dLon) * Math.cos(rLat2);
+                const x = Math.cos(rLat1) * Math.sin(rLat2) - Math.sin(rLat1) * Math.cos(rLat2) * Math.cos(dLon);
+                return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
             },
             calcDist: (l1, n1, l2, n2) => {
                 const R = 6371; const dLat = (l2-l1)*Math.PI/180; const dLon = (n2-n1)*Math.PI/180;
