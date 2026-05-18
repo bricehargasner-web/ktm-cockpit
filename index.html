@@ -225,7 +225,7 @@
     </div>
 
     <script>
-        const STATE = {
+      const STATE = {
             gps: { lat: null, lon: null, speed: 0, max: 0, sum: 0, count: 0, heading: null },
             angle: { current: 0, smoothed: 0, offset: 0, max: 0, sum: 0, count: 0 },
             lux: 0, weatherInit: false, gpx: { active: false, points: [], distance: 0, prev: null }, stations: [],
@@ -234,7 +234,6 @@
             radarsInit: false,
             lastFetchWaze: 0
         };
-
         // --- MODULE AUDIO POUR SENA ---
         const AUDIO = {
             ctx: null,
@@ -681,94 +680,108 @@ const UI = {
                     </div>`).join('');
             },
             fetchRadarsAPI: async () => {
-    if (!STATE.gps.lat) return;
-    try {
-        // On demande spécifiquement le tag "maxspeed" en plus des coordonnées
-        const query = `[out:json][timeout:15];node["highway"="speed_camera"](around:12000,${STATE.gps.lat},${STATE.gps.lon});out tags center;`;
-        const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
-        
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Réseau instable");
-        
-        const data = await res.json();
-        STATE.radarsCache = data.elements || [];
-        
-        // LED : Toujours Vert si on a fini la requête avec succès
-        UI.setRadarStatus(true); 
-    } catch (e) {
-        console.log("Erreur API, passage en mode cache.");
-        // Si on a encore des radars en mémoire, on passe en Orange (on simule par un style)
-        if (STATE.radarsCache.length > 0) {
-            document.getElementById('led-radar').style.background = "#FFA500"; // Orange
-            document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
-        } else {
-            UI.setRadarStatus(false); // Rouge : plus rien en mémoire
-        }
-    }   
-},
+                if (!STATE.gps.lat) return;
+                // Interrogation directe de l'API Koumoul (Data-Fair)
+                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines?size=300`;
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("Réseau instable");
+                    const data = await res.json();
+                    
+                    // Filtrage local à 20km autour de ta position GPS
+                    STATE.radarsCache = (data.results || []).filter(r => {
+                        if (!r.gauche_droite_geom || !r.gauche_droite_geom.coordinates) return false;
+                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.gauche_droite_geom.coordinates[1], r.gauche_droite_geom.coordinates[0]);
+                        return d <= 20; 
+                    });
+                    
+                    UI.setRadarStatus(true); // LED verte : Synchro OK
+                } catch (e) {
+                    console.log("Erreur Koumoul, passage en mode cache.");
+                    if (STATE.radarsCache.length > 0) {
+                        document.getElementById('led-radar').style.background = "#FFA500"; // Orange
+                        document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
+                    } else {
+                        UI.setRadarStatus(false); // Rouge
+                    }
+                }   
+            },
             
-        checkRadars: () => {
-    if (!STATE.radarsInit && STATE.gps.lat) {
-        STATE.radarsInit = true;
-        UI.fetchRadarsAPI(); 
-        setInterval(UI.fetchRadarsAPI, 120000);
-    }
-
-    if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
-
-    const radius = CONFIG.radarRayonM; 
-    let closestRadar = null;
-    let minDeviceInfo = { dist: 999999 };
-    
-    STATE.radarsCache.forEach(node => {
-        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.lat, node.lon) * 1000;
-        if (d < minDeviceInfo.dist) {
-            minDeviceInfo.dist = d;
-            closestRadar = node;
-        }
-    });
-
-    const alertBox = document.getElementById('radar-alert');
-    const distSpan = document.getElementById('radar-dist');
-    // ON MÉMORISE SI L'ALERTE ÉTAIT ÉTEINTE (pour le bip instantané)
-    const wasHidden = (alertBox.style.display === 'none');
-    
-    if (closestRadar && minDeviceInfo.dist <= radius) {
-        const isApproaching = !STATE.lastRadarDist || minDeviceInfo.dist < (STATE.lastRadarDist - 2);
-        
-        if (isApproaching) {
-            alertBox.style.display = 'block';
-            distSpan.innerText = Math.round(minDeviceInfo.dist);
-            
-            const speedLimit = parseInt(closestRadar.tags.maxspeed) || 80;
-            const currentSpeed = STATE.gps.speed;
-
-            if (currentSpeed > speedLimit) {
-                alertBox.style.background = "linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%)";
-                alertBox.style.opacity = (Date.now() % 400 < 200) ? "1" : "0.6";
-                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:yellow;">(LIMIT ${speedLimit})</span>`;
-                
-                // --- GESTION DU SON ---
-                // Son immédiat si on vient d'entrer en zone (wasHidden) 
-                // OU rappel toutes les 1.5 secondes
-                if (wasHidden || (Date.now() - STATE.lastBipTime > 1500)) {
-                    AUDIO.play();
-                    STATE.lastBipTime = Date.now();
+            checkRadars: () => {
+                if (!STATE.radarsInit && STATE.gps.lat) {
+                    STATE.radarsInit = true;
+                    UI.fetchRadarsAPI(); 
+                    setInterval(UI.fetchRadarsAPI, 120000); // Mise à jour toutes les 2 min
                 }
-            } else {
-                alertBox.style.background = "linear-gradient(90deg, #006400 0%, #00FF00 50%, #006400 100%)";
-                alertBox.style.opacity = "1";
-                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:white;">OK</span>`;
-            }
-        } else {
-            alertBox.style.display = 'none';
-        }
-        STATE.lastRadarDist = minDeviceInfo.dist; 
-    } else {
-        alertBox.style.display = 'none';
-        STATE.lastRadarDist = null;
-    }
-},    
+
+                if (!STATE.radarsCache || STATE.radarsCache.length === 0) return;
+
+                const radius = CONFIG.radarRayonM; 
+                let closestRadar = null;
+                let minDeviceInfo = { dist: 999999 };
+                
+                // Extraction géométrique de Koumoul [0] = Lon, [1] = Lat
+                STATE.radarsCache.forEach(node => {
+                    const rLat = node.gauche_droite_geom.coordinates[1];
+                    const rLon = node.gauche_droite_geom.coordinates[0];
+                    const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, rLat, rLon) * 1000;
+                    if (d < minDeviceInfo.dist) {
+                        minDeviceInfo.dist = d;
+                        closestRadar = node;
+                    }
+                });
+
+                const alertBox = document.getElementById('radar-alert');
+                const distSpan = document.getElementById('radar-dist');
+                const wasHidden = (alertBox.style.display === 'none');
+                
+                if (closestRadar && minDeviceInfo.dist <= radius) {
+                    let sensValide = true;
+                    
+                    // --- FILTRE VECTORIEL ANTI-RADAR FANTÔME ---
+                    if (closestRadar.sens && STATE.gps.heading !== null) {
+                        const sensRadar = closestRadar.sens.toUpperCase();
+                        const cap = STATE.gps.heading;
+                        
+                        // Si tu roules à l'inverse du sens officiel du flash, on coupe l'alerte
+                        if (sensRadar.includes("NORD") && (cap > 90 && cap < 270)) sensValide = false;
+                        if (sensRadar.includes("SUD") && (cap < 90 || cap > 270)) sensValide = false;
+                        if (sensRadar.includes("EST") && (cap > 180 && cap < 360)) sensValide = false;
+                        if (sensRadar.includes("OUEST") && (cap > 0 && cap < 180)) sensValide = false;
+                    }
+
+                    if (sensValide) {
+                        const isApproaching = !STATE.lastRadarDist || minDeviceInfo.dist < (STATE.lastRadarDist - 2);
+                        
+                        if (isApproaching) {
+                            alertBox.style.display = 'block';
+                            const speedLimit = parseInt(closestRadar.vitesse_limite) || 80;
+                            const currentSpeed = STATE.gps.speed;
+
+                            if (currentSpeed > speedLimit) {
+                                alertBox.style.background = "linear-gradient(90deg, #ff0000 0%, #660000 50%, #ff0000 100%)";
+                                alertBox.style.opacity = (Date.now() % 400 < 200) ? "1" : "0.6";
+                                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:yellow;">(LIMIT ${speedLimit})</span>`;
+                                
+                                if (wasHidden || (Date.now() - STATE.lastBipTime > 1500)) {
+                                    AUDIO.play();
+                                    STATE.lastBipTime = Date.now();
+                                }
+                            } else {
+                                alertBox.style.background = "linear-gradient(90deg, #006400 0%, #00FF00 50%, #006400 100%)";
+                                alertBox.style.opacity = "1";
+                                distSpan.innerHTML = `${Math.round(minDeviceInfo.dist)}m <span style="font-size:0.8em; color:white;">OK</span>`;
+                            }
+                        }
+                    } else {
+                        alertBox.style.display = 'none'; // Cache si c'est le sens opposé
+                    }
+                    STATE.lastRadarDist = minDeviceInfo.dist; 
+                } else {
+                    alertBox.style.display = 'none';
+                    STATE.lastRadarDist = null;
+                }
+            },  
     // --- AJOUTER CE BLOC DANS L'OBJET UI ---
 showWazeAlert: (type, dist) => {
     const alertBox = document.getElementById('radar-alert');
