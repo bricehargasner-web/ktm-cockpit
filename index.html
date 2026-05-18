@@ -679,22 +679,39 @@ const UI = {
                         </div>
                     </div>`).join('');
             },
-         checkRadars: () => {
+         fetchRadarsAPI: async () => {
+                if (!STATE.gps.lat) return;
+                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/99r0c7xulvo8bi-3b0t99zf7/lines?size=3500&select=latitude,longitude,vma,sens`;
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("Flux instable");
+                    const data = await res.json();
+                    
+                    STATE.radarsCache = (data.results || []).filter(r => {
+                        if (!r.latitude || !r.longitude) return false;
+                        const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude);
+                        return d <= 30; 
+                    });
+                    UI.setRadarStatus(true);
+                } catch (e) {
+                    console.log("Erreur Koumoul, bascule cache local.");
+                    UI.setRadarStatus(STATE.radarsCache.length > 0);
+                }   
+            },
+            
+            checkRadars: () => {
                 if (!STATE.radarsInit && STATE.gps.lat) {
                     STATE.radarsInit = true;
                     UI.fetchRadarsAPI(); 
                     setInterval(UI.fetchRadarsAPI, 120000); 
                 }
 
-                // --- SÉCURITÉ ABSOLUE FIX GPS ---
-                // Si la puce GPS n'a pas encore renvoyé de position réelle, on force le cache à 0
                 if (!STATE.gps.lat || !STATE.radarsCache || STATE.radarsCache.length === 0) return;
 
                 const radius = CONFIG.radarRayonM; 
                 let closestRadar = null;
                 let minDeviceInfo = { dist: 999999 };
                 
-                // Balayage géométrique direct
                 STATE.radarsCache.forEach(node => {
                     if (node.latitude && node.longitude) {
                         const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, node.latitude, node.longitude) * 1000;
@@ -712,7 +729,6 @@ const UI = {
                 if (closestRadar && minDeviceInfo.dist <= radius) {
                     let sensValide = true;
                     
-                    // --- FILTRE VECTORIEL CHIRURGICAL ANTI-FANTÔME ---
                     if (closestRadar.sens && STATE.gps.heading !== null) {
                         const sensRadar = closestRadar.sens.toUpperCase();
                         const cap = STATE.gps.heading;
@@ -750,6 +766,8 @@ const UI = {
                     STATE.lastRadarDist = null;
                 }
             },
+
+            showWazeAlert: (type, dist) => {
     
             showWazeAlert: (type, dist) => {
     // --- AJOUTER CE BLOC DANS L'OBJET UI ---
