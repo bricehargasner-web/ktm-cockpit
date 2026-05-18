@@ -679,30 +679,29 @@ const UI = {
                         </div>
                     </div>`).join('');
             },
-          fetchRadarsAPI: async () => {
+         fetchRadarsAPI: async () => {
                 if (!STATE.gps.lat) return;
                 
-                // --- REQUÊTE CLINIQUE PAR DÉPARTEMENT ---
-                // On cible le Tarn (81) et la Haute-Garonne (31) pour tes trajets vers Toulouse
-                const q = "departement:(81 OR 31)";
-                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines?q=${encodeURIComponent(q)}&size=500`;
+                // On télécharge toute la base (3268 radars) en sélectionnant uniquement les 3 champs vitaux
+                // afin de garantir une vitesse d'exécution maximale sans saturer la mémoire
+                const url = `https://opendata.koumoul.com/data-fair/api/v1/datasets/liste-des-radars-fixes-en-france/lines?size=3500&select=latitude,longitude,vma`;
                 
                 try {
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error("Flux Koumoul instable");
+                    if (!res.ok) throw new Error("Flux instable");
                     const data = await res.json();
                     
-                    // Le serveur nous donne tous les radars du 81 et 31.
-                    // On filtre en local pour ne garder dans la mémoire du Dash que ceux à moins de 30km de la moto.
+                    // Le Dash possède maintenant toute la France. On filtre en local 
+                    // pour ne garder en mémoire active que ceux qui sont à moins de 30 km de la moto.
                     STATE.radarsCache = (data.results || []).filter(r => {
                         if (!r.latitude || !r.longitude) return false;
                         const d = CORE.calcDist(STATE.gps.lat, STATE.gps.lon, r.latitude, r.longitude);
                         return d <= 30; 
                     });
                     
-                    UI.setRadarStatus(true); // LED Verte : Synchro OK
+                    UI.setRadarStatus(true); // LED Verte : Système optimal
                 } catch (e) {
-                    console.log("Erreur Koumoul, bascule cache local.");
+                    console.log("Erreur Koumoul, bascule cache");
                     if (STATE.radarsCache.length > 0) {
                         document.getElementById('led-radar').style.background = "#FFA500"; // Orange
                         document.getElementById('led-radar').style.boxShadow = "0 0 5px #FFA500";
